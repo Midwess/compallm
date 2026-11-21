@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 pub type Headers = BTreeMap<String, String>;
 pub type BodyDefaults = BTreeMap<String, serde_json::Value>;
-pub type EffortMapping = BTreeMap<EffortLevel, String>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -180,72 +179,12 @@ pub struct ApiKeyHeader {
     pub prefix: String,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Capability {
-    Text,
-    Vision,
-    Pdf,
-    Audio,
-    Video,
-    ImageGeneration,
-    AudioGeneration,
-    Search,
-    Reasoning,
-    ToolCall,
-    ForcedToolChoice,
-    StructuredOutput,
-}
-
-pub static ALL_CAPABILITIES: [Capability; 12] = [
-    Capability::Text,
-    Capability::Vision,
-    Capability::Pdf,
-    Capability::Audio,
-    Capability::Video,
-    Capability::ImageGeneration,
-    Capability::AudioGeneration,
-    Capability::Search,
-    Capability::Reasoning,
-    Capability::ToolCall,
-    Capability::ForcedToolChoice,
-    Capability::StructuredOutput,
-];
-
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ModelLimits {
     pub context_tokens: Option<u32>,
     pub max_input_tokens: Option<u32>,
     pub max_output_tokens: Option<u32>,
-    pub max_images_per_request: Option<u32>,
-    pub max_duration_ms: Option<u32>,
-    pub max_audio_bytes: Option<u32>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct Thinking {
-    pub effort_mapping: EffortMapping,
-    pub budget: Option<ThinkingBudget>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EffortLevel {
-    Low,
-    Medium,
-    High,
-    Xhigh,
-    Max,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct ThinkingBudget {
-    pub min_tokens: u32,
-    pub max_tokens: u32,
-    pub default_tokens: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

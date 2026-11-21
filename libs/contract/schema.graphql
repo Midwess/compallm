@@ -8,6 +8,12 @@ enum AuthenticationPurpose {
   PASSKEY_CHANGE
 }
 
+enum CapabilityStatus {
+  UNKNOWN
+  UNSUPPORTED
+  SUPPORTED
+}
+
 "How the request delivers credentials; this is never stored in signed claims."
 enum CredentialDelivery {
   "Set HttpOnly cookies and return metadata without credential values."
@@ -672,6 +678,22 @@ type AnalyticUserProfilePayload {
   node: AnalyticUserProfile!
 }
 
+type AudioCapabilities {
+  input: AudioSupport!
+  output: AudioSupport!
+}
+
+type AudioConfiguration {
+  formats: [String!]
+  maxDurationMs: Float
+  maxBytes: Float
+}
+
+type AudioSupport {
+  status: CapabilityStatus!
+  configuration: AudioConfiguration
+}
+
 type AvatarUpload {
   url: String!
   fields: [UploadFormField!]!
@@ -718,6 +740,10 @@ type EmailChallengePayload {
   node: EmailChallenge!
 }
 
+type FeatureSupport {
+  status: CapabilityStatus!
+}
+
 type Group {
   id: ID!
   name: String!
@@ -742,6 +768,16 @@ type GroupPayload {
 
 type IDPayload {
   node: ID!
+}
+
+type ImageGenerationConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type ImageGenerationSupport {
+  status: CapabilityStatus!
+  configuration: ImageGenerationConfiguration
 }
 
 type Invitation {
@@ -857,6 +893,16 @@ type ModelTemplate {
   headers: [TemplateHeader!]!
   operations: [TemplateOperation!]!
   capabilities: [ProviderModelCapability!]!
+  text: FeatureSupport!
+  vision: VisionSupport!
+  pdf: PdfSupport!
+  audio: AudioCapabilities!
+  video: VideoSupport!
+  imageGeneration: ImageGenerationSupport!
+  thinking: ThinkingSupport!
+  tools: ToolCapabilities!
+  structuredOutput: StructuredOutputSupport!
+  search: SearchSupport!
   maxContextTokens: ContextTokens
   maxInputTokens: ContextTokens
   maxOutputTokens: ContextTokens
@@ -1053,6 +1099,16 @@ type PasskeySummaryPayload {
   node: PasskeySummary!
 }
 
+type PdfConfiguration {
+  maxFiles: Float
+  maxPages: Float
+}
+
+type PdfSupport {
+  status: CapabilityStatus!
+  configuration: PdfConfiguration
+}
+
 type PolicyAction {
   name: String!
   displayName: String!
@@ -1155,6 +1211,15 @@ type RolePayload {
   node: Role!
 }
 
+type SearchConfiguration {
+  maxResults: Float
+}
+
+type SearchSupport {
+  status: CapabilityStatus!
+  configuration: SearchConfiguration
+}
+
 type Session {
   expiresAt: String!
   lastSeenAt: String!
@@ -1221,6 +1286,16 @@ type SidebarPreferences {
   entries: [SidebarEntry!]!
 }
 
+type StructuredOutputConfiguration {
+  jsonMode: FeatureSupport!
+  jsonSchema: FeatureSupport!
+}
+
+type StructuredOutputSupport {
+  status: CapabilityStatus!
+  configuration: StructuredOutputConfiguration
+}
+
 type TemplateAuthConfig {
   placement: TemplateCredentialPlacement
   flow: TemplateOAuthFlow
@@ -1273,12 +1348,44 @@ type ThemePreferences {
   palettes: PalettePreferences!
 }
 
+type ThinkingBudget {
+  minTokens: Float!
+  maxTokens: Float!
+  defaultTokens: Float
+}
+
+type ThinkingConfiguration {
+  effortMapping: [TemplateEffort!]!
+  defaultEffort: TemplateEffortLevel
+  budget: ThinkingBudget
+}
+
+type ThinkingSupport {
+  status: CapabilityStatus!
+  configuration: ThinkingConfiguration
+}
+
 "Exact Unix-second validity and client throttle values encoded as decimal strings."
 type TokenLifetime {
   issuedAt: String!
   expiresAt: String!
   expiresInSeconds: String!
   throttleSeconds: String!
+}
+
+type ToolCallingConfiguration {
+  maxTools: Float
+}
+
+type ToolCallingSupport {
+  status: CapabilityStatus!
+  configuration: ToolCallingConfiguration
+}
+
+type ToolCapabilities {
+  calling: ToolCallingSupport!
+  forcedChoice: FeatureSupport!
+  parallelCalls: FeatureSupport!
 }
 
 type TypographyPreferences {
@@ -1321,4 +1428,25 @@ type UserPreferences {
 
 type UserPreferencesPayload {
   node: UserPreferences!
+}
+
+type VideoConfiguration {
+  formats: [String!]
+  maxDurationMs: Float
+  maxFrames: Float
+}
+
+type VideoSupport {
+  status: CapabilityStatus!
+  configuration: VideoConfiguration
+}
+
+type VisionConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type VisionSupport {
+  status: CapabilityStatus!
+  configuration: VisionConfiguration
 }

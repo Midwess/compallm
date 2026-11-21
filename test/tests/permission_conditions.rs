@@ -21,10 +21,18 @@ fn model(organization_id: u64, id: u64, enabled: bool) -> Model {
         name: String::new(),
         service_kind: ServiceKind::Llm,
         enabled,
-        capabilities: Vec::new(),
+        text:Default::default(),
+        vision:Default::default(),
+        pdf:Default::default(),
+        audio:Default::default(),
+        video:Default::default(),
+        image_generation:Default::default(),
+        tools:Default::default(),
+        structured_output:Default::default(),
+        search:Default::default(),
         limits: Default::default(),
-        thinking: None,
-        pricing: serde_json::from_value(serde_json::json!({"request": {"usdPerRequest": "0"}}))
+        thinking: Default::default(),
+        pricing: serde_json::from_value(serde_json::json!({"usage":{"fixed":{"request":{"rate":{"amount":"0","currency":"USD","quantity":1}}}}}))
             .unwrap(),
     }
 }

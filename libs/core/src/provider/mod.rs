@@ -1,6 +1,8 @@
 //! Organization-owned LLM provider connections.
 
+pub mod capability;
 pub mod configuration;
+pub use capability::*;
 #[path = "creation-service.rs"]
 mod creation_service;
 mod credential;

@@ -1,3 +1,4 @@
+mod capability;
 pub mod input;
 mod output;
 pub mod query;

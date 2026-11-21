@@ -17,7 +17,7 @@ struct Fixture;
 
 impl Fixture {
     fn pricing() -> serde_json::Value {
-        json!({"token": {"inputUsdPerMillionTokens": "1.25", "outputUsdPerMillionTokens": "2.5", "cachedUsdPerMillionTokens": "0.50"}})
+        json!({"usage":{"fixed":{"token":{"input":{"amount":"1.25","currency":"USD","quantity":1000000},"output":{"amount":"2.5","currency":"USD","quantity":1000000},"cache":{"type":"separate_rate","configuration":{"rate":{"amount":"0.50","currency":"USD","quantity":1000000}}}}}}})
     }
 
     fn schema(id: i64, name: &str) -> ModelSchema {
@@ -27,9 +27,17 @@ impl Fixture {
             name: name.into(),
             service_kind: "llm".into(),
             enabled: true,
-            capabilities: json!(["text"]),
+            text: json!({"status": "supported", "configuration": {}}),
+            vision: json!({"status": "unknown"}),
+            pdf: json!({"status": "unknown"}),
+            audio: json!({"input": {"status": "unknown"}, "output": {"status": "unknown"}}),
+            video: json!({"status": "unknown"}),
+            image_generation: json!({"status": "unknown"}),
+            tools: json!({"calling": {"status": "unknown"}, "forcedChoice": {"status": "unknown"}, "parallelCalls": {"status": "unknown"}}),
+            structured_output: json!({"status": "unknown"}),
+            search: json!({"status": "unknown"}),
             limits: json!({"contextTokens": 128_000}),
-            thinking: None,
+            thinking: json!({"status":"unknown"}),
             pricing: Self::pricing(),
         }
     }
@@ -79,10 +87,13 @@ async fn insert_writes_typed_prices_and_configuration() {
         .unwrap();
 
     assert_eq!(model.id, 100);
-    let Pricing::Token(pricing) = model.pricing else {
+    let Pricing::Usage(compallm_core::provider::UsagePricing::Fixed(
+        compallm_core::provider::UsageRates::Token(pricing),
+    )) = model.pricing
+    else {
         panic!("expected token prices")
     };
-    assert_eq!(pricing.input_usd_per_million_tokens, Decimal::new(125, 2));
+    assert_eq!(pricing.input.amount.unwrap(), Decimal::new(125, 2));
     assert_eq!(model.limits.context_tokens, Some(128_000));
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
@@ -180,7 +191,7 @@ async fn invalid_persisted_ids_are_rejected_during_mapping() {
 #[tokio::test]
 async fn negative_persisted_prices_are_rejected_during_mapping() {
     let mut corrupt = Fixture::schema(100, "corrupt-model");
-    corrupt.pricing["token"]["inputUsdPerMillionTokens"] = json!("-1");
+    corrupt.pricing["usage"]["fixed"]["token"]["input"]["amount"] = json!("-1");
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![corrupt]])

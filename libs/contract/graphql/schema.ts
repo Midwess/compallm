@@ -30,6 +30,25 @@ export interface AnalyticUserProfilePayload {
   __typename: 'AnalyticUserProfilePayload'
 }
 
+export interface AudioCapabilities {
+  input: AudioSupport
+  output: AudioSupport
+  __typename: 'AudioCapabilities'
+}
+
+export interface AudioConfiguration {
+  formats: Scalars['String'][] | null
+  maxBytes: Scalars['Float'] | null
+  maxDurationMs: Scalars['Float'] | null
+  __typename: 'AudioConfiguration'
+}
+
+export interface AudioSupport {
+  configuration: AudioConfiguration | null
+  status: CapabilityStatus
+  __typename: 'AudioSupport'
+}
+
 export type AuthenticationPurpose = 'LOGIN' | 'PASSKEY_CHANGE'
 
 export interface AvatarUpload {
@@ -54,6 +73,8 @@ export interface CalendarPreferences {
   firstDay: PreferenceWeekday
   __typename: 'CalendarPreferences'
 }
+
+export type CapabilityStatus = 'SUPPORTED' | 'UNKNOWN' | 'UNSUPPORTED'
 
 export interface CatalogRequiredInput {
   allowedValues: Scalars['String'][] | null
@@ -90,6 +111,11 @@ export interface EmailChallengePayload {
   __typename: 'EmailChallengePayload'
 }
 
+export interface FeatureSupport {
+  status: CapabilityStatus
+  __typename: 'FeatureSupport'
+}
+
 export type FilterIs = 'NOT_NULL' | 'NULL'
 
 export interface Group {
@@ -123,6 +149,18 @@ export type HomeDestination = 'CHAT' | 'MODELS' | 'PROVIDERS'
 export interface IDPayload {
   node: Scalars['ID']
   __typename: 'IDPayload'
+}
+
+export interface ImageGenerationConfiguration {
+  formats: Scalars['String'][] | null
+  maxImages: Scalars['Float'] | null
+  __typename: 'ImageGenerationConfiguration'
+}
+
+export interface ImageGenerationSupport {
+  configuration: ImageGenerationConfiguration | null
+  status: CapabilityStatus
+  __typename: 'ImageGenerationSupport'
 }
 
 export type ImageMediaType = 'JPEG' | 'PNG' | 'WEBP'
@@ -249,6 +287,7 @@ export interface MessageCompositionPreferences {
 }
 
 export interface ModelTemplate {
+  audio: AudioCapabilities
   billingModel: TemplateBillingModel
   cacheBilling: TemplateCacheBilling
   cachedPrice: Scalars['String'] | null
@@ -258,16 +297,25 @@ export interface ModelTemplate {
   effortMapping: TemplateEffort[]
   headers: TemplateHeader[]
   id: Scalars['ID']
+  imageGeneration: ImageGenerationSupport
   inputPrice: Scalars['String'] | null
   maxContextTokens: Scalars['ContextTokens'] | null
   maxInputTokens: Scalars['ContextTokens'] | null
   maxOutputTokens: Scalars['ContextTokens'] | null
   operations: TemplateOperation[]
   outputPrice: Scalars['String'] | null
+  pdf: PdfSupport
   pricingMode: TemplatePricingMode
   providerTemplateId: Scalars['ID']
+  search: SearchSupport
   serviceKind: TemplateServiceKind | null
+  structuredOutput: StructuredOutputSupport
+  text: FeatureSupport
+  thinking: ThinkingSupport
+  tools: ToolCapabilities
   upstreamModelId: Scalars['String']
+  video: VideoSupport
+  vision: VisionSupport
   __typename: 'ModelTemplate'
 }
 
@@ -485,6 +533,18 @@ export interface PasskeySummaryPayload {
   __typename: 'PasskeySummaryPayload'
 }
 
+export interface PdfConfiguration {
+  maxFiles: Scalars['Float'] | null
+  maxPages: Scalars['Float'] | null
+  __typename: 'PdfConfiguration'
+}
+
+export interface PdfSupport {
+  configuration: PdfConfiguration | null
+  status: CapabilityStatus
+  __typename: 'PdfSupport'
+}
+
 export interface PolicyAction {
   description: Scalars['String']
   displayName: Scalars['String']
@@ -646,6 +706,17 @@ export interface RolePayload {
   __typename: 'RolePayload'
 }
 
+export interface SearchConfiguration {
+  maxResults: Scalars['Float'] | null
+  __typename: 'SearchConfiguration'
+}
+
+export interface SearchSupport {
+  configuration: SearchConfiguration | null
+  status: CapabilityStatus
+  __typename: 'SearchSupport'
+}
+
 export interface Session {
   /** Public avatar for this user; clients show a fallback while absent or loading. */
   avatarUrl: Scalars['String'] | null
@@ -719,6 +790,18 @@ export interface SidebarPreferences {
   entries: SidebarEntry[]
   layout: SidebarLayoutSection[]
   __typename: 'SidebarPreferences'
+}
+
+export interface StructuredOutputConfiguration {
+  jsonMode: FeatureSupport
+  jsonSchema: FeatureSupport
+  __typename: 'StructuredOutputConfiguration'
+}
+
+export interface StructuredOutputSupport {
+  configuration: StructuredOutputConfiguration | null
+  status: CapabilityStatus
+  __typename: 'StructuredOutputSupport'
 }
 
 export interface TemplateAuthConfig {
@@ -807,6 +890,26 @@ export interface ThemePreferences {
   __typename: 'ThemePreferences'
 }
 
+export interface ThinkingBudget {
+  defaultTokens: Scalars['Float'] | null
+  maxTokens: Scalars['Float']
+  minTokens: Scalars['Float']
+  __typename: 'ThinkingBudget'
+}
+
+export interface ThinkingConfiguration {
+  budget: ThinkingBudget | null
+  defaultEffort: TemplateEffortLevel | null
+  effortMapping: TemplateEffort[]
+  __typename: 'ThinkingConfiguration'
+}
+
+export interface ThinkingSupport {
+  configuration: ThinkingConfiguration | null
+  status: CapabilityStatus
+  __typename: 'ThinkingSupport'
+}
+
 /** Exact Unix-second validity and client throttle values encoded as decimal strings. */
 export interface TokenLifetime {
   expiresAt: Scalars['String']
@@ -814,6 +917,24 @@ export interface TokenLifetime {
   issuedAt: Scalars['String']
   throttleSeconds: Scalars['String']
   __typename: 'TokenLifetime'
+}
+
+export interface ToolCallingConfiguration {
+  maxTools: Scalars['Float'] | null
+  __typename: 'ToolCallingConfiguration'
+}
+
+export interface ToolCallingSupport {
+  configuration: ToolCallingConfiguration | null
+  status: CapabilityStatus
+  __typename: 'ToolCallingSupport'
+}
+
+export interface ToolCapabilities {
+  calling: ToolCallingSupport
+  forcedChoice: FeatureSupport
+  parallelCalls: FeatureSupport
+  __typename: 'ToolCapabilities'
 }
 
 export interface TypographyPreferences {
@@ -876,6 +997,31 @@ export interface UserPreferencesPayload {
   __typename: 'UserPreferencesPayload'
 }
 
+export interface VideoConfiguration {
+  formats: Scalars['String'][] | null
+  maxDurationMs: Scalars['Float'] | null
+  maxFrames: Scalars['Float'] | null
+  __typename: 'VideoConfiguration'
+}
+
+export interface VideoSupport {
+  configuration: VideoConfiguration | null
+  status: CapabilityStatus
+  __typename: 'VideoSupport'
+}
+
+export interface VisionConfiguration {
+  formats: Scalars['String'][] | null
+  maxImages: Scalars['Float'] | null
+  __typename: 'VisionConfiguration'
+}
+
+export interface VisionSupport {
+  configuration: VisionConfiguration | null
+  status: CapabilityStatus
+  __typename: 'VisionSupport'
+}
+
 export interface AccessibilityPatchInput {
   pointerCursors?: Scalars['Boolean'] | null
   reduceMotion?: Scalars['Boolean'] | null
@@ -906,6 +1052,28 @@ export interface AnalyticUserProfilePayloadGenqlSelection {
 export interface AnalyticUserProfilePutInput {
   key: Scalars['String']
   value: Scalars['String']
+}
+
+export interface AudioCapabilitiesGenqlSelection {
+  input?: AudioSupportGenqlSelection
+  output?: AudioSupportGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface AudioConfigurationGenqlSelection {
+  formats?: boolean | number
+  maxBytes?: boolean | number
+  maxDurationMs?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface AudioSupportGenqlSelection {
+  configuration?: AudioConfigurationGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 export interface AvatarUploadGenqlSelection {
@@ -1024,6 +1192,12 @@ export interface EmailInput {
   purpose?: AuthenticationPurpose | null
 }
 
+export interface FeatureSupportGenqlSelection {
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface GroupGenqlSelection {
   description?: boolean | number
   id?: boolean | number
@@ -1075,6 +1249,20 @@ export interface IDFilter {
 
 export interface IDPayloadGenqlSelection {
   node?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ImageGenerationConfigurationGenqlSelection {
+  formats?: boolean | number
+  maxImages?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ImageGenerationSupportGenqlSelection {
+  configuration?: ImageGenerationConfigurationGenqlSelection
+  status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1258,6 +1446,7 @@ export interface MessageCompositionPreferencesGenqlSelection {
 }
 
 export interface ModelTemplateGenqlSelection {
+  audio?: AudioCapabilitiesGenqlSelection
   billingModel?: boolean | number
   cacheBilling?: boolean | number
   cachedPrice?: boolean | number
@@ -1267,16 +1456,25 @@ export interface ModelTemplateGenqlSelection {
   effortMapping?: TemplateEffortGenqlSelection
   headers?: TemplateHeaderGenqlSelection
   id?: boolean | number
+  imageGeneration?: ImageGenerationSupportGenqlSelection
   inputPrice?: boolean | number
   maxContextTokens?: boolean | number
   maxInputTokens?: boolean | number
   maxOutputTokens?: boolean | number
   operations?: TemplateOperationGenqlSelection
   outputPrice?: boolean | number
+  pdf?: PdfSupportGenqlSelection
   pricingMode?: boolean | number
   providerTemplateId?: boolean | number
+  search?: SearchSupportGenqlSelection
   serviceKind?: boolean | number
+  structuredOutput?: StructuredOutputSupportGenqlSelection
+  text?: FeatureSupportGenqlSelection
+  thinking?: ThinkingSupportGenqlSelection
+  tools?: ToolCapabilitiesGenqlSelection
   upstreamModelId?: boolean | number
+  video?: VideoSupportGenqlSelection
+  vision?: VisionSupportGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1571,6 +1769,20 @@ export interface PasskeySummaryPayloadGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface PdfConfigurationGenqlSelection {
+  maxFiles?: boolean | number
+  maxPages?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface PdfSupportGenqlSelection {
+  configuration?: PdfConfigurationGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface PolicyActionGenqlSelection {
   description?: boolean | number
   displayName?: boolean | number
@@ -1854,6 +2066,19 @@ export interface RoleUpdateInput {
   name?: Scalars['String'] | null
 }
 
+export interface SearchConfigurationGenqlSelection {
+  maxResults?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface SearchSupportGenqlSelection {
+  configuration?: SearchConfigurationGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface SessionGenqlSelection {
   /** Public avatar for this user; clients show a fallback while absent or loading. */
   avatarUrl?: boolean | number
@@ -1976,6 +2201,20 @@ export interface StringFilter {
   startsWith?: Scalars['String'] | null
 }
 
+export interface StructuredOutputConfigurationGenqlSelection {
+  jsonMode?: FeatureSupportGenqlSelection
+  jsonSchema?: FeatureSupportGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface StructuredOutputSupportGenqlSelection {
+  configuration?: StructuredOutputConfigurationGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface TemplateAuthConfigGenqlSelection {
   adapter?: boolean | number
   authorizationUrl?: boolean | number
@@ -2051,12 +2290,56 @@ export interface ThemePreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface ThinkingBudgetGenqlSelection {
+  defaultTokens?: boolean | number
+  maxTokens?: boolean | number
+  minTokens?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ThinkingConfigurationGenqlSelection {
+  budget?: ThinkingBudgetGenqlSelection
+  defaultEffort?: boolean | number
+  effortMapping?: TemplateEffortGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ThinkingSupportGenqlSelection {
+  configuration?: ThinkingConfigurationGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 /** Exact Unix-second validity and client throttle values encoded as decimal strings. */
 export interface TokenLifetimeGenqlSelection {
   expiresAt?: boolean | number
   expiresInSeconds?: boolean | number
   issuedAt?: boolean | number
   throttleSeconds?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ToolCallingConfigurationGenqlSelection {
+  maxTools?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ToolCallingSupportGenqlSelection {
+  configuration?: ToolCallingConfigurationGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ToolCapabilitiesGenqlSelection {
+  calling?: ToolCallingSupportGenqlSelection
+  forcedChoice?: FeatureSupportGenqlSelection
+  parallelCalls?: FeatureSupportGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -2139,6 +2422,35 @@ export interface UserProfileUpdateInput {
   username?: Scalars['String'] | null
 }
 
+export interface VideoConfigurationGenqlSelection {
+  formats?: boolean | number
+  maxDurationMs?: boolean | number
+  maxFrames?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface VideoSupportGenqlSelection {
+  configuration?: VideoConfigurationGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface VisionConfigurationGenqlSelection {
+  formats?: boolean | number
+  maxImages?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface VisionSupportGenqlSelection {
+  configuration?: VisionConfigurationGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 const AccessibilityPreferences_possibleTypes: string[] = ['AccessibilityPreferences']
 export const isAccessibilityPreferences = (obj?: { __typename?: any } | null): obj is AccessibilityPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isAccessibilityPreferences"')
@@ -2155,6 +2467,24 @@ const AnalyticUserProfilePayload_possibleTypes: string[] = ['AnalyticUserProfile
 export const isAnalyticUserProfilePayload = (obj?: { __typename?: any } | null): obj is AnalyticUserProfilePayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isAnalyticUserProfilePayload"')
   return AnalyticUserProfilePayload_possibleTypes.includes(obj.__typename)
+}
+
+const AudioCapabilities_possibleTypes: string[] = ['AudioCapabilities']
+export const isAudioCapabilities = (obj?: { __typename?: any } | null): obj is AudioCapabilities => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAudioCapabilities"')
+  return AudioCapabilities_possibleTypes.includes(obj.__typename)
+}
+
+const AudioConfiguration_possibleTypes: string[] = ['AudioConfiguration']
+export const isAudioConfiguration = (obj?: { __typename?: any } | null): obj is AudioConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAudioConfiguration"')
+  return AudioConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const AudioSupport_possibleTypes: string[] = ['AudioSupport']
+export const isAudioSupport = (obj?: { __typename?: any } | null): obj is AudioSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAudioSupport"')
+  return AudioSupport_possibleTypes.includes(obj.__typename)
 }
 
 const AvatarUpload_possibleTypes: string[] = ['AvatarUpload']
@@ -2211,6 +2541,12 @@ export const isEmailChallengePayload = (obj?: { __typename?: any } | null): obj 
   return EmailChallengePayload_possibleTypes.includes(obj.__typename)
 }
 
+const FeatureSupport_possibleTypes: string[] = ['FeatureSupport']
+export const isFeatureSupport = (obj?: { __typename?: any } | null): obj is FeatureSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isFeatureSupport"')
+  return FeatureSupport_possibleTypes.includes(obj.__typename)
+}
+
 const Group_possibleTypes: string[] = ['Group']
 export const isGroup = (obj?: { __typename?: any } | null): obj is Group => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isGroup"')
@@ -2239,6 +2575,20 @@ const IDPayload_possibleTypes: string[] = ['IDPayload']
 export const isIDPayload = (obj?: { __typename?: any } | null): obj is IDPayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isIDPayload"')
   return IDPayload_possibleTypes.includes(obj.__typename)
+}
+
+const ImageGenerationConfiguration_possibleTypes: string[] = ['ImageGenerationConfiguration']
+export const isImageGenerationConfiguration = (
+  obj?: { __typename?: any } | null,
+): obj is ImageGenerationConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isImageGenerationConfiguration"')
+  return ImageGenerationConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const ImageGenerationSupport_possibleTypes: string[] = ['ImageGenerationSupport']
+export const isImageGenerationSupport = (obj?: { __typename?: any } | null): obj is ImageGenerationSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isImageGenerationSupport"')
+  return ImageGenerationSupport_possibleTypes.includes(obj.__typename)
 }
 
 const Invitation_possibleTypes: string[] = ['Invitation']
@@ -2493,6 +2843,18 @@ export const isPasskeySummaryPayload = (obj?: { __typename?: any } | null): obj 
   return PasskeySummaryPayload_possibleTypes.includes(obj.__typename)
 }
 
+const PdfConfiguration_possibleTypes: string[] = ['PdfConfiguration']
+export const isPdfConfiguration = (obj?: { __typename?: any } | null): obj is PdfConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPdfConfiguration"')
+  return PdfConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const PdfSupport_possibleTypes: string[] = ['PdfSupport']
+export const isPdfSupport = (obj?: { __typename?: any } | null): obj is PdfSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isPdfSupport"')
+  return PdfSupport_possibleTypes.includes(obj.__typename)
+}
+
 const PolicyAction_possibleTypes: string[] = ['PolicyAction']
 export const isPolicyAction = (obj?: { __typename?: any } | null): obj is PolicyAction => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isPolicyAction"')
@@ -2565,6 +2927,18 @@ export const isRolePayload = (obj?: { __typename?: any } | null): obj is RolePay
   return RolePayload_possibleTypes.includes(obj.__typename)
 }
 
+const SearchConfiguration_possibleTypes: string[] = ['SearchConfiguration']
+export const isSearchConfiguration = (obj?: { __typename?: any } | null): obj is SearchConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSearchConfiguration"')
+  return SearchConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const SearchSupport_possibleTypes: string[] = ['SearchSupport']
+export const isSearchSupport = (obj?: { __typename?: any } | null): obj is SearchSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isSearchSupport"')
+  return SearchSupport_possibleTypes.includes(obj.__typename)
+}
+
 const Session_possibleTypes: string[] = ['Session']
 export const isSession = (obj?: { __typename?: any } | null): obj is Session => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSession"')
@@ -2617,6 +2991,20 @@ const SidebarPreferences_possibleTypes: string[] = ['SidebarPreferences']
 export const isSidebarPreferences = (obj?: { __typename?: any } | null): obj is SidebarPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSidebarPreferences"')
   return SidebarPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const StructuredOutputConfiguration_possibleTypes: string[] = ['StructuredOutputConfiguration']
+export const isStructuredOutputConfiguration = (
+  obj?: { __typename?: any } | null,
+): obj is StructuredOutputConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isStructuredOutputConfiguration"')
+  return StructuredOutputConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const StructuredOutputSupport_possibleTypes: string[] = ['StructuredOutputSupport']
+export const isStructuredOutputSupport = (obj?: { __typename?: any } | null): obj is StructuredOutputSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isStructuredOutputSupport"')
+  return StructuredOutputSupport_possibleTypes.includes(obj.__typename)
 }
 
 const TemplateAuthConfig_possibleTypes: string[] = ['TemplateAuthConfig']
@@ -2675,10 +3063,46 @@ export const isThemePreferences = (obj?: { __typename?: any } | null): obj is Th
   return ThemePreferences_possibleTypes.includes(obj.__typename)
 }
 
+const ThinkingBudget_possibleTypes: string[] = ['ThinkingBudget']
+export const isThinkingBudget = (obj?: { __typename?: any } | null): obj is ThinkingBudget => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isThinkingBudget"')
+  return ThinkingBudget_possibleTypes.includes(obj.__typename)
+}
+
+const ThinkingConfiguration_possibleTypes: string[] = ['ThinkingConfiguration']
+export const isThinkingConfiguration = (obj?: { __typename?: any } | null): obj is ThinkingConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isThinkingConfiguration"')
+  return ThinkingConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const ThinkingSupport_possibleTypes: string[] = ['ThinkingSupport']
+export const isThinkingSupport = (obj?: { __typename?: any } | null): obj is ThinkingSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isThinkingSupport"')
+  return ThinkingSupport_possibleTypes.includes(obj.__typename)
+}
+
 const TokenLifetime_possibleTypes: string[] = ['TokenLifetime']
 export const isTokenLifetime = (obj?: { __typename?: any } | null): obj is TokenLifetime => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isTokenLifetime"')
   return TokenLifetime_possibleTypes.includes(obj.__typename)
+}
+
+const ToolCallingConfiguration_possibleTypes: string[] = ['ToolCallingConfiguration']
+export const isToolCallingConfiguration = (obj?: { __typename?: any } | null): obj is ToolCallingConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isToolCallingConfiguration"')
+  return ToolCallingConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const ToolCallingSupport_possibleTypes: string[] = ['ToolCallingSupport']
+export const isToolCallingSupport = (obj?: { __typename?: any } | null): obj is ToolCallingSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isToolCallingSupport"')
+  return ToolCallingSupport_possibleTypes.includes(obj.__typename)
+}
+
+const ToolCapabilities_possibleTypes: string[] = ['ToolCapabilities']
+export const isToolCapabilities = (obj?: { __typename?: any } | null): obj is ToolCapabilities => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isToolCapabilities"')
+  return ToolCapabilities_possibleTypes.includes(obj.__typename)
 }
 
 const TypographyPreferences_possibleTypes: string[] = ['TypographyPreferences']
@@ -2717,9 +3141,39 @@ export const isUserPreferencesPayload = (obj?: { __typename?: any } | null): obj
   return UserPreferencesPayload_possibleTypes.includes(obj.__typename)
 }
 
+const VideoConfiguration_possibleTypes: string[] = ['VideoConfiguration']
+export const isVideoConfiguration = (obj?: { __typename?: any } | null): obj is VideoConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isVideoConfiguration"')
+  return VideoConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const VideoSupport_possibleTypes: string[] = ['VideoSupport']
+export const isVideoSupport = (obj?: { __typename?: any } | null): obj is VideoSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isVideoSupport"')
+  return VideoSupport_possibleTypes.includes(obj.__typename)
+}
+
+const VisionConfiguration_possibleTypes: string[] = ['VisionConfiguration']
+export const isVisionConfiguration = (obj?: { __typename?: any } | null): obj is VisionConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isVisionConfiguration"')
+  return VisionConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const VisionSupport_possibleTypes: string[] = ['VisionSupport']
+export const isVisionSupport = (obj?: { __typename?: any } | null): obj is VisionSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isVisionSupport"')
+  return VisionSupport_possibleTypes.includes(obj.__typename)
+}
+
 export const enumAuthenticationPurpose = {
   LOGIN: 'LOGIN' as const,
   PASSKEY_CHANGE: 'PASSKEY_CHANGE' as const,
+}
+
+export const enumCapabilityStatus = {
+  SUPPORTED: 'SUPPORTED' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+  UNSUPPORTED: 'UNSUPPORTED' as const,
 }
 
 export const enumCredentialDelivery = {

@@ -156,22 +156,12 @@ impl Validate for ProviderModel {
         self.connection.validate()?;
         headers(&self.headers)?;
         self.pricing.validate()?;
-        if self
-            .capabilities
-            .iter()
-            .enumerate()
-            .any(|(index, value)| self.capabilities[..index].contains(value))
-        {
-            return Err(invalid("duplicate_capability"));
-        }
+        self.capability_fields().validate()?;
         let limits = &self.limits;
         if [
             limits.context_tokens,
             limits.max_input_tokens,
             limits.max_output_tokens,
-            limits.max_images_per_request,
-            limits.max_duration_ms,
-            limits.max_audio_bytes,
         ]
         .contains(&Some(0))
         {
@@ -188,9 +178,12 @@ impl Validate for ProviderModel {
         if let Some(selection) = &self.route_selection {
             selection.validate()?;
         }
-        if let Some(thinking) = &self.thinking {
-            if thinking.effort_mapping.is_empty() && thinking.budget.is_none() {
-                return Err(invalid("empty_thinking"));
+        if let Some(thinking) = self.thinking.configuration() {
+            if thinking
+                .default_effort
+                .is_some_and(|level| !thinking.effort_mapping.contains_key(&level))
+            {
+                return Err(invalid("invalid_default_effort"));
             }
             if thinking
                 .effort_mapping

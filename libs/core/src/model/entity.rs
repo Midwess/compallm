@@ -1,3 +1,4 @@
+use crate::provider::capability::*;
 use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
@@ -18,19 +19,43 @@ pub struct Model {
     pub name: String,
     pub service_kind: ServiceKind,
     pub enabled: bool,
-    pub capabilities: Vec<Capability>,
+    pub text: FeatureSupport,
+    pub vision: CapabilitySupport<VisionCapability>,
+    pub pdf: CapabilitySupport<PdfCapability>,
+    pub audio: AudioCapabilities,
+    pub video: CapabilitySupport<VideoCapability>,
+    pub image_generation: CapabilitySupport<ImageGenerationCapability>,
+    pub thinking: CapabilitySupport<Thinking>,
+    pub tools: ToolCapabilities,
+    pub structured_output: CapabilitySupport<StructuredOutputCapability>,
+    pub search: CapabilitySupport<SearchCapability>,
     pub limits: ModelLimits,
-    pub thinking: Option<Thinking>,
     pub pricing: Pricing,
 }
 
 impl Model {
+    fn capability_fields(&self) -> CapabilityFields<'_> {
+        CapabilityFields {
+            text: &self.text,
+            vision: &self.vision,
+            pdf: &self.pdf,
+            audio: &self.audio,
+            video: &self.video,
+            image_generation: &self.image_generation,
+            thinking: &self.thinking,
+            tools: &self.tools,
+            structured_output: &self.structured_output,
+            search: &self.search,
+        }
+    }
+    pub fn supported_capabilities(&self) -> Vec<Capability> {
+        self.capability_fields().supported()
+    }
+    pub fn unknown_capabilities(&self) -> Vec<Capability> {
+        self.capability_fields().unknown()
+    }
     pub fn unsupported_capabilities(&self) -> Vec<Capability> {
-        crate::provider::ALL_CAPABILITIES
-            .iter()
-            .copied()
-            .filter(|capability| !self.capabilities.contains(capability))
-            .collect()
+        self.capability_fields().unsupported()
     }
 
     pub async fn initialize_id(&mut self) -> Result<(), DistributedIdError> {

@@ -11,18 +11,38 @@ use serde_json::{Value, json};
 type Providers = <ProviderTemplateSchema as ModelTrait>::Entity;
 type Models = <ProviderModelTemplateSchema as ModelTrait>::Entity;
 
-async fn setup() -> anyhow::Result<(DatabaseTransaction, Box<dyn MigrationTrait>)> {
+async fn setup() -> anyhow::Result<(DatabaseTransaction, CatalogMigrations)> {
     let db = Database::connect(std::env::var("CATALOG_TYPES_TEST_URL")?).await?;
     let tx = db.begin().await?;
     tx.execute_unprepared("LOCK TABLE provider_templates IN ACCESS EXCLUSIVE MODE")
         .await?;
-    let migration = Migrator::migrations()
-        .into_iter()
-        .find(|m| m.name().ends_with("shared_provider_values"))
-        .unwrap();
+    let mut migrations = Migrator::migrations();
+    let capabilities = migrations.remove(
+        migrations
+            .iter()
+            .position(|m| m.name().ends_with("capability_columns"))
+            .unwrap(),
+    );
+    let shared = migrations.remove(
+        migrations
+            .iter()
+            .position(|m| m.name().ends_with("shared_provider_values"))
+            .unwrap(),
+    );
+    let migration = CatalogMigrations {
+        shared,
+        capabilities,
+    };
+    let has_capabilities=tx.query_one(&Query::select().expr(Expr::cust("EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='provider_model_templates' AND column_name='vision')")).to_owned()).await?.unwrap().try_get_by_index::<bool>(0)?;
+    if has_capabilities {
+        migration
+            .capabilities
+            .down(&SchemaManager::new(&tx))
+            .await?;
+    }
     let columns = tx.query_one(&Query::select().expr(Expr::cust("EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='provider_templates' AND column_name='research_id')")).to_owned()).await?.unwrap();
     if columns.try_get_by_index::<bool>(0)? {
-        migration.down(&SchemaManager::new(&tx)).await?;
+        migration.shared.down(&SchemaManager::new(&tx)).await?;
     }
     Ok((tx, migration))
 }
@@ -48,6 +68,7 @@ async fn table_rows<C: ConnectionTrait>(db: &C, table: &str) -> anyhow::Result<V
 async fn snapshot<C: ConnectionTrait>(db: &C) -> anyhow::Result<Value> {
     let mut result = serde_json::Map::new();
     for table in [
+        "models",
         "providers",
         "provider_models",
         "provider_templates",
@@ -63,7 +84,7 @@ async fn snapshot<C: ConnectionTrait>(db: &C) -> anyhow::Result<Value> {
 }
 
 #[tokio::test]
-#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 or 50"]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49, 50, or 51"]
 async fn shared_catalog_migration_preserves_every_row_and_decodes_shared_entities()
 -> anyhow::Result<()> {
     let (tx, migration) = setup().await?;
@@ -94,6 +115,14 @@ async fn shared_catalog_migration_preserves_every_row_and_decodes_shared_entitie
             .await?
         {
             let _ = compallm_core::provider::ProviderModel::try_from(row)?;
+        }
+        for row in <<compallm_postgres::ModelSchema as ModelTrait>::Entity>::find()
+            .all(&tx)
+            .await?
+        {
+            let value = compallm_core::model::Model::try_from(row)?;
+            assert_eq!(value.vision.configuration().unwrap().max_images, Some(8));
+            assert!(value.thinking.is_supported());
         }
         for row in models {
             let template = ModelTemplate::try_from(row)?;
@@ -147,7 +176,7 @@ async fn update<C: ConnectionTrait>(
 }
 
 #[tokio::test]
-#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 or 50"]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49, 50, or 51"]
 async fn shared_catalog_research_links_and_rollback_preserve_later_edits() -> anyhow::Result<()> {
     let (tx, migration) = setup().await?;
     migration.up(&SchemaManager::new(&tx)).await?;
@@ -205,7 +234,7 @@ async fn shared_catalog_research_links_and_rollback_preserve_later_edits() -> an
 }
 
 #[tokio::test]
-#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 or 50"]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49, 50, or 51"]
 async fn shared_catalog_rejects_invalid_capabilities_and_reflects_missing_configuration()
 -> anyhow::Result<()> {
     let (tx, migration) = setup().await?;
@@ -228,8 +257,8 @@ async fn shared_catalog_rejects_invalid_capabilities_and_reflects_missing_config
             &nested,
             "provider_model_templates",
             &model.id,
-            "capabilities",
-            json!(["imaginary"])
+            "vision",
+            json!({"status":"imaginary"})
         )
         .await
         .is_err()
@@ -332,5 +361,23 @@ async fn seed_configured(db: &DatabaseTransaction) -> anyhow::Result<()> {
         )
         .await?;
     }
+    db.execute(&Query::insert().into_table(Alias::new("models"))
+        .columns(["id","organization_id","name","service_kind","capabilities","limits","thinking","pricing"].map(Alias::new))
+        .values_panic([organization_id.into(),organization_id.into(),"migration-model".into(),"llm".into(),json!(["text","vision","reasoning"]).into(),json!({"contextTokens":128000,"maxImagesPerRequest":8,"maxAudioBytes":1000000}).into(),json!({"effortMapping":{"low":"minimal"},"budget":null}).into(),json!({"usage":{"fixed":{"token":{"input":{"amount":"1","currency":"USD","quantity":1000000},"output":{"amount":"2","currency":"USD","quantity":1000000},"cache":{"type":"included"}}}}}).into()]).to_owned()).await?;
     Ok(())
+}
+
+struct CatalogMigrations {
+    shared: Box<dyn MigrationTrait>,
+    capabilities: Box<dyn MigrationTrait>,
+}
+impl CatalogMigrations {
+    async fn up(&self, manager: &SchemaManager<'_>) -> Result<(), sea_orm::DbErr> {
+        self.shared.up(manager).await?;
+        self.capabilities.up(manager).await
+    }
+    async fn down(&self, manager: &SchemaManager<'_>) -> Result<(), sea_orm::DbErr> {
+        self.capabilities.down(manager).await?;
+        self.shared.down(manager).await
+    }
 }

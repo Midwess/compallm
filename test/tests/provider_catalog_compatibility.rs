@@ -11,9 +11,12 @@ fn template() -> DomainModelTemplate {
             "query":{},"authentication":null,
             "endpoint":{"mode":"fixed","urlTemplate":null,"requiredInputs":[]}
         }},
-        "headers":{},"bodyDefaults":{},"capabilities":["text"],
+        "headers":{},"bodyDefaults":{},"text":{"status":"supported","configuration":{}},"vision":{"status":"unknown"},"pdf":{"status":"unknown"},
+        "audio":{"input":{"status":"unknown"},"output":{"status":"unknown"}},"video":{"status":"unknown"},
+        "imageGeneration":{"status":"unknown"},"tools":{"calling":{"status":"unknown"},"forcedChoice":{"status":"unknown"},"parallelCalls":{"status":"unknown"}},
+        "structuredOutput":{"status":"unknown"},"search":{"status":"unknown"},
         "limits":{"contextTokens":128000,"maxInputTokens":128000,"maxOutputTokens":16000},
-        "thinking":null,"pricing":{"usage":{"fixed":{"token":{
+        "thinking":{"status":"unknown"},"pricing":{"usage":{"fixed":{"token":{
             "input":{"amount":"0.15","currency":"USD","quantity":1000000},
             "output":{"amount":"0.6","currency":"USD","quantity":1000000},
             "cache":{"type":"separate_rate","configuration":{"rate":{"amount":"0.075","currency":"USD","quantity":1000000}}}

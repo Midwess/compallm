@@ -1,6 +1,6 @@
 use compallm_core::{
     model::Model,
-    provider::{ModelLimits, Pricing, RequestPricing, ServiceKind},
+    provider::{ModelLimits, ServiceKind},
 };
 use router::prelude::*;
 use std::time::Duration;
@@ -17,12 +17,18 @@ fn model() -> Model {
         name: "general-chat".into(),
         service_kind: ServiceKind::Llm,
         enabled: true,
-        capabilities: vec![],
+        text:Default::default(),
+        vision:Default::default(),
+        pdf:Default::default(),
+        audio:Default::default(),
+        video:Default::default(),
+        image_generation:Default::default(),
+        tools:Default::default(),
+        structured_output:Default::default(),
+        search:Default::default(),
         limits: ModelLimits::default(),
-        thinking: None,
-        pricing: Pricing::Request(RequestPricing {
-            usd_per_request: "0".parse().unwrap(),
-        }),
+        thinking: Default::default(),
+        pricing: serde_json::from_value(serde_json::json!({"usage":{"fixed":{"request":{"rate":{"amount":"0","currency":"USD","quantity":1}}}}})).unwrap(),
     }
 }
 

@@ -93,7 +93,7 @@ impl ModelTemplate {
                 else {
                     return false;
                 };
-                let efforts = value.thinking.as_ref().map(|v| &v.effort_mapping);
+                let efforts = value.thinking.configuration().map(|v| &v.effort_mapping);
                 let effort = |level| efforts.and_then(|v| v.get(&level)).cloned();
                 let input = super::super::input::ProviderModelConfiguration {
                     name: value.name.clone(),
@@ -252,11 +252,41 @@ impl ModelTemplate {
     }
     fn capabilities(&self) -> Vec<ProviderModelCapability> {
         self.0
-            .capabilities
+            .supported_capabilities()
             .iter()
             .copied()
             .map(Into::into)
             .collect()
+    }
+    fn text(&self) -> super::capability::FeatureSupport {
+        (&self.0.text).into()
+    }
+    fn vision(&self) -> super::capability::VisionSupport {
+        (&self.0.vision).into()
+    }
+    fn pdf(&self) -> super::capability::PdfSupport {
+        (&self.0.pdf).into()
+    }
+    fn audio(&self) -> super::capability::AudioCapabilities {
+        (&self.0.audio).into()
+    }
+    fn video(&self) -> super::capability::VideoSupport {
+        (&self.0.video).into()
+    }
+    fn image_generation(&self) -> super::capability::ImageGenerationSupport {
+        (&self.0.image_generation).into()
+    }
+    fn thinking(&self) -> super::capability::ThinkingSupport {
+        (&self.0.thinking).into()
+    }
+    fn tools(&self) -> super::capability::ToolCapabilities {
+        (&self.0.tools).into()
+    }
+    fn structured_output(&self) -> super::capability::StructuredOutputSupport {
+        (&self.0.structured_output).into()
+    }
+    fn search(&self) -> super::capability::SearchSupport {
+        (&self.0.search).into()
     }
     fn max_context_tokens(&self) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
         let detail = &self.0;
@@ -289,7 +319,8 @@ impl ModelTemplate {
         let detail = &self.0;
         Ok(detail
             .thinking
-            .iter()
+            .configuration()
+            .into_iter()
             .flat_map(|v| v.effort_mapping.iter())
             .map(|(level, value)| TemplateEffort {
                 level: (*level).into(),

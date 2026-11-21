@@ -28,15 +28,27 @@ impl TryFrom<ModelSchema> for Model {
             service_kind: serde_json::from_value(model.service_kind.into())
                 .context("invalid model service kind in database")?,
             enabled: model.enabled,
-            capabilities: serde_json::from_value(model.capabilities)
-                .context("invalid model capabilities in database")?,
+            text: serde_json::from_value(model.text)
+                .context("invalid stored text configuration")?,
+            vision: serde_json::from_value(model.vision)
+                .context("invalid stored vision configuration")?,
+            pdf: serde_json::from_value(model.pdf).context("invalid stored pdf configuration")?,
+            audio: serde_json::from_value(model.audio)
+                .context("invalid stored audio configuration")?,
+            video: serde_json::from_value(model.video)
+                .context("invalid stored video configuration")?,
+            image_generation: serde_json::from_value(model.image_generation)
+                .context("invalid stored image_generation configuration")?,
+            tools: serde_json::from_value(model.tools)
+                .context("invalid stored tools configuration")?,
+            structured_output: serde_json::from_value(model.structured_output)
+                .context("invalid stored structured_output configuration")?,
+            search: serde_json::from_value(model.search)
+                .context("invalid stored search configuration")?,
             limits: serde_json::from_value(model.limits)
                 .context("invalid model limits in database")?,
-            thinking: model
-                .thinking
-                .map(serde_json::from_value)
-                .transpose()
-                .context("invalid model thinking in database")?,
+            thinking: serde_json::from_value(model.thinking)
+                .context("invalid stored thinking configuration")?,
             pricing,
         })
     }

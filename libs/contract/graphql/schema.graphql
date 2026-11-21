@@ -24,6 +24,22 @@ input AnalyticUserProfilePutInput {
   value: String!
 }
 
+type AudioCapabilities {
+  input: AudioSupport!
+  output: AudioSupport!
+}
+
+type AudioConfiguration {
+  formats: [String!]
+  maxBytes: Float
+  maxDurationMs: Float
+}
+
+type AudioSupport {
+  configuration: AudioConfiguration
+  status: CapabilityStatus!
+}
+
 enum AuthenticationPurpose {
   LOGIN
   PASSKEY_CHANGE
@@ -52,6 +68,12 @@ input CalendarPatchInput {
 
 type CalendarPreferences {
   firstDay: PreferenceWeekday!
+}
+
+enum CapabilityStatus {
+  SUPPORTED
+  UNKNOWN
+  UNSUPPORTED
 }
 
 type CatalogRequiredInput {
@@ -161,6 +183,10 @@ input EmailInput {
   purpose: AuthenticationPurpose = LOGIN
 }
 
+type FeatureSupport {
+  status: CapabilityStatus!
+}
+
 enum FilterIs {
   NOT_NULL
   NULL
@@ -215,6 +241,16 @@ input IDFilter {
 
 type IDPayload {
   node: ID!
+}
+
+type ImageGenerationConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type ImageGenerationSupport {
+  configuration: ImageGenerationConfiguration
+  status: CapabilityStatus!
 }
 
 enum ImageMediaType {
@@ -379,6 +415,7 @@ type MessageCompositionPreferences {
 }
 
 type ModelTemplate {
+  audio: AudioCapabilities!
   billingModel: TemplateBillingModel!
   cacheBilling: TemplateCacheBilling!
   cachedPrice: String
@@ -388,16 +425,25 @@ type ModelTemplate {
   effortMapping: [TemplateEffort!]!
   headers: [TemplateHeader!]!
   id: ID!
+  imageGeneration: ImageGenerationSupport!
   inputPrice: String
   maxContextTokens: ContextTokens
   maxInputTokens: ContextTokens
   maxOutputTokens: ContextTokens
   operations: [TemplateOperation!]!
   outputPrice: String
+  pdf: PdfSupport!
   pricingMode: TemplatePricingMode!
   providerTemplateId: ID!
+  search: SearchSupport!
   serviceKind: TemplateServiceKind
+  structuredOutput: StructuredOutputSupport!
+  text: FeatureSupport!
+  thinking: ThinkingSupport!
+  tools: ToolCapabilities!
   upstreamModelId: String!
+  video: VideoSupport!
+  vision: VisionSupport!
 }
 
 type ModelTemplateConnection {
@@ -726,6 +772,16 @@ type PasskeySummaryEdge {
 
 type PasskeySummaryPayload {
   node: PasskeySummary!
+}
+
+type PdfConfiguration {
+  maxFiles: Float
+  maxPages: Float
+}
+
+type PdfSupport {
+  configuration: PdfConfiguration
+  status: CapabilityStatus!
 }
 
 type PolicyAction {
@@ -1165,6 +1221,15 @@ input RoleUpdateInput {
   name: String
 }
 
+type SearchConfiguration {
+  maxResults: Float
+}
+
+type SearchSupport {
+  configuration: SearchConfiguration
+  status: CapabilityStatus!
+}
+
 type Session {
   """
   Public avatar for this user; clients show a fallback while absent or loading.
@@ -1291,6 +1356,16 @@ input StringFilter {
   neq: String
   regex: String
   startsWith: String
+}
+
+type StructuredOutputConfiguration {
+  jsonMode: FeatureSupport!
+  jsonSchema: FeatureSupport!
+}
+
+type StructuredOutputSupport {
+  configuration: StructuredOutputConfiguration
+  status: CapabilityStatus!
 }
 
 type TemplateAuthConfig {
@@ -1440,6 +1515,23 @@ type ThemePreferences {
   palettes: PalettePreferences!
 }
 
+type ThinkingBudget {
+  defaultTokens: Float
+  maxTokens: Float!
+  minTokens: Float!
+}
+
+type ThinkingConfiguration {
+  budget: ThinkingBudget
+  defaultEffort: TemplateEffortLevel
+  effortMapping: [TemplateEffort!]!
+}
+
+type ThinkingSupport {
+  configuration: ThinkingConfiguration
+  status: CapabilityStatus!
+}
+
 """
 Exact Unix-second validity and client throttle values encoded as decimal strings.
 """
@@ -1448,6 +1540,21 @@ type TokenLifetime {
   expiresInSeconds: String!
   issuedAt: String!
   throttleSeconds: String!
+}
+
+type ToolCallingConfiguration {
+  maxTools: Float
+}
+
+type ToolCallingSupport {
+  configuration: ToolCallingConfiguration
+  status: CapabilityStatus!
+}
+
+type ToolCapabilities {
+  calling: ToolCallingSupport!
+  forcedChoice: FeatureSupport!
+  parallelCalls: FeatureSupport!
 }
 
 input TypographyPatchInput {
@@ -1540,4 +1647,25 @@ input UserProfileUpdateInput {
   avatarUploaded: Boolean = false
   displayName: String
   username: String
+}
+
+type VideoConfiguration {
+  formats: [String!]
+  maxDurationMs: Float
+  maxFrames: Float
+}
+
+type VideoSupport {
+  configuration: VideoConfiguration
+  status: CapabilityStatus!
+}
+
+type VisionConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type VisionSupport {
+  configuration: VisionConfiguration
+  status: CapabilityStatus!
 }

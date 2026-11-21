@@ -102,16 +102,25 @@ impl TryFrom<&ProviderModel> for ProviderModelActiveModel {
                 serde_json::to_value(&model.connection).context("invalid model connection")?
             ),
             headers: Set(serde_json::to_value(&model.headers).context("invalid model headers")?),
-            capabilities: Set(
-                serde_json::to_value(&model.capabilities).context("invalid model capabilities")?
+            text: Set(serde_json::to_value(&model.text).context("invalid text configuration")?),
+            vision: Set(
+                serde_json::to_value(&model.vision).context("invalid vision configuration")?
+            ),
+            pdf: Set(serde_json::to_value(&model.pdf).context("invalid pdf configuration")?),
+            audio: Set(serde_json::to_value(&model.audio).context("invalid audio configuration")?),
+            video: Set(serde_json::to_value(&model.video).context("invalid video configuration")?),
+            image_generation: Set(serde_json::to_value(&model.image_generation)
+                .context("invalid image_generation configuration")?),
+            tools: Set(serde_json::to_value(&model.tools).context("invalid tools configuration")?),
+            structured_output: Set(serde_json::to_value(&model.structured_output)
+                .context("invalid structured_output configuration")?),
+            search: Set(
+                serde_json::to_value(&model.search).context("invalid search configuration")?
             ),
             limits: Set(serde_json::to_value(&model.limits).context("invalid model limits")?),
-            thinking: Set(model
-                .thinking
-                .as_ref()
-                .map(serde_json::to_value)
-                .transpose()
-                .context("invalid model thinking")?),
+            thinking: Set(
+                serde_json::to_value(&model.thinking).context("invalid thinking configuration")?
+            ),
             pricing: Set(serde_json::to_value(&model.pricing).context("invalid model pricing")?),
         })
     }
@@ -160,15 +169,27 @@ impl TryFrom<ProviderModelSchema> for ProviderModel {
                 .context("invalid provider model connection in database")?,
             headers: serde_json::from_value(model.headers)
                 .context("invalid provider model headers in database")?,
-            capabilities: serde_json::from_value(model.capabilities)
-                .context("invalid provider model capabilities in database")?,
+            text: serde_json::from_value(model.text)
+                .context("invalid stored text configuration")?,
+            vision: serde_json::from_value(model.vision)
+                .context("invalid stored vision configuration")?,
+            pdf: serde_json::from_value(model.pdf).context("invalid stored pdf configuration")?,
+            audio: serde_json::from_value(model.audio)
+                .context("invalid stored audio configuration")?,
+            video: serde_json::from_value(model.video)
+                .context("invalid stored video configuration")?,
+            image_generation: serde_json::from_value(model.image_generation)
+                .context("invalid stored image_generation configuration")?,
+            tools: serde_json::from_value(model.tools)
+                .context("invalid stored tools configuration")?,
+            structured_output: serde_json::from_value(model.structured_output)
+                .context("invalid stored structured_output configuration")?,
+            search: serde_json::from_value(model.search)
+                .context("invalid stored search configuration")?,
             limits: serde_json::from_value(model.limits)
                 .context("invalid provider model limits in database")?,
-            thinking: model
-                .thinking
-                .map(serde_json::from_value)
-                .transpose()
-                .context("invalid provider model thinking in database")?,
+            thinking: serde_json::from_value(model.thinking)
+                .context("invalid stored thinking configuration")?,
             pricing,
         })
     }

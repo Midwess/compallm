@@ -1,4 +1,5 @@
 #![allow(elided_lifetimes_in_paths)]
+mod m20261121_000051_capability_columns;
 
 use sea_orm_migration::prelude::*;
 mod m20261120_000048_catalog_types;
@@ -134,6 +135,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261120_000048_catalog_types::Migration),
             Box::new(m20261120_000049_catalog_research::Migration),
             Box::new(m20261121_000050_shared_provider_values::Migration),
+            Box::new(m20261121_000051_capability_columns::Migration),
             // inject-above (do not remove this comment)
         ]
     }

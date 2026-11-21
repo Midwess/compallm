@@ -19,7 +19,6 @@ import { onInvalidAuthorization } from './graphql-client'
 import { userPreferenceController } from './preference/user/controller'
 import { RequestProgress } from './request-progress'
 import { appController } from './app/controller'
-import { AppLoading } from './app-loading'
 import { appearanceController } from './appearance/controller'
 
 import { startCedarWorker } from './workers/cedar-client'
@@ -38,12 +37,10 @@ function App() {
         <PasskeyControllerContext value={passkeyController}>
           <UserPreferenceControllerContext value={userPreferenceController}>
             <AppControllerContext value={appController}>
-              <AppLoading>
-                <RouterProvider router={router} />
-                <PasskeyDialogs />
-                <RequestProgress />
-                <Toaster position="top-right" theme="dark" />
-              </AppLoading>
+              <RouterProvider router={router} />
+              <PasskeyDialogs />
+              <RequestProgress />
+              <Toaster position="top-right" theme="dark" />
             </AppControllerContext>
           </UserPreferenceControllerContext>
         </PasskeyControllerContext>

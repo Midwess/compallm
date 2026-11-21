@@ -1,3 +1,4 @@
+import { AppLoading } from '../app-loading'
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import { Outlet, useMatch } from 'react-router'
@@ -40,20 +41,22 @@ function Workspace({ user }: { user: AuthUser }) {
     <PermissionControllerContext value={permissions}>
       <OnboardingControllerContext value={onboarding}>
         <OrganizationControllerContext value={controller}>
-          {settings ? (
-            <Outlet />
-          ) : (
-            <OrganizationPage>
+          <AppLoading>
+            {settings ? (
               <Outlet />
-            </OrganizationPage>
-          )}
-          <OnboardingDialog
-            open={visible}
-            firstPresentation={firstPresentation}
-            onOpenChange={(open) => {
-              if (!open) onboarding.dismiss()
-            }}
-          />
+            ) : (
+              <OrganizationPage>
+                <Outlet />
+              </OrganizationPage>
+            )}
+            <OnboardingDialog
+              open={visible}
+              firstPresentation={firstPresentation}
+              onOpenChange={(open) => {
+                if (!open) onboarding.dismiss()
+              }}
+            />
+          </AppLoading>
         </OrganizationControllerContext>
       </OnboardingControllerContext>
     </PermissionControllerContext>

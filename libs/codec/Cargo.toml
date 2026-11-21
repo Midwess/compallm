@@ -13,6 +13,7 @@ workspace = true
 
 [dependencies]
 serde = { workspace = true, features = ["derive", "std"] }
+serde_with = { version = "3.24", default-features = false, features = ["macros", "std"] }
 bytes.workspace = true
 futures-core.workspace = true
 futures-io = { workspace = true, features = ["std"] }

@@ -1,4 +1,4 @@
-use super::component::Encoded;
+use super::component::Request;
 use crate::encoder::{Encoder, EncoderStatus};
 use crate::json::{JsonEncodeError, JsonEncoder, JsonToken};
 use crate::llm::text::component::TextRequestComponent;
@@ -102,11 +102,10 @@ impl CompatibleOpenAIRequestEncoder {
             } else if message && !self.messages_open {
                 JsonToken::ArrayStart(Some("messages"))
             } else if let Some(component) = component.as_deref() {
-                let status = self.json.serialize_next(
-                    self.field.ok_or(RequestEncodeError::InvalidState)?.key(),
-                    &Encoded::from(component),
-                    &mut output[written..],
-                )?;
+                let key = self.field.ok_or(RequestEncodeError::InvalidState)?.key();
+                let status =
+                    self.json
+                        .serialize_next(key, &Request(component), &mut output[written..])?;
                 return match status {
                     EncoderStatus::ComponentFinished { written: count } => {
                         self.field = None;

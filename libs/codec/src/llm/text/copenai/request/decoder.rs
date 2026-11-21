@@ -1,4 +1,7 @@
-use super::component::Decoded;
+use super::component::{
+    Input, MessageWire, ProviderWire, ResponseFormatWire, StopWire, StreamOptionsWire,
+    ToolChoiceWire, ToolWire,
+};
 use crate::decoder::{Decoder, DecoderError, DecoderStatus};
 use crate::json::{JsonContainer, JsonDecoder, JsonToken};
 use crate::llm::text::component::{
@@ -6,6 +9,18 @@ use crate::llm::text::component::{
     ToolDefinition,
 };
 type RequestJson = JsonContainer;
+
+struct DecodedField<T, A>(DecoderStatus<Input<T, A>>, fn(T) -> TextRequestComponent);
+
+impl<T, A> From<DecodedField<T, A>> for DecoderStatus<TextRequestComponent> {
+    fn from(DecodedField(status, component): DecodedField<T, A>) -> Self {
+        match status {
+            DecoderStatus::Component(value) => Self::Component(component(value.into_inner())),
+            DecoderStatus::NeedInput => Self::NeedInput,
+            DecoderStatus::Finished => Self::Finished,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 enum Field {
@@ -48,13 +63,12 @@ impl CompatibleOpenAIRequestDecoder {
         &mut self,
         token: JsonToken<'_>,
     ) -> Result<Option<TextRequestComponent>, DecoderError> {
+        use TextRequestComponent as C;
         let component = match token {
-            JsonToken::ValueBoolean(Some("stream"), value) => TextRequestComponent::Stream(value),
-            JsonToken::ValueNull(Some("stream_options")) => {
-                TextRequestComponent::StreamOptions(None)
-            }
+            JsonToken::ValueBoolean(Some("stream"), value) => C::Stream(value),
+            JsonToken::ValueNull(Some("stream_options")) => C::StreamOptions(None),
             JsonToken::ValueBoolean(Some("parallel_tool_calls"), value) => {
-                TextRequestComponent::ParallelToolCalls(value)
+                C::ParallelToolCalls(value)
             }
             JsonToken::ValueNumber(Some("max_completion_tokens" | "max_tokens"), value) => {
                 if self.has_token_limit {
@@ -68,7 +82,7 @@ impl CompatibleOpenAIRequestDecoder {
                 if limit == 0 {
                     return Err(DecoderError::InvalidInput("invalid token limit"));
                 }
-                TextRequestComponent::MaxCompletionTokens(limit)
+                C::MaxCompletionTokens(limit)
             }
             JsonToken::ValueNumber(Some("top_p"), value) => {
                 let value = value
@@ -77,7 +91,7 @@ impl CompatibleOpenAIRequestDecoder {
                 if !value.is_finite() || !(0.0..=1.0).contains(&value) {
                     return Err(DecoderError::InvalidInput("invalid top_p"));
                 }
-                TextRequestComponent::TopP(value)
+                C::TopP(value)
             }
             JsonToken::ValueNull(Some("top_p")) => return Ok(None),
             JsonToken::ValueNumber(Some("top_k"), value) => {
@@ -85,7 +99,7 @@ impl CompatibleOpenAIRequestDecoder {
                     .as_u64()
                     .and_then(|value| u32::try_from(value).ok())
                     .ok_or(DecoderError::InvalidInput("invalid top_k"))?;
-                TextRequestComponent::TopK(value)
+                C::TopK(value)
             }
             JsonToken::ValueString(Some("tool_choice"), value) => {
                 let choice = match value {
@@ -94,21 +108,21 @@ impl CompatibleOpenAIRequestDecoder {
                     "required" => ToolChoice::Required,
                     _ => return Err(DecoderError::InvalidInput("invalid tool choice")),
                 };
-                TextRequestComponent::ToolChoice(choice)
+                C::ToolChoice(choice)
             }
             JsonToken::ValueString(Some("stop"), value) => {
                 if value.is_empty() || value.len() > 4096 {
                     return Err(DecoderError::InvalidInput("invalid stop sequence"));
                 }
-                TextRequestComponent::Stop(Stop::Text(value.to_owned()))
+                C::Stop(Stop::Text(value.to_owned()))
             }
-            JsonToken::ValueNull(Some("stop")) => TextRequestComponent::Stop(Stop::Null),
+            JsonToken::ValueNull(Some("stop")) => C::Stop(Stop::Null),
             JsonToken::ValueString(Some("model"), model) => {
                 if model.is_empty() {
                     return Err(DecoderError::InvalidInput("invalid model"));
                 }
                 self.has_model = true;
-                TextRequestComponent::Model(model.to_owned())
+                C::Model(model.to_owned())
             }
             _ => return Err(DecoderError::Unsupported("request field")),
         };
@@ -133,24 +147,35 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
             if let Some(field) = self.field {
                 let status = match field {
                     Field::Messages => json
-                        .parse_next::<Decoded<Message>>(input, eof)
-                        .map(Into::into),
+                        .parse_next::<Input<Message, MessageWire>>(input, eof)
+                        .map(|status| DecodedField(status, TextRequestComponent::Message).into()),
                     Field::Provider => json
-                        .parse_next::<Decoded<Provider>>(input, eof)
-                        .map(Into::into),
+                        .parse_next::<Input<Provider, ProviderWire>>(input, eof)
+                        .map(|status| DecodedField(status, TextRequestComponent::Provider).into()),
                     Field::ResponseFormat => json
-                        .parse_next::<Decoded<ResponseFormat>>(input, eof)
-                        .map(Into::into),
+                        .parse_next::<Input<ResponseFormat, ResponseFormatWire>>(input, eof)
+                        .map(|status| {
+                            DecodedField(status, TextRequestComponent::ResponseFormat).into()
+                        }),
                     Field::StreamOptions => json
-                        .parse_next::<Decoded<StreamOptions>>(input, eof)
-                        .map(Into::into),
+                        .parse_next::<Input<StreamOptions, StreamOptionsWire>>(input, eof)
+                        .map(|status| {
+                            DecodedField(status, |value| {
+                                TextRequestComponent::StreamOptions(Some(value))
+                            })
+                            .into()
+                        }),
                     Field::ToolChoice => json
-                        .parse_next::<Decoded<ToolChoice>>(input, eof)
-                        .map(Into::into),
+                        .parse_next::<Input<ToolChoice, ToolChoiceWire>>(input, eof)
+                        .map(|status| {
+                            DecodedField(status, TextRequestComponent::ToolChoice).into()
+                        }),
                     Field::Tools => json
-                        .parse_next::<Decoded<Vec<ToolDefinition>>>(input, eof)
-                        .map(Into::into),
-                    Field::Stop => json.parse_next::<Decoded<Stop>>(input, eof).map(Into::into),
+                        .parse_next::<Input<Vec<ToolDefinition>, Vec<ToolWire>>>(input, eof)
+                        .map(|status| DecodedField(status, TextRequestComponent::Tools).into()),
+                    Field::Stop => json
+                        .parse_next::<Input<Stop, StopWire>>(input, eof)
+                        .map(|status| DecodedField(status, TextRequestComponent::Stop).into()),
                 };
                 match status {
                     Ok(DecoderStatus::Component(component)) => {

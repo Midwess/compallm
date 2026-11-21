@@ -33,6 +33,12 @@ function ProviderHeader() {
   const step = useProvider((state) => state.step)
   const intent = useProvider((state) => state.intent)
   const name = useProvider((state) => (state.intent === 'edit' ? state.savedProvider?.name : state.name), ['name'])
+  if (step === 'choose')
+    return (
+      <PageHeader>
+        <Title>Choose provider</Title>
+      </PageHeader>
+    )
   if (intent !== 'create')
     return (
       <PageHeader>
@@ -55,7 +61,7 @@ function ProviderHeader() {
         <span aria-hidden="true" className="text-muted-foreground">
           /
         </span>
-        <span>{step === 'choose' ? 'Choose provider' : templatePreview ? 'Configure template' : 'Configure'}</span>
+        <span>{templatePreview ? 'Configure template' : 'Configure'}</span>
       </h1>
     </PageHeader>
   )

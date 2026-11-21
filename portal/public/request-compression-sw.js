@@ -1,6 +1,25 @@
 const minimumBytes = 16 * 1024
 const maximumBufferedBytes = 1024 * 1024
 
+function supportsStreamingUploads() {
+  let duplexRead = false
+  try {
+    const request = new Request(self.location.origin, {
+      method: 'POST',
+      body: new ReadableStream(),
+      get duplex() {
+        duplexRead = true
+        return 'half'
+      },
+    })
+    return duplexRead && !request.headers.has('Content-Type')
+  } catch {
+    return false
+  }
+}
+
+const canForwardRequests = supportsStreamingUploads()
+
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting())
 })
@@ -46,13 +65,14 @@ async function forward(request) {
   } catch (error) {
     if (request.signal.aborted) throw error
   }
-  return fetch(outgoing)
+  return fetch(outgoing, { duplex: 'half' })
 }
 
 self.addEventListener('fetch', (event) => {
   const request = event.request
   const url = new URL(request.url)
   if (
+    !canForwardRequests ||
     url.origin !== self.location.origin ||
     url.pathname !== '/api/graphql' ||
     request.method !== 'POST' ||

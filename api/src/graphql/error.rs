@@ -345,3 +345,9 @@ impl From<compallm_core::onboarding::OnboardingError> for Error {
         }
     }
 }
+
+impl From<compallm_core::persistent::ConnectionError> for Error {
+    fn from(_: compallm_core::persistent::ConnectionError) -> Self {
+        Self::internal()
+    }
+}

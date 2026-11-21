@@ -1,2 +1,4 @@
+pub mod input;
+pub mod query;
 mod r#type;
-pub use r#type::ProviderTemplate;
+pub use r#type::{ModelTemplate, ProviderTemplate};

@@ -1,0 +1,40 @@
+CREATE TABLE capability_columns_rollback (
+ table_name text NOT NULL, row_key jsonb NOT NULL, original jsonb NOT NULL, migrated jsonb NOT NULL,
+ PRIMARY KEY(table_name,row_key)
+);
+ALTER TABLE models DROP COLUMN capabilities;
+ALTER TABLE models DROP COLUMN thinking;
+ALTER TABLE models ADD COLUMN thinking jsonb;
+ALTER TABLE models ADD COLUMN text jsonb;
+ALTER TABLE models ADD COLUMN vision jsonb;
+ALTER TABLE models ADD COLUMN pdf jsonb;
+ALTER TABLE models ADD COLUMN audio jsonb;
+ALTER TABLE models ADD COLUMN video jsonb;
+ALTER TABLE models ADD COLUMN image_generation jsonb;
+ALTER TABLE models ADD COLUMN tools jsonb;
+ALTER TABLE models ADD COLUMN structured_output jsonb;
+ALTER TABLE models ADD COLUMN search jsonb;
+ALTER TABLE provider_models DROP COLUMN capabilities;
+ALTER TABLE provider_models DROP COLUMN thinking;
+ALTER TABLE provider_models ADD COLUMN thinking jsonb;
+ALTER TABLE provider_models ADD COLUMN text jsonb;
+ALTER TABLE provider_models ADD COLUMN vision jsonb;
+ALTER TABLE provider_models ADD COLUMN pdf jsonb;
+ALTER TABLE provider_models ADD COLUMN audio jsonb;
+ALTER TABLE provider_models ADD COLUMN video jsonb;
+ALTER TABLE provider_models ADD COLUMN image_generation jsonb;
+ALTER TABLE provider_models ADD COLUMN tools jsonb;
+ALTER TABLE provider_models ADD COLUMN structured_output jsonb;
+ALTER TABLE provider_models ADD COLUMN search jsonb;
+ALTER TABLE provider_model_templates DROP COLUMN capabilities;
+ALTER TABLE provider_model_templates DROP COLUMN thinking;
+ALTER TABLE provider_model_templates ADD COLUMN thinking jsonb;
+ALTER TABLE provider_model_templates ADD COLUMN text jsonb;
+ALTER TABLE provider_model_templates ADD COLUMN vision jsonb;
+ALTER TABLE provider_model_templates ADD COLUMN pdf jsonb;
+ALTER TABLE provider_model_templates ADD COLUMN audio jsonb;
+ALTER TABLE provider_model_templates ADD COLUMN video jsonb;
+ALTER TABLE provider_model_templates ADD COLUMN image_generation jsonb;
+ALTER TABLE provider_model_templates ADD COLUMN tools jsonb;
+ALTER TABLE provider_model_templates ADD COLUMN structured_output jsonb;
+ALTER TABLE provider_model_templates ADD COLUMN search jsonb;

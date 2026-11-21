@@ -1,3 +1,4 @@
+use crate::provider::capability::*;
 use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
@@ -8,7 +9,7 @@ use crate::authorization::{
     policy::{EntityType, Policy},
 };
 
-use crate::provider::{Capability, ModelLimits, Pricing, ServiceKind, Thinking};
+use crate::provider::{Capability, ModelLimits, ServiceKind};
 
 /// An organization-owned logical model and its organization-facing prices.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -18,13 +19,46 @@ pub struct Model {
     pub name: String,
     pub service_kind: ServiceKind,
     pub enabled: bool,
-    pub capabilities: Vec<Capability>,
+    pub text: TextCapabilities,
+    pub vision: CapabilitySupport<VisionCapability>,
+    pub pdf: CapabilitySupport<PdfCapability>,
+    pub audio: AudioCapabilities,
+    pub video: CapabilitySupport<VideoCapability>,
+    pub image_generation: CapabilitySupport<ImageGenerationCapability>,
+    pub tools: ToolCapabilities,
+    pub structured_output: CapabilitySupport<StructuredOutputCapability>,
+    pub search: CapabilitySupport<SearchCapability>,
     pub limits: ModelLimits,
-    pub thinking: Option<Thinking>,
-    pub pricing: Pricing,
+    pub billing: Option<crate::provider::ModelBilling>,
 }
 
 impl Model {
+    fn capability_fields(&self) -> CapabilityFields<'_> {
+        CapabilityFields {
+            text: &self.text,
+            vision: &self.vision,
+            pdf: &self.pdf,
+            audio: &self.audio,
+            video: &self.video,
+            image_generation: &self.image_generation,
+            tools: &self.tools,
+            structured_output: &self.structured_output,
+            search: &self.search,
+        }
+    }
+    pub fn validate_capabilities(&self) -> Result<(), validify::ValidationErrors> {
+        self.capability_fields().validate(self.billing.as_ref())
+    }
+    pub fn supported_capabilities(&self) -> Vec<Capability> {
+        self.capability_fields().supported()
+    }
+    pub fn unknown_capabilities(&self) -> Vec<Capability> {
+        self.capability_fields().unknown()
+    }
+    pub fn unsupported_capabilities(&self) -> Vec<Capability> {
+        self.capability_fields().unsupported()
+    }
+
     pub async fn initialize_id(&mut self) -> Result<(), DistributedIdError> {
         self.id = try_gen_id().await?;
         Ok(())

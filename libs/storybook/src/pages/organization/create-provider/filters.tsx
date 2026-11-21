@@ -7,6 +7,7 @@ import type { ModelStatusFilter, TextModelProtocol } from './types'
 
 export function ModelFilters() {
   const controller = useController()
+  const templatePreview = useProvider((state) => state.templatePreview)
   const status = useProvider((state) => state.modelStatusFilter)
   const protocol = useProvider((state) => state.modelProtocolFilter)
   const capabilities = useProvider((state) => state.modelCapabilityFilter)
@@ -16,21 +17,23 @@ export function ModelFilters() {
         <FunnelIcon className="size-3.5" aria-hidden="true" />
       </Popup.IconTrigger>
       <Popup.Content aria-label="Model filters">
-        <Popup.Sub>
-          <Popup.SubTrigger>Enabled</Popup.SubTrigger>
-          <Popup.SubContent aria-label="Enabled">
-            <Popup.RadioGroup
-              value={status}
-              onValueChange={(value: ModelStatusFilter) => controller.onModelFiltersChanged?.({ status: value })}
-            >
-              {(['all', 'enabled', 'disabled'] as ModelStatusFilter[]).map((value) => (
-                <Popup.RadioItem key={value} value={value} disabled={!controller.onModelFiltersChanged}>
-                  {value === 'all' ? 'All' : value === 'enabled' ? 'Enabled' : 'Disabled'}
-                </Popup.RadioItem>
-              ))}
-            </Popup.RadioGroup>
-          </Popup.SubContent>
-        </Popup.Sub>
+        {!templatePreview ? (
+          <Popup.Sub>
+            <Popup.SubTrigger>Enabled</Popup.SubTrigger>
+            <Popup.SubContent aria-label="Enabled">
+              <Popup.RadioGroup
+                value={status}
+                onValueChange={(value: ModelStatusFilter) => controller.onModelFiltersChanged?.({ status: value })}
+              >
+                {(['all', 'enabled', 'disabled'] as ModelStatusFilter[]).map((value) => (
+                  <Popup.RadioItem key={value} value={value} disabled={!controller.onModelFiltersChanged}>
+                    {value === 'all' ? 'All' : value === 'enabled' ? 'Enabled' : 'Disabled'}
+                  </Popup.RadioItem>
+                ))}
+              </Popup.RadioGroup>
+            </Popup.SubContent>
+          </Popup.Sub>
+        ) : null}
         <Popup.Sub>
           <Popup.SubTrigger>Model type</Popup.SubTrigger>
           <Popup.SubContent aria-label="Model type">

@@ -8,3 +8,5 @@ pub mod user;
 pub mod role;
 
 mod invitation;
+
+pub mod template;

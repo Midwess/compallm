@@ -1,0 +1,21 @@
+ALTER TABLE models DROP COLUMN billing;
+ALTER TABLE models ALTER COLUMN thinking SET NOT NULL;
+ALTER TABLE models ALTER COLUMN text SET DEFAULT '{"status":"unknown"}'::jsonb;
+ALTER TABLE models ALTER COLUMN pricing SET NOT NULL;
+ALTER TABLE provider_models DROP COLUMN billing;
+ALTER TABLE provider_models ALTER COLUMN thinking SET NOT NULL;
+ALTER TABLE provider_models ALTER COLUMN text SET DEFAULT '{"status":"unknown"}'::jsonb;
+ALTER TABLE provider_models ALTER COLUMN pricing SET NOT NULL;
+ALTER TABLE provider_model_templates DROP COLUMN billing;
+ALTER TABLE provider_model_templates ALTER COLUMN thinking SET NOT NULL;
+ALTER TABLE provider_model_templates ALTER COLUMN text SET DEFAULT '{"status":"unknown"}'::jsonb;
+DROP TABLE capability_pricing_rollback;
+DROP FUNCTION capability_token_limit_valid(jsonb);
+DROP FUNCTION capability_amounts_valid(jsonb);
+DROP FUNCTION priced_capability_valid(jsonb);
+DROP FUNCTION capability_price_valid(jsonb);
+DROP FUNCTION text_capability_valid(jsonb);
+
+DROP FUNCTION IF EXISTS capability_usage_valid(jsonb);
+DROP FUNCTION IF EXISTS capability_token_rate_valid(jsonb);
+DROP FUNCTION IF EXISTS capability_rate_valid(jsonb);

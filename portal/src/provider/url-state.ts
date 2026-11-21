@@ -1,301 +1,52 @@
-import {
-  capabilityOptions,
-  initializeModelDraft,
-  modelDraftFingerprint,
-} from '@compallm/storybook/pages/organization/create-provider'
-import type {
-  CreateProviderState,
-  ModelDraft,
-  ProviderModel,
-  EndpointMode,
-  ApiProtocol,
-  ThinkingLevel,
-  TextModelProtocol,
-  ModelStatusFilter,
-  EffortMapping,
-} from '@compallm/storybook/pages/organization/create-provider'
+import type { CreateProviderState } from '@compallm/storybook/pages/organization/create-provider'
 import type { UrlState } from '@compallm/storybook'
-import { providers } from './presets'
-const modes: EndpointMode[] = ['chat_completions', 'responses', 'messages', 'video', 'realtime']
-const protocols: ApiProtocol[] = ['openai_compatible', 'anthropic', 'provider_specific']
-const modelProtocols: TextModelProtocol[] = ['openai_chat_completions', 'openai_responses', 'anthropic_messages']
-const endpointPaths: Record<TextModelProtocol, string> = {
-  openai_chat_completions: '/chat/completions',
-  openai_responses: '/responses',
-  anthropic_messages: '/messages',
-}
-const statuses: ModelStatusFilter[] = ['all', 'enabled', 'disabled']
-const thinking: ThinkingLevel[] = ['low', 'medium', 'high', 'xhigh', 'max']
-const owned = [
-  'v',
-  'provider',
-  'q',
-  'model_q',
-  'name',
-  'base_url',
-  'protocol',
-  'mode',
-  'models',
-  'dialog',
-  'model',
-  'model_name',
-  'context_tokens',
-  'thinking',
-  'input_price',
-  'output_price',
-  'cached_price',
-  'intent',
-  'model_path',
-  'draft_protocol',
-  'output_tokens',
-  'effort_mapping',
-  'model_status',
-  'model_capabilities',
-  'model_protocol',
-  'provider_protocol',
-  'input_tokens',
-  'context_limit_enabled',
-  'input_limit_enabled',
-  'output_limit_enabled',
-  'provider_context_tokens',
-  'input_price_enabled',
-  'output_price_enabled',
-  'cached_price_enabled',
-  'template_prices',
-]
-const text = (value: unknown) => (typeof value === 'string' ? value : '')
-const levels = (value: unknown): ThinkingLevel[] =>
-  Array.isArray(value) ? thinking.filter((level) => value.includes(level)) : []
-function effort(value: unknown): EffortMapping {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-  return Object.fromEntries(
-    thinking.flatMap((key) => {
-      const item = (value as Record<string, unknown>)[key]
-      return typeof item === 'string' && item !== '' ? [[key, item]] : []
-    }),
-  )
-}
-function draft(value: Record<string, unknown>): ModelDraft {
-  if (value.protocol !== undefined && !modelProtocols.includes(value.protocol as TextModelProtocol))
-    throw new Error('Invalid text model protocol')
-  const protocol =
-    (value.protocol as TextModelProtocol | undefined) ??
-    (Array.isArray(value.modes) && value.modes.includes('messages') ? 'anthropic_messages' : 'openai_chat_completions')
-  const template =
-    value.templatePrices && typeof value.templatePrices === 'object' && !Array.isArray(value.templatePrices)
-      ? (value.templatePrices as Record<string, unknown>)
-      : value
+
+export function readProviderUrl(location: UrlState) {
+  const query = new URLSearchParams(location.search)
   return {
-    id: text(value.id),
-    protocol,
-    path: typeof value.path === 'string' ? value.path : endpointPaths[protocol],
-    maxOutputTokens: text(value.maxOutputTokens),
-    maxInputTokens: text(value.maxInputTokens),
-    contextLimitEnabled: value.contextLimitEnabled !== false,
-    inputLimitEnabled: value.inputLimitEnabled === true,
-    outputLimitEnabled:
-      value.outputLimitEnabled === undefined ? !!text(value.maxOutputTokens) : value.outputLimitEnabled === true,
-    effortMapping: value.effortMapping
-      ? effort(value.effortMapping)
-      : Object.fromEntries(levels(value.thinkingLevels).map((key) => [key, key])),
-    capabilities: capabilityOptions
-      .filter((option) => Array.isArray(value.capabilities) && value.capabilities.includes(option.value))
-      .map((option) => option.value),
-    name: text(value.name),
-    maxContextTokens: text(value.maxContextTokens),
-    providerContextTokens: text(value.providerContextTokens) || text(value.maxContextTokens),
-    thinkingLevels: levels(value.thinkingLevels),
-    inputPrice: text(value.inputPrice),
-    outputPrice: text(value.outputPrice),
-    cachedPrice: text(value.cachedPrice),
-    inputPriceEnabled: value.inputPriceEnabled !== false,
-    outputPriceEnabled: value.outputPriceEnabled !== false,
-    cachedPriceEnabled: value.cachedPriceEnabled !== false,
-    templatePrices: {
-      inputPrice: text(template.inputPrice),
-      outputPrice: text(template.outputPrice),
-      cachedPrice: text(template.cachedPrice),
-    },
-  }
-}
-function decodeModels(raw: string | null): ProviderModel[] {
-  if (!raw) return []
-  const data: unknown = JSON.parse(raw)
-  if (!Array.isArray(data) || data.length > 256) throw new Error('Invalid model draft list')
-  const ids = new Set<string>()
-  return data.map((item: unknown) => {
-    if (typeof item !== 'object' || item === null || Array.isArray(item)) throw new Error('Invalid model draft')
-    const value = item as Record<string, unknown>,
-      model = draft(value)
-    if (!model.id || ids.has(model.id)) throw new Error('Invalid model draft identity')
-    ids.add(model.id)
-    return {
-      ...model,
-      enabled: value.enabled === true,
-      modes: modes.filter((mode) => Array.isArray(value.modes) && value.modes.includes(mode)),
-    }
-  })
-}
-export function emptyModel(id: string, protocol: TextModelProtocol = 'openai_chat_completions'): ModelDraft {
-  return initializeModelDraft({
-    id,
-    protocol,
-    path: endpointPaths[protocol],
-    maxOutputTokens: '',
-    effortMapping: {},
-    name: '',
-    maxContextTokens: '250000',
-    thinkingLevels: [],
-    inputPrice: '',
-    outputPrice: '',
-    cachedPrice: '',
-  })
-}
-export function modelFingerprint(model: ModelDraft) {
-  return modelDraftFingerprint(model)
-}
-export function readProviderUrl(location: UrlState): Partial<CreateProviderState> {
-  const q = new URLSearchParams(location.search)
-  const preset = providers.find((item) => item.id === q.get('provider'))
-  const protocol = protocols.find((value) => value === q.get('protocol')) ?? preset?.protocol ?? 'openai_compatible'
-  const mode = modes.find((value) => value === q.get('mode')) ?? (protocol === 'anthropic' ? 'messages' : 'chat_completions')
-  let models: ProviderModel[] = [],
-    error: string | null = null
-  try {
-    if (q.has('v') && q.get('v') !== '1') throw new Error()
-    models = decodeModels(q.get('models'))
-  } catch {
-    error = 'The model data in this URL is invalid. Check the address before continuing.'
-  }
-  let modelDraft: ModelDraft | null = null,
-    editingModelId: string | null = null
-  if (q.get('dialog') === 'add-model' || q.get('dialog') === 'edit-model') {
-    const id = q.get('model') ?? 'new-model'
-    const original = models.find((item) => item.id === id)
-    if (q.get('dialog') === 'add-model' || original) {
-      editingModelId = q.get('dialog') === 'edit-model' ? id : null
-      const selectedProtocol = modelProtocols.find((value) => value === q.get('draft_protocol')) ?? 'openai_chat_completions'
-      const base = original ?? emptyModel(id, selectedProtocol)
-      modelDraft = {
-        ...draft(base as unknown as Record<string, unknown>),
-        name: q.get('model_name') ?? base.name,
-        path: q.get('model_path') ?? base.path,
-        protocol: modelProtocols.find((value) => value === q.get('draft_protocol')) ?? base.protocol,
-        maxOutputTokens: q.get('output_tokens') ?? base.maxOutputTokens,
-        maxInputTokens: q.get('input_tokens') ?? base.maxInputTokens,
-        contextLimitEnabled: q.has('context_limit_enabled')
-          ? q.get('context_limit_enabled') === 'true'
-          : base.contextLimitEnabled,
-        inputLimitEnabled: q.has('input_limit_enabled') ? q.get('input_limit_enabled') === 'true' : base.inputLimitEnabled,
-        outputLimitEnabled: q.has('output_limit_enabled') ? q.get('output_limit_enabled') === 'true' : base.outputLimitEnabled,
-        effortMapping: q.has('effort_mapping')
-          ? (() => {
-              try {
-                return effort(JSON.parse(q.get('effort_mapping')!))
-              } catch {
-                error = 'The effort mapping in this URL is invalid.'
-                return {}
-              }
-            })()
-          : base.effortMapping,
-        maxContextTokens: q.get('context_tokens') ?? base.maxContextTokens,
-        providerContextTokens: q.get('provider_context_tokens') ?? base.providerContextTokens ?? base.maxContextTokens,
-        thinkingLevels: q.has('thinking') ? levels(q.get('thinking')?.split(',')) : base.thinkingLevels,
-        inputPrice: q.get('input_price') ?? base.inputPrice,
-        outputPrice: q.get('output_price') ?? base.outputPrice,
-        cachedPrice: q.get('cached_price') ?? base.cachedPrice,
-        inputPriceEnabled: q.has('input_price_enabled') ? q.get('input_price_enabled') === 'true' : base.inputPriceEnabled,
-        outputPriceEnabled: q.has('output_price_enabled') ? q.get('output_price_enabled') === 'true' : base.outputPriceEnabled,
-        cachedPriceEnabled: q.has('cached_price_enabled') ? q.get('cached_price_enabled') === 'true' : base.cachedPriceEnabled,
-        templatePrices: q.has('template_prices')
-          ? (() => {
-              try {
-                return draft({ ...base, templatePrices: JSON.parse(q.get('template_prices')!) }).templatePrices
-              } catch {
-                return base.templatePrices
-              }
-            })()
-          : base.templatePrices,
-      }
-    }
-  }
-  return {
-    step: location.pathname.endsWith('/configure-provider') ? 'configure' : 'choose',
-    intent: q.get('intent') === 'clone' ? 'clone' : 'create',
-    selectedProviderId: preset?.id ?? null,
-    providerQuery: q.get('q') ?? '',
-    modelQuery: q.get('model_q') ?? '',
-    modelCapabilityFilter: capabilityOptions
-      .filter((option) => q.get('model_capabilities')?.split(',').includes(option.value))
-      .map((option) => option.value),
-    modelStatusFilter: statuses.find((value) => value === q.get('model_status')) ?? 'all',
-    modelProtocolFilter: modelProtocols.find((value) => value === q.get('model_protocol')) ?? 'all',
-    providerProtocolFilter: modelProtocols.find((value) => value === q.get('provider_protocol')) ?? 'all',
-    name: q.get('name') ?? (preset ? `${preset.name} production` : ''),
-    baseUrl: q.get('base_url') ?? preset?.baseUrl ?? '',
-    protocol,
-    mode,
-    models,
-    modelDraft,
-    editingModelId,
-    error,
+    step: location.pathname.endsWith('/configure-provider') ? ('configure' as const) : ('choose' as const),
+    provider: query.get('provider'),
+    model: query.get('model'),
+    query: query.get('q') ?? '',
+    modelQuery: query.get('model_q') ?? '',
   }
 }
 export function writeProviderUrl(state: CreateProviderState) {
-  const patch: Record<string, string | null> = Object.fromEntries(owned.map((key) => [key, null]))
-  Object.assign(patch, {
-    v: '1',
-    provider: state.selectedProviderId ?? 'custom',
+  return {
+    provider: state.selectedProviderId,
     q: state.providerQuery || null,
     model_q: state.modelQuery || null,
-    model_capabilities: state.modelCapabilityFilter.length ? state.modelCapabilityFilter.join(',') : null,
-    model_status: state.modelStatusFilter === 'all' ? null : state.modelStatusFilter,
-    model_protocol: state.modelProtocolFilter === 'all' ? null : state.modelProtocolFilter,
-    provider_protocol: state.providerProtocolFilter === 'all' ? null : state.providerProtocolFilter,
-    name: state.name,
-    base_url: state.baseUrl,
-    protocol: state.protocol,
-    mode: state.mode,
-    models: state.models.length
-      ? JSON.stringify(
-          state.models.map((model) => ({
-            ...draft(model as unknown as Record<string, unknown>),
-            enabled: model.enabled,
-            modes: model.modes,
-          })),
-        )
-      : null,
-    intent: state.intent === 'clone' ? 'clone' : null,
-  })
-  if (state.modelDraft)
-    Object.assign(patch, {
-      dialog: state.editingModelId ? 'edit-model' : 'add-model',
-      model: state.modelDraft.id,
-      model_name: state.modelDraft.name,
-      model_path: state.modelDraft.path ?? endpointPaths[state.modelDraft.protocol ?? 'openai_chat_completions'],
-      draft_protocol: state.modelDraft.protocol ?? 'openai_chat_completions',
-      output_tokens: state.modelDraft.maxOutputTokens ?? '',
-      input_tokens: state.modelDraft.maxInputTokens ?? '',
-      context_limit_enabled: String(state.modelDraft.contextLimitEnabled ?? true),
-      input_limit_enabled: String(state.modelDraft.inputLimitEnabled ?? false),
-      output_limit_enabled: String(state.modelDraft.outputLimitEnabled ?? !!state.modelDraft.maxOutputTokens),
-      effort_mapping: JSON.stringify(state.modelDraft.effortMapping ?? {}),
-      context_tokens: state.modelDraft.maxContextTokens,
-      provider_context_tokens: state.modelDraft.providerContextTokens ?? state.modelDraft.maxContextTokens,
-      thinking: state.modelDraft.thinkingLevels.join(','),
-      input_price: state.modelDraft.inputPrice,
-      output_price: state.modelDraft.outputPrice,
-      cached_price: state.modelDraft.cachedPrice,
-      input_price_enabled: String(state.modelDraft.inputPriceEnabled ?? true),
-      output_price_enabled: String(state.modelDraft.outputPriceEnabled ?? true),
-      cached_price_enabled: String(state.modelDraft.cachedPriceEnabled ?? true),
-      template_prices: JSON.stringify(
-        state.modelDraft.templatePrices ?? {
-          inputPrice: state.modelDraft.inputPrice,
-          outputPrice: state.modelDraft.outputPrice,
-          cachedPrice: state.modelDraft.cachedPrice,
-        },
-      ),
-    })
-  return patch
+    model: state.editingModelId,
+    v: null,
+    models: null,
+    dialog: null,
+    name: null,
+    base_url: null,
+    protocol: null,
+    mode: null,
+    model_name: null,
+    context_tokens: null,
+    thinking: null,
+    input_price: null,
+    output_price: null,
+    cached_price: null,
+    intent: null,
+    model_path: null,
+    draft_protocol: null,
+    output_tokens: null,
+    effort_mapping: null,
+    model_status: null,
+    model_capabilities: null,
+    model_protocol: null,
+    provider_protocol: null,
+    input_tokens: null,
+    context_limit_enabled: null,
+    input_limit_enabled: null,
+    output_limit_enabled: null,
+    provider_context_tokens: null,
+    input_price_enabled: null,
+    output_price_enabled: null,
+    cached_price_enabled: null,
+    template_prices: null,
+  }
 }

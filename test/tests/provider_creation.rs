@@ -1,5 +1,7 @@
 #[path = "support/permission.rs"]
 mod permission_fixture;
+#[path = "support/capability_pricing.rs"]
+mod pricing_fixture;
 use compallm_core::authorization::policy::Action;
 
 fn permission() -> compallm_core::authorization::MemberPermission {
@@ -17,8 +19,9 @@ use compallm_core::{
         provider::{ProviderRepository, ProviderRepositoryError},
     },
     provider::{
-        Capability, CreationService, Protocol, Provider, ProviderApiKey, ProviderCreationError,
-        ProviderCredentialCipher, ProviderModel, ServiceKind, Thinking, ThinkingBudget,
+        CapabilitySupport, CreationService, Protocol, Provider, ProviderApiKey,
+        ProviderCreationError, ProviderCredentialCipher, ProviderModel, ServiceKind, Thinking,
+        ThinkingBudget,
     },
 };
 use compallm_postgres::postgres_connection::PostgresConnection;
@@ -28,13 +31,13 @@ use serde_json::json;
 fn provider(name: &str) -> Provider {
     let connection = serde_json::from_value(json!({
         "baseUrl": "https://provider.example/v1", "timeoutMs": 30000,
-        "authentication": {"apiKeyHeader": {"name": "Authorization", "prefix": "Bearer "}}
+        "authentication":{"type":"api_key","configuration":{"placement":{"apiKeyHeader":{"name":"Authorization","prefix":"Bearer "}},"requiredInputs":[]}},"endpoint":{"mode":"fixed","urlTemplate":null,"requiredInputs":[]}
     }))
     .unwrap();
     Provider {
         id: 7,
         organization_id: 84,
-        name: name.into(),
+        name: name.into(),description:None,logo_url:None,template_id:None,
         connection,
         headers: Default::default(),
         api_key: credential(),
@@ -42,24 +45,27 @@ fn provider(name: &str) -> Provider {
             id: 8,
             organization_id: 999,
             provider_id: 777,
-            name: " vendor/model.v1 ".into(),
+            name: " vendor/model.v1 ".into(),display_name:None,description:None,template:None,body_defaults:Default::default(),route_selection:None,
             enabled: true,
             service_kind: ServiceKind::Llm,
             protocol: Protocol::Openai,
             connection: serde_json::from_value(json!({
                 "baseUrl": "https://model.example/v2", "timeoutMs": 10000,
-                "authentication": {"apiKeyQuery": "key"}
+                "authentication":{"type":"api_key","configuration":{"placement":{"apiKeyQuery":"key"},"requiredInputs":[]}},"endpoint":{"mode":"fixed","urlTemplate":null,"requiredInputs":[]}
             }))
             .unwrap(),
             headers: Default::default(),
-            capabilities: vec![Capability::Text],
+            text:serde_json::from_value(pricing_fixture::convert(json!({"service_kind":"llm","limits":{},"text":{"status":"supported","configuration":{}},"thinking":{"status":"unknown"},"pricing":{"usage":{"fixed":{"token":{"input":{"amount":"1.12345678","currency":"USD","quantity":1000000},"output":{"amount":"2.00","currency":"USD","quantity":1000000},"cache":{"type":"included"}}}}}}))["text"].clone()).unwrap(),
+        vision:Default::default(),
+        pdf:Default::default(),
+        audio:Default::default(),
+        video:Default::default(),
+        image_generation:Default::default(),
+        tools:Default::default(),
+        structured_output:Default::default(),
+        search:Default::default(),
             limits: Default::default(),
-            thinking: None,
-            pricing: serde_json::from_value(json!({"token": {
-                "inputUsdPerMillionTokens": "1.12345678",
-                "outputUsdPerMillionTokens": "2.00", "cachedUsdPerMillionTokens": "0"
-            }}))
-            .unwrap(),
+            billing:None,
         }],
     }
 }
@@ -162,7 +168,7 @@ async fn creates_batch_in_order_with_fresh_ids_and_parent_ownership() {
     }
     assert_eq!(created[0].models[0].name, "vendor/model.v1");
     assert_eq!(created[0].models[0].connection, expected_model.connection);
-    assert_eq!(created[0].models[0].pricing, expected_model.pricing);
+    assert_eq!(created[0].models[0].text, expected_model.text);
     assert!(!created[0].models[1].enabled);
     assert!(!format!("{created:?}").contains("upstream-api-key"));
     assert!(!format!("{created:?}").contains(&String::from(credential())));
@@ -222,8 +228,8 @@ async fn rejects_invalid_entities_without_exposing_submitted_values() {
     let mutations: Vec<fn(&mut Provider)> = vec![
         |p| p.organization_id = 0,
         |p| p.name = "  ".into(),
-        |p| p.connection.base_url = "https://user:secret@example.test".into(),
-        |p| p.connection.timeout_ms = 0,
+        |p| p.connection.base_url = Some("https://user:secret@example.test".into()),
+        |p| p.connection.timeout_ms = Some(0),
         |p| {
             p.headers
                 .insert("bad header".into(), "submitted-secret".into());
@@ -238,35 +244,57 @@ async fn rejects_invalid_entities_without_exposing_submitted_values() {
             p.models.push(duplicate);
         },
         |p| p.models[0].protocol = Protocol::Xai,
-        |p| p.models[0].connection.base_url = "".into(),
-        |p| p.models[0].capabilities.push(Capability::Text),
+        |p| p.models[0].connection.base_url = Some("".into()),
+        |p| {
+            p.models[0].tools.calling = CapabilitySupport::supported(
+                compallm_core::provider::ToolCallingCapability { max_tools: Some(0) },
+                None,
+            )
+        },
         |p| p.models[0].limits.context_tokens = Some(0),
         |p| {
-            p.models[0].thinking = Some(Thinking {
-                effort: None,
-                budget: None,
-            })
+            p.models[0].text.output = CapabilitySupport::supported(
+                compallm_core::provider::TextGeneration {
+                    max_tokens: None,
+                    thinking: CapabilitySupport::supported(
+                        Thinking {
+                            effort_mapping: Default::default(),
+                            default_effort: Some(compallm_core::provider::EffortLevel::Low),
+                            budget: None,
+                        },
+                        None,
+                    ),
+                },
+                None,
+            )
         },
         |p| {
-            p.models[0].thinking = Some(Thinking {
-                effort: Some(vec![]),
-                budget: None,
-            })
+            p.models[0].text.output = CapabilitySupport::supported(
+                compallm_core::provider::TextGeneration {
+                    max_tokens: None,
+                    thinking: CapabilitySupport::supported(
+                        Thinking {
+                            effort_mapping: Default::default(),
+                            default_effort: None,
+                            budget: Some(ThinkingBudget {
+                                min_tokens: 100,
+                                max_tokens: 200,
+                                default_tokens: Some(300),
+                            }),
+                        },
+                        None,
+                    ),
+                },
+                None,
+            )
         },
         |p| {
-            p.models[0].thinking = Some(Thinking {
-                effort: None,
-                budget: Some(ThinkingBudget {
-                    min_tokens: 100,
-                    max_tokens: 200,
-                    default_tokens: Some(300),
-                }),
-            })
-        },
-        |p| {
-            p.models[0].pricing = serde_json::from_value(json!({"token": {
-            "inputUsdPerMillionTokens": "-1", "outputUsdPerMillionTokens": "1", "cachedUsdPerMillionTokens": "0"
-        }})).unwrap()
+            p.models[0].billing = Some(
+                serde_json::from_value(
+                    json!({"request":{"rate":{"amount":"-1","currency":"USD","quantity":1}}}),
+                )
+                .unwrap(),
+            )
         },
     ];
     for (index, mutate) in mutations.iter().enumerate() {
@@ -293,6 +321,9 @@ fn provider_row(name: &str) -> std::collections::BTreeMap<String, sea_orm::Value
         id: 100,
         organization_id: 84,
         name: name.into(),
+        description: None,
+        logo_url: None,
+        template_id: None,
         connection: serde_json::to_value(provider.connection).unwrap(),
         headers: json!({}),
         credentials: String::from(credential()),
@@ -319,16 +350,16 @@ async fn persists_models_with_the_connection_and_returns_typed_configuration() {
     let permission = permission();
     let service = CreationService::new(&repository);
     let input = provider("Primary");
-    let pricing = input.models[0].pricing.clone();
+    let pricing = input.models[0].text.clone();
     let created = context
         .scope(service.create(&permission, input))
         .await
         .unwrap();
     assert_eq!(created.models.len(), 1);
-    assert_eq!(created.models[0].pricing, pricing);
+    assert_eq!(created.models[0].text, pricing);
     assert_eq!(
         created.models[0].connection.base_url,
-        "https://model.example/v2"
+        Some("https://model.example/v2".into())
     );
     let transactions = db.as_ref().clone().into_transaction_log();
     assert_eq!(transactions.len(), 1);

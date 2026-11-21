@@ -11,30 +11,24 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
     #[sea_orm(column_type = "Text")]
-    pub logo_path: String,
-    #[sea_orm(column_type = "Text")]
-    pub protocol: String,
-    pub base_url: Option<String>,
+    pub logo_url: Option<String>,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub connection: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub headers: Json,
+    pub research_id: String,
     #[sea_orm(column_type = "JsonBinary")]
-    pub source_refs: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub auth_methods: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub auth_config: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub endpoint_config: Json,
-    pub endpoint_mode: super::sea_orm_active_enums::CatalogEndpointMode,
-    pub readiness: super::sea_orm_active_enums::CatalogReadiness,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub field_metadata: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub model_info_sources: Json,
+    pub authentication_options: Json,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::provider_template_research::Entity",
+        from = "Column::ResearchId",
+        to = "super::provider_template_research::Column::Id"
+    )]
+    ProviderTemplateResearch,
     #[sea_orm(has_many = "super::provider_model_templates::Entity")]
     ProviderModelTemplates,
 }
@@ -46,3 +40,9 @@ impl Related<super::provider_model_templates::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Related<super::provider_template_research::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderTemplateResearch.def()
+    }
+}

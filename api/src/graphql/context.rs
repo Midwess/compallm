@@ -190,3 +190,9 @@ impl FromContext<GraphqlContext>
         <Self as FromContext<Di>>::from(context.di)
     }
 }
+
+impl FromContext<GraphqlContext> for compallm_postgres::catalog::repository::CatalogRepository {
+    fn from(context: &GraphqlContext) -> &Self {
+        <Self as FromContext<Di>>::from(context.di)
+    }
+}

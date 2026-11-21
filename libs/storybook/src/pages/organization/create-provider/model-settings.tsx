@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { ArrowCounterClockwiseIcon } from '@phosphor-icons/react/dist/csr/ArrowCounterClockwise'
 import { Popup } from '../../../components/popup'
+import { CatalogStatus } from './catalog-status'
 import { modelDraftRules } from './configuration'
 import { ProviderModelFieldsConstraints } from '@compallm/contract/provider'
 import { Form, FormError } from '../../../components/form'
@@ -11,14 +12,7 @@ import { Button } from '../../../components/buttons'
 import { AlertDialog } from '../../../components/dialog'
 import { FieldHelp, Tooltip } from '../../../components/feedback'
 import { usePermission } from '../../../components/permission'
-import {
-  modelDraftFingerprint,
-  modelPath,
-  modelProtocol,
-  textModelOptions,
-  joinModelEndpoint,
-  initializeModelDraft,
-} from './model-options'
+import { modelDraftFingerprint, modelPath, textModelOptions, joinModelEndpoint, initializeModelDraft } from './model-options'
 import { useController, useProvider } from './controller'
 import { parseModelDraft } from './validation'
 import type { ModelDraft } from './types'
@@ -83,6 +77,7 @@ export function ModelSettingsPage() {
       },
       parse: (values) => {
         const state = controller.store.getState()
+        if (state.templatePreview) return { values }
         const result = parseModelDraft(values.modelDraft ?? null, state.models, state.editingModelId)
         return result.issues ? { issues: result.issues } : { values }
       },
@@ -131,6 +126,10 @@ export function ModelSettingsPage() {
     void form.commit(['modelDraft'], true)
   }
   const close = () => {
+    if (controller.store.getState().templatePreview) {
+      controller.onCancelModel()
+      return
+    }
     void (async () => {
       const state = controller.store.getState(),
         draft = state.modelDraft
@@ -185,6 +184,7 @@ export function ModelSettingsPage() {
         </PageHeader>
         <fieldset disabled={!access} className="mx-auto grid w-full min-w-0 max-w-2xl gap-8 px-4 py-8">
           <ModelHeading />
+          <CatalogStatus />
           <ModelSection
             title="Configuration"
             help={`
@@ -353,19 +353,22 @@ function ModelHeading() {
     <div className="grid gap-1 px-4">
       <h1 className="text-2xl font-medium">{editing ? draft?.name || 'Edit model' : 'Add model'}</h1>
       <p className="text-xsm text-muted-foreground">
-        {provider} · {textModelOptions.find((o) => o.value === modelProtocol(draft ?? {}))?.label}
+        {provider}
+        {draft?.protocol ? ` · ${textModelOptions.find((o) => o.value === draft.protocol)?.label}` : ''}
       </p>
     </div>
   )
 }
 function useModelEditAccess() {
+  const preview = useProvider((s) => s.templatePreview)
+  const loading = useProvider((s) => s.modelLoading || !!s.catalogError)
   const saved = useProvider((s) => s.intent === 'edit')
   const model = useProvider((s) => s.editingModelId)
   const provider = useProvider((s) => s.savedProvider?.id)
   const permission = usePermission({
     actions: [saved ? (model ? 'provider.model.configuration.update' : 'provider.model.create') : 'provider.create'],
     resource: saved ? (model ? { type: 'ProviderModel', id: model } : { type: 'Provider', id: provider }) : undefined,
-    enabled: !saved || !!provider,
+    enabled: !preview && (!saved || !!provider),
   })
-  return permission.allowed
+  return preview ? !loading : permission.allowed
 }

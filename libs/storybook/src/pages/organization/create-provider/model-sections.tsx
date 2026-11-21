@@ -19,9 +19,9 @@ import { useProvider } from './controller'
 import type { ModelCapability } from './types'
 
 export const modelTones = {
-  context: 'text-[color-mix(in_srgb,var(--warning)_45%,var(--foreground))]',
-  input: 'text-[color-mix(in_srgb,color-mix(in_srgb,var(--ring)_50%,var(--success))_45%,var(--foreground))]',
-  output: 'text-[color-mix(in_srgb,var(--primary)_45%,var(--foreground))]',
+  context: 'text-foreground/80',
+  input: 'text-foreground/75',
+  output: 'text-foreground/65',
 }
 
 export function ModelSection({
@@ -112,42 +112,36 @@ function ContextExample() {
       'modelDraft.outputLimitEnabled',
     ],
   )
-  const total = Math.max(1, Number(values.context) || 250000)
+  const total = Math.max(1, Number(values.context) || 1)
   const output = Math.min(total, values.outputEnabled ? Number(values.output) || 0 : Math.round(total * 0.03))
   const input = Math.min(total - output, values.inputEnabled ? Number(values.input) || 0 : Math.round(total * 0.67))
   const free = Math.max(0, total - input - output)
   return (
     <div className="grid min-w-0 gap-2.5 px-1">
-      <div className="flex items-center gap-1">
-        <p className="text-ui-11 text-muted-foreground">Example usage</p>
-        <FieldHelp label="About the context example">
-          This is an illustration, not live usage. Solid input, hatched output, and dotted available space share the total
-          context. Changing a limit updates the example; it does not reserve a fixed split for every request.
-        </FieldHelp>
-      </div>
-      <svg viewBox="0 0 608 8" preserveAspectRatio="none" aria-hidden="true" className="h-2 w-full rounded-sm">
+      <svg viewBox="0 0 608 12" preserveAspectRatio="none" aria-hidden="true" className="h-3 w-full rounded-sm">
         <defs>
           <pattern id={`${id}-dots`} width="10" height="5" patternUnits="userSpaceOnUse">
             <circle cx="2" cy="2" r="0.5" className="fill-muted-foreground/50" />
           </pattern>
-          <pattern id={`${id}-hatch`} width="5" height="8" patternUnits="userSpaceOnUse">
-            <path d="M0 8 4 0" fill="none" stroke="currentColor" strokeWidth="1" />
+          <pattern id={`${id}-hatch`} width="5" height="12" patternUnits="userSpaceOnUse">
+            <path d="M0 12 6 0" fill="none" stroke="currentColor" strokeWidth="1" />
           </pattern>
         </defs>
-        <rect width="608" height="8" className="fill-foreground/10" />
-        <rect
-          width={(608 * input) / total}
-          height="8"
-          className="fill-[color-mix(in_srgb,color-mix(in_srgb,var(--ring)_50%,var(--success))_65%,var(--muted-foreground))]"
-        />
-        <rect x={(608 * input) / total} width={(608 * free) / total} height="8" fill={`url(#${id}-dots)`} />
-        <rect x={(608 * (input + free)) / total} width={(608 * output) / total} height="8" className="fill-primary/30" />
+        <rect width="608" height="12" className="fill-foreground/10" />
+        <rect width={(608 * input) / total} height="12" className="fill-muted-foreground/55" />
+        <rect x={(608 * input) / total} width={(608 * free) / total} height="12" fill={`url(#${id}-dots)`} />
         <rect
           x={(608 * (input + free)) / total}
           width={(608 * output) / total}
-          height="8"
+          height="12"
+          className="fill-muted-foreground/20"
+        />
+        <rect
+          x={(608 * (input + free)) / total}
+          width={(608 * output) / total}
+          height="12"
           fill={`url(#${id}-hatch)`}
-          className={modelTones.output}
+          className="text-muted-foreground/65"
         />
       </svg>
       <div className="grid grid-cols-3 gap-2 text-ui-11 tabular-nums">
@@ -177,7 +171,8 @@ function LimitRow({
     (s) => (s.modelDraft ? effectiveContextTokens(s.modelDraft) : undefined),
     ['modelDraft.maxContextTokens', 'modelDraft.contextLimitEnabled', 'modelDraft.providerContextTokens'],
   )
-  const maximum = kind === 'context' ? Math.max(10000000, Number(context) || 0) : Math.min(10000000, Number(context) || 10000000)
+  const maximum =
+    kind === 'context' ? Math.max(10000000, Number(context) || 0) : Math.min(10000000, Number(context) || 10000000)
   const help = {
     context: `
 The total token budget shared by the request and reply. Uncheck to use the provider’s context value. If you
@@ -296,6 +291,10 @@ export function ModelPricing() {
 function PriceRow({ label, name }: { label: string; name: ModelPriceField }) {
   const id = useId()
   const enabled = useFormField<boolean>(`modelDraft.${priceEnabledFields[name]}`)!
+  const catalogLabel = useProvider(
+    (s) => s.modelDraft?.catalogPriceLabels?.[(['inputPrice', 'outputPrice', 'cachedPrice'] as const).indexOf(name)],
+    ['modelDraft.catalogPriceLabels'],
+  )
   const template = useProvider((state) => state.modelDraft?.templatePrices?.[name], ['modelDraft.templatePrices'])
   const help = {
     inputPrice: `
@@ -346,7 +345,7 @@ independent of the input price. Uncheck to use the template rate.
             className="flex h-8 items-center justify-end text-xs text-muted-foreground"
             title={template === undefined || template === '' ? 'No template rate is available.' : `$${template} per 1M tokens`}
           >
-            {template === undefined || template === '' ? 'Not set' : 'Provider default'}
+            {template === undefined || template === '' ? (catalogLabel ?? 'Not set') : 'Provider default'}
           </span>
         )}
         <FormError name={`modelDraft.${name}`} />

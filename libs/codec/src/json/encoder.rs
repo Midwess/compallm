@@ -92,18 +92,7 @@ impl JsonEncoder {
             overflow: &mut self.serialized,
             written: 0,
         };
-        let result = (|| {
-            use std::io::Write;
-            if self.comma {
-                writer.write_all(b",").map_err(serde_json::Error::io)?;
-            }
-            if let Some(key) = key {
-                serde_json::to_writer(&mut writer, key)?;
-                writer.write_all(b":").map_err(serde_json::Error::io)?;
-            }
-            serde_json::to_writer(&mut writer, value)
-        })();
-        if let Err(error) = result {
+        if let Err(error) = writer.serialize(self.comma, key, value) {
             self.failed = true;
             return Err(JsonEncodeError::Serialize(error));
         }
@@ -358,6 +347,26 @@ struct SerializeOutput<'a> {
     output: &'a mut [u8],
     overflow: &'a mut Vec<u8>,
     written: usize,
+}
+
+impl SerializeOutput<'_> {
+    fn serialize<T: serde::Serialize + ?Sized>(
+        &mut self,
+        comma: bool,
+        key: Option<&str>,
+        value: &T,
+    ) -> Result<(), serde_json::Error> {
+        use std::io::Write;
+
+        if comma {
+            self.write_all(b",").map_err(serde_json::Error::io)?;
+        }
+        if let Some(key) = key {
+            serde_json::to_writer(&mut *self, key)?;
+            self.write_all(b":").map_err(serde_json::Error::io)?;
+        }
+        serde_json::to_writer(self, value)
+    }
 }
 
 impl std::io::Write for SerializeOutput<'_> {

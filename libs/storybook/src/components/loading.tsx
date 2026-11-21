@@ -15,15 +15,45 @@ export function useRefreshingSkeleton() {
   return !!region?.refreshing && region.visible
 }
 
-function useSkeletonVisibility(active: boolean) {
-  const [state, setState] = useState({ active, visible: false })
-  if (state.active !== active) setState({ active, visible: false })
+function useSkeletonPresentation(active: boolean, initial = active) {
+  const [state, setState] = useState({ active, initial, visible: false, shownAt: 0 })
+  if (state.active !== active) {
+    setState(
+      active
+        ? state.visible
+          ? { ...state, active, initial }
+          : { active, initial, visible: false, shownAt: 0 }
+        : { ...state, active },
+    )
+  }
   useEffect(() => {
-    if (!active) return
-    const timer = setTimeout(() => setState({ active, visible: true }), animation.skeleton.delayMs)
-    return () => clearTimeout(timer)
-  }, [active])
-  return active && state.active === active && state.visible
+    if (active && !state.visible) {
+      const timer = setTimeout(
+        () => setState({ active, initial, visible: true, shownAt: Date.now() }),
+        animation.skeleton.delayMs,
+      )
+      return () => clearTimeout(timer)
+    }
+    if (!active && state.visible) {
+      const remaining = Math.max(0, animation.skeleton.minimumVisibleMs - (Date.now() - state.shownAt))
+      const timer = setTimeout(() => setState((value) => ({ ...value, visible: false })), remaining)
+      return () => clearTimeout(timer)
+    }
+  }, [active, initial, state.visible, state.shownAt])
+  return { visible: state.visible, initial: active ? initial : state.visible && state.initial }
+}
+
+export function LoadingFallback({
+  pending,
+  fallback,
+  children,
+}: {
+  pending: boolean
+  fallback: ReactNode
+  children: ReactNode
+}) {
+  const presentation = useSkeletonPresentation(pending)
+  return pending || presentation.visible ? fallback : children
 }
 
 function Placeholder({ loading, visible, className, ...props }: ComponentProps<typeof RadixSkeleton> & { visible: boolean }) {
@@ -43,8 +73,8 @@ function Placeholder({ loading, visible, className, ...props }: ComponentProps<t
 
 function StandaloneSkeleton(props: ComponentProps<typeof RadixSkeleton>) {
   const active = props.loading ?? false
-  const visible = useSkeletonVisibility(active)
-  return <Placeholder {...props} loading={active} visible={visible} />
+  const presentation = useSkeletonPresentation(active)
+  return <Placeholder {...props} loading={active || presentation.visible} visible={presentation.visible} />
 }
 
 export function Skeleton({ loading, ...props }: ComponentProps<typeof RadixSkeleton>) {
@@ -64,11 +94,15 @@ export function LoadingScope({
 }) {
   const parent = useContext(LoadingRegionContext)
   const initial = !ready
-  const visible = useSkeletonVisibility(initial || refreshing)
+  const presentation = useSkeletonPresentation(initial || refreshing, initial)
   const inherited = !initial && !refreshing && parent?.refreshing
   return (
     <LoadingRegionContext
-      value={{ initial, visible: inherited ? parent.visible : visible, refreshing: refreshing || !!inherited }}
+      value={{
+        initial: initial || presentation.initial,
+        visible: inherited ? parent.visible : presentation.visible,
+        refreshing: refreshing || !!inherited || (!presentation.initial && presentation.visible),
+      }}
     >
       {children}
     </LoadingRegionContext>
@@ -103,9 +137,10 @@ function Region({
   )
 }
 
-function RegionContent({ ready, children }: { ready: boolean; children: ReactNode }) {
+function RegionContent({ children }: { ready: boolean; children: ReactNode }) {
+  const initial = useInitialLoading()
   return (
-    <div className="contents" inert={!ready || undefined}>
+    <div className="contents" inert={initial || undefined}>
       {children}
     </div>
   )

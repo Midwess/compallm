@@ -1,3 +1,4 @@
+import { LoadingFallback } from '../../components/loading'
 import { PermissionRequest, usePermission } from '../../components/permission'
 import { useContext, type ReactNode } from 'react'
 import { useStore } from 'zustand'
@@ -64,7 +65,7 @@ function Destination({ item, icon }: { item: OrganizationDestination; icon: Reac
   )
 }
 
-function CustomizableDestinations() {
+function LoadedDestinations() {
   const controller = useController()
   const providerCreate = usePermission({ actions: ['provider.create'] })
   const modelCreate = usePermission({ actions: ['model.create'] })
@@ -173,6 +174,15 @@ function CustomizableDestinations() {
   )
 }
 
+function CustomizableDestinations() {
+  const checks = usePermission({ actions: ['provider.read', 'model.read', 'member.read'] })
+  return (
+    <LoadingFallback pending={checks.pending} fallback={<SidebarLoading rows={10} />}>
+      <LoadedDestinations />
+    </LoadingFallback>
+  )
+}
+
 function Conversations() {
   const controller = useController()
   const conversations = useOrganizationState((state) => state.conversations)
@@ -216,6 +226,11 @@ function PreferenceDestinations({
 }: {
   controller: import('../settings/preferences/user/controller').UserPreferenceController
 }) {
+  const checks = usePermission({ actions: ['provider.read', 'model.read', 'member.read'] })
   const ready = useStore(controller.store, (state) => !!state.saved || state.status === 'error' || state.status === 'denied')
-  return ready ? <CustomizableDestinations /> : <SidebarLoading rows={10} />
+  return (
+    <LoadingFallback pending={!ready || checks.pending} fallback={<SidebarLoading rows={10} />}>
+      <LoadedDestinations />
+    </LoadingFallback>
+  )
 }

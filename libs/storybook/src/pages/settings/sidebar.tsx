@@ -1,3 +1,4 @@
+import { LoadingFallback } from '../../components/loading'
 import { PermissionRequest, usePermission } from '../../components/permission'
 import { ArrowLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowLeft'
 import { GearIcon } from '@phosphor-icons/react/dist/csr/Gear'
@@ -100,59 +101,63 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
           Retry navigation
         </button>
       ) : null}
-      {roleRead.pending || groupRead.pending ? <SidebarLoading rows={2} /> : null}
-      {roleRead.allowed || groupRead.allowed ? (
-        <SidebarSection label="Permissions" className={category}>
-          {groupRead.allowed ? (
-            <SidebarFolder
-              label="Groups"
-              icon={<UsersThreeIcon />}
-              className={folder}
-              onAdd={groupCreate.allowed ? () => navigate('new-group') : undefined}
-              addLabel="Create group"
-            >
-              {!navigationReady && !navigationError ? <SidebarLoading /> : null}
-              {groups
-                .filter((g) => match(g.name))
-                .map((g) => (
-                  <SidebarItem
-                    key={g.id}
-                    label={g.name}
-                    href={`#/settings/groups/${g.id}`}
-                    icon={<UsersThreeIcon />}
-                    className="gap-2 text-xsm [&>span:first-child]:size-3"
-                    selected={location.page === 'group' && location.id === g.id}
-                    onNavigate={() => navigate('group', g.id)}
-                  />
-                ))}
-            </SidebarFolder>
+      <LoadingFallback
+        pending={roleRead.pending || groupRead.pending || (!navigationReady && !navigationError)}
+        fallback={<SidebarLoading rows={6} />}
+      >
+        <>
+          {roleRead.allowed || groupRead.allowed ? (
+            <SidebarSection label="Permissions" className={category}>
+              {groupRead.allowed ? (
+                <SidebarFolder
+                  label="Groups"
+                  icon={<UsersThreeIcon />}
+                  className={folder}
+                  onAdd={groupCreate.allowed ? () => navigate('new-group') : undefined}
+                  addLabel="Create group"
+                >
+                  {groups
+                    .filter((g) => match(g.name))
+                    .map((g) => (
+                      <SidebarItem
+                        key={g.id}
+                        label={g.name}
+                        href={`#/settings/groups/${g.id}`}
+                        icon={<UsersThreeIcon />}
+                        className="gap-2 text-xsm [&>span:first-child]:size-3"
+                        selected={location.page === 'group' && location.id === g.id}
+                        onNavigate={() => navigate('group', g.id)}
+                      />
+                    ))}
+                </SidebarFolder>
+              ) : null}
+              {roleRead.allowed ? (
+                <SidebarFolder
+                  label="Roles"
+                  icon={<ShieldCheckIcon />}
+                  className={folder}
+                  onAdd={roleCreate.allowed ? () => navigate('new-role') : undefined}
+                  addLabel="Create role"
+                >
+                  {roles
+                    .filter((r) => (!r.owner || actorIsOwner) && match(r.name))
+                    .map((r) => (
+                      <SidebarItem
+                        key={r.id}
+                        label={r.name}
+                        href={`#/settings/roles/${r.id}`}
+                        icon={<Indicator color={r.color} />}
+                        className="gap-2 text-xsm [&>span:first-child]:size-1.5"
+                        selected={location.page === 'role' && location.id === r.id}
+                        onNavigate={() => navigate('role', r.id)}
+                      />
+                    ))}
+                </SidebarFolder>
+              ) : null}
+            </SidebarSection>
           ) : null}
-          {roleRead.allowed ? (
-            <SidebarFolder
-              label="Roles"
-              icon={<ShieldCheckIcon />}
-              className={folder}
-              onAdd={roleCreate.allowed ? () => navigate('new-role') : undefined}
-              addLabel="Create role"
-            >
-              {!navigationReady && !navigationError ? <SidebarLoading /> : null}
-              {roles
-                .filter((r) => (!r.owner || actorIsOwner) && match(r.name))
-                .map((r) => (
-                  <SidebarItem
-                    key={r.id}
-                    label={r.name}
-                    href={`#/settings/roles/${r.id}`}
-                    icon={<Indicator color={r.color} />}
-                    className="gap-2 text-xsm [&>span:first-child]:size-1.5"
-                    selected={location.page === 'role' && location.id === r.id}
-                    onNavigate={() => navigate('role', r.id)}
-                  />
-                ))}
-            </SidebarFolder>
-          ) : null}
-        </SidebarSection>
-      ) : null}
+        </>
+      </LoadingFallback>
     </Sidebar>
   )
 }

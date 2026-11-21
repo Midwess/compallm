@@ -173,11 +173,12 @@ Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) an
   empty state only after a successful empty response. Failure retains the layout and exposes explicit retry feedback; never
   automatically replay writes.
 - Reserve loading geometry immediately. Reveal skeleton decoration after the shared 180 ms delay in `animation.skeleton`; keep
-  one reveal timer per region, with the shared adapter handling standalone skeletons. Fast requests show no skeleton flash.
-  Replace placeholders immediately when data is ready; never impose a minimum skeleton-visible duration.
-- Page/section loading ends as soon as the request settles. Keep the shared request-progress bar. Do not add per-page timers,
-  forced waiting periods, spinners on every field, a theme reset, or independent loading animations. Use shared Motion helpers
-  for optional loading motion and respect reduced motion.
+  one reveal timer per region, with the shared adapter handling standalone skeletons. Fast requests show no skeleton flash. Once
+  revealed, keep the skeleton presentation visible for at least the shared 180 ms minimum to avoid a brief flash. Reads
+  completing before the reveal delay show content immediately. The hold is visual only; do not delay requests.
+- Page/section request state ends as soon as the request settles; the shared presentation owns any remaining visual hold. Keep
+  the shared request-progress bar. Do not add per-page timers, forced waiting periods, spinners on every field, a theme reset,
+  or independent loading animations. Use shared Motion helpers for optional loading motion and respect reduced motion.
 - Provide offline first-load, loaded, refresh, empty, and error previews when changing data-backed UI. Inspect delayed reads,
   cancellation, failure recovery, keyboard focus, and geometry in Safari/WebKit and Chromium. Follow Portal-rendering for
   performance traces. Do not add Storybook browser/interaction test suites.

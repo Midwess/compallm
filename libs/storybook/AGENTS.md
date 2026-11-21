@@ -170,6 +170,9 @@ Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) an
   assistive technology; announce loading once per region. Keep navigation outside inert regions and retry actions usable.
 - Initial loading uses skeletons; background refresh keeps content, drafts, focus, and scroll. Show an empty state only after a
   successful empty response. Failure retains the layout and exposes explicit retry feedback; never automatically replay writes.
+- Reserve loading geometry immediately. Reveal skeleton decoration after the shared 120 ms delay in `animation.skeleton`; keep
+  one reveal timer per region, with the shared adapter handling standalone skeletons. Fast requests show no skeleton flash.
+  Replace placeholders immediately when data is ready; never impose a minimum skeleton-visible duration.
 - Page/section loading ends as soon as the request settles. Keep the shared request-progress bar. Do not add per-page timers,
   forced waiting periods, spinners on every field, a theme reset, or independent loading animations. Use shared Motion helpers
   for optional loading motion and respect reduced motion.

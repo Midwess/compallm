@@ -42,6 +42,11 @@ export function ProviderChooser() {
             placeholder="Search providers…"
             value={query}
             onChange={(event) => controller.onProviderQueryChanged(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+              event.preventDefault()
+              controller.onProviderSearch?.()
+            }}
           />
         </Searchbox.Root>
         {!templatePreview ? <ProviderFilters /> : null}

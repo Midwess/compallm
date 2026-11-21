@@ -153,10 +153,17 @@ test('provider search and paging use the API, ignore stale results and retain ro
     ['a', 'b'],
   )
   assert.equal(c.store.getState().providers[0], retained)
+  const beforeTyping = requests.length
   c.onProviderQueryChanged('old')
+  await tick()
+  assert.equal(requests.length, beforeTyping)
+  c.onProviderSearch()
   await tick()
   const obsolete = requests.at(-1)
   c.onProviderQueryChanged('latest')
+  await tick()
+  assert.equal(obsolete.signal.aborted, false)
+  c.onProviderSearch()
   await tick()
   assert.equal(obsolete.signal.aborted, true)
   const latest = requests.at(-1)

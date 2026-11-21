@@ -31,7 +31,6 @@ export interface OrganizationController {
   onOpenSettings(): void
   onSearch(): void
   onOpenDestination(id: string): void
-  onBrowseProviderTemplates?(): void
   onCreateProvider(): void
   onCreateRouter(): void
   onCreateModel(): void

@@ -59,11 +59,16 @@ export class CreateProviderController implements Controller {
     this.store.setState({
       step: next.step,
       selectedProviderId: provider,
-      providerQuery: next.query,
+      ...(this.query !== next.query ? { providerQuery: next.query } : {}),
       modelQuery: next.modelQuery,
     })
-    if (next.step === 'choose' && (this.query !== next.query || (!this.store.getState().providers.length && !this.listRequest)))
+    if (
+      next.step === 'choose' &&
+      (this.query !== next.query || (!this.store.getState().providers.length && !this.listRequest))
+    ) {
+      this.query = next.query
       void this.loadProviders(false)
+    }
     if (this.provider !== provider) {
       this.provider = provider
       this.loadedProvider = undefined
@@ -99,15 +104,16 @@ export class CreateProviderController implements Controller {
     if (!org) return
     this.store.setState({ step, selectedProviderId: provider, editingModelId: model })
     const page = step === 'choose' ? 'choose-provider' : 'configure-provider'
-    this.url.update(writeProviderUrl(this.store.getState()), {
+    this.url.update(writeProviderUrl({ ...this.store.getState(), providerQuery: this.query ?? '' }), {
       pathname: `/${encodeURIComponent(org.name)}/providers/new/${page}`,
       replace,
     })
   }
-  onProviderQueryChanged = (providerQuery: string) => {
-    this.store.setState({ providerQuery })
-    void this.loadProviders(false)
-    this.url.update({ q: providerQuery || null }, { replace: true })
+  onProviderQueryChanged = (providerQuery: string) => this.store.setState({ providerQuery })
+  onProviderSearch = () => {
+    const query = this.store.getState().providerQuery.trim()
+    if (query === this.query) void this.loadProviders(false)
+    else this.url.update({ q: query || null }, { replace: true })
   }
   onLoadMoreProviders = () => {
     const s = this.store.getState()
@@ -119,8 +125,7 @@ export class CreateProviderController implements Controller {
     this.listRequest?.abort()
     const request = new AbortController()
     this.listRequest = request
-    const query = this.store.getState().providerQuery.trim()
-    this.query = this.store.getState().providerQuery
+    const query = this.query ?? ''
     if (!append) this.cursor = undefined
     this.appendFailed = append
     this.store.setState({ providersLoading: true, providersLoadError: null, ...(!append ? { providersHasMore: false } : {}) })

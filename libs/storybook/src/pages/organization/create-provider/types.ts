@@ -113,6 +113,7 @@ export interface CreateProviderState {
 export interface CreateProviderController {
   readonly store: FormStore<CreateProviderState>
   onProviderQueryChanged(query: string): void
+  onProviderSearch?(): void
   onLoadMoreProviders?(): void
   onRetryCatalog?(): void
   onSelectProvider(id: string): void

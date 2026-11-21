@@ -79,7 +79,6 @@ export * from './components/provider-avatar'
 export * from './components/form'
 
 export * from './components/app-loading-overlay'
-export { ScrollMotion } from './components/scroll'
 export type { AppController, AppState, AppLoadingTask, LoadingController } from './app'
 
 export type { CompositionProps, OpenStateProps } from './components/composition'

@@ -21,7 +21,6 @@ import { RequestProgress } from './request-progress'
 import { appController } from './app/controller'
 import { AppLoading } from './app-loading'
 import { appearanceController } from './appearance/controller'
-import { ScrollMotion } from '@compallm/storybook/components/scroll'
 
 import { startCedarWorker } from './workers/cedar-client'
 import './request-compression'
@@ -40,7 +39,6 @@ function App() {
           <UserPreferenceControllerContext value={userPreferenceController}>
             <AppControllerContext value={appController}>
               <AppLoading>
-                <ScrollMotion />
                 <RouterProvider router={router} />
                 <PasskeyDialogs />
                 <RequestProgress />

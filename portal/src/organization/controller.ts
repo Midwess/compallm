@@ -87,6 +87,10 @@ export class OrganizationController implements Controller {
   onOpenDestination = () => {
     notify.info('This feature is not available yet.')
   }
+  onBrowseProviderTemplates = () => {
+    const organization = this.getCurrentOrganization()
+    if (organization) this.url.navigate(`/${encodeURIComponent(organization.name)}/providers`)
+  }
   onCreateProvider = () => {
     const organization = this.getCurrentOrganization()
     if (organization) this.url.navigate(`/${encodeURIComponent(organization.name)}/providers/new/choose-provider`)

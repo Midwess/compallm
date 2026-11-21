@@ -22,11 +22,13 @@ export interface HeaderEntry {
 export type EffortMapping = Partial<Record<keyof ProviderEffortMapping, string>>
 export type ThinkingLevel = keyof EffortMapping
 export type ProviderPreset = Pick<ProviderTemplate, 'id' | 'name'> & {
-  protocol: ApiProtocol
+  protocol?: ApiProtocol
   baseUrl?: ProviderTemplate['baseUrl']
   logoPath?: NonNullable<ProviderTemplate['logoUrl']>
 }
 export interface ModelDraft {
+  catalogPriceLabels?: string[]
+
   /** Persisted API identity; UI draft IDs and catalog IDs never substitute for it. */
   persistedId?: string
   catalogRef?: ProviderCatalogRef
@@ -72,6 +74,13 @@ export interface ProviderSnapshot {
   avatarUrl?: string | null
 }
 export interface CreateProviderState {
+  templatePreview?: boolean
+  providersLoading?: boolean
+  providersHasMore?: boolean
+  providersLoadError?: string | null
+  providerLoading?: boolean
+  modelLoading?: boolean
+  catalogError?: string | null
   navigationRequest: NavigationRequest | null
   intent: 'create' | 'edit' | 'clone'
   savedProvider: ProviderSnapshot | null
@@ -104,6 +113,8 @@ export interface CreateProviderState {
 export interface CreateProviderController {
   readonly store: FormStore<CreateProviderState>
   onProviderQueryChanged(query: string): void
+  onLoadMoreProviders?(): void
+  onRetryCatalog?(): void
   onSelectProvider(id: string): void
   onUseCustomProvider(): void
   onChooseProvider(): void

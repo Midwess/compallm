@@ -17,14 +17,22 @@ export const protocolLabels: Record<ApiProtocol, string> = {
 export function ProviderChooser() {
   const controller = useController()
   const providers = useProvider((state) => state.providers)
+  const templatePreview = useProvider((state) => state.templatePreview)
+  const loading = useProvider((state) => state.providersLoading)
+  const error = useProvider((state) => state.providersLoadError)
+  const hasMore = useProvider((state) => state.providersHasMore)
   const query = useProvider((state) => state.providerQuery)
   const protocolFilter = useProvider((state) => state.providerProtocolFilter)
-  const filtered = providers.filter(
-    (item) =>
-      (protocolFilter === 'all' ||
-        (protocolFilter === 'anthropic_messages' ? item.protocol === 'anthropic' : item.protocol === 'openai_compatible')) &&
-      `${item.name} ${item.id} ${item.protocol} ${item.baseUrl ?? ''}`.toLowerCase().includes(query.toLowerCase()),
-  )
+  const filtered = templatePreview
+    ? providers
+    : providers.filter(
+        (item) =>
+          (protocolFilter === 'all' ||
+            (protocolFilter === 'anthropic_messages'
+              ? item.protocol === 'anthropic'
+              : item.protocol === 'openai_compatible')) &&
+          `${item.name} ${item.id} ${item.protocol} ${item.baseUrl ?? ''}`.toLowerCase().includes(query.toLowerCase()),
+      )
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-4 px-4 py-6">
       <div className="flex items-center gap-3">
@@ -36,7 +44,7 @@ export function ProviderChooser() {
             onChange={(event) => controller.onProviderQueryChanged(event.target.value)}
           />
         </Searchbox.Root>
-        <ProviderFilters />
+        {!templatePreview ? <ProviderFilters /> : null}
       </div>
       <Table.Root>
         <Table.Content
@@ -57,7 +65,20 @@ export function ProviderChooser() {
               <Table.Head className="text-center">Choose</Table.Head>
             </Table.Row>
           </Table.Header>
-          <Table.Body items={filtered} getKey={(provider) => provider.id}>
+          <Table.Body
+            items={filtered}
+            getKey={(provider) => provider.id}
+            paging={
+              templatePreview
+                ? {
+                    hasMore: !!hasMore,
+                    loading: !!loading,
+                    error: !!error,
+                    onLoadMore: () => controller.onLoadMoreProviders?.(),
+                  }
+                : undefined
+            }
+          >
             {(provider) => (
               <Table.Row
                 key={provider.id}
@@ -101,13 +122,28 @@ export function ProviderChooser() {
             )}
           </Table.Body>
         </Table.Content>
-        {!filtered.length ? <p className="py-12 text-center text-sm text-muted-foreground">No providers found</p> : null}
+        {loading && !filtered.length ? (
+          <p role="status" className="py-12 text-center text-sm text-muted-foreground">
+            Loading providers…
+          </p>
+        ) : null}
+        {error ? (
+          <div role="alert" className="flex items-center justify-center gap-3 py-4 text-sm">
+            <span>{error}</span>
+            <Button onClick={controller.onRetryCatalog}>Retry</Button>
+          </div>
+        ) : null}
+        {!loading && !error && !filtered.length ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">No providers found</p>
+        ) : null}
       </Table.Root>
-      <div className="flex items-center justify-between gap-4">
-        <Button className="h-8 px-4 text-xs" onClick={controller.onUseCustomProvider}>
-          Use custom provider
-        </Button>
-      </div>
+      {!templatePreview ? (
+        <div className="flex items-center justify-between gap-4">
+          <Button className="h-8 px-4 text-xs" onClick={controller.onUseCustomProvider}>
+            Use custom provider
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

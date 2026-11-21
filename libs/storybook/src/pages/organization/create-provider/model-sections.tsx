@@ -112,7 +112,7 @@ function ContextExample() {
       'modelDraft.outputLimitEnabled',
     ],
   )
-  const total = Math.max(1, Number(values.context) || 250000)
+  const total = Math.max(1, Number(values.context) || 1)
   const output = Math.min(total, values.outputEnabled ? Number(values.output) || 0 : Math.round(total * 0.03))
   const input = Math.min(total - output, values.inputEnabled ? Number(values.input) || 0 : Math.round(total * 0.67))
   const free = Math.max(0, total - input - output)
@@ -297,6 +297,10 @@ export function ModelPricing() {
 function PriceRow({ label, name }: { label: string; name: ModelPriceField }) {
   const id = useId()
   const enabled = useFormField<boolean>(`modelDraft.${priceEnabledFields[name]}`)!
+  const catalogLabel = useProvider(
+    (s) => s.modelDraft?.catalogPriceLabels?.[(['inputPrice', 'outputPrice', 'cachedPrice'] as const).indexOf(name)],
+    ['modelDraft.catalogPriceLabels'],
+  )
   const template = useProvider((state) => state.modelDraft?.templatePrices?.[name], ['modelDraft.templatePrices'])
   const help = {
     inputPrice: `
@@ -347,7 +351,7 @@ independent of the input price. Uncheck to use the template rate.
             className="flex h-8 items-center justify-end text-xs text-muted-foreground"
             title={template === undefined || template === '' ? 'No template rate is available.' : `$${template} per 1M tokens`}
           >
-            {template === undefined || template === '' ? 'Not set' : 'Provider default'}
+            {template === undefined || template === '' ? (catalogLabel ?? 'Not set') : 'Provider default'}
           </span>
         )}
         <FormError name={`modelDraft.${name}`} />

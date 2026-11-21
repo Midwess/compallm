@@ -86,6 +86,16 @@ function CustomizableDestinations() {
             {section.items.map((item) => {
               switch (item) {
                 case 'PROVIDERS':
+                  if (controller.onBrowseProviderTemplates)
+                    return (
+                      <SidebarItem
+                        key={item}
+                        label="Providers"
+                        href={`/${encodeURIComponent(controller.getCurrentOrganization()?.name ?? '')}/providers`}
+                        icon={<HardDrivesIcon />}
+                        onNavigate={controller.onBrowseProviderTemplates}
+                      />
+                    )
                   return (
                     <PermissionRequest key={item} actions={['provider.read']}>
                       {(allowed) =>

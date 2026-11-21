@@ -82,10 +82,10 @@ export function ProviderModels() {
       </div>
       <Table.Root tabIndex={0} role="region" aria-label="Scrollable provider model table" className="min-w-0">
         <Table.Content
-          className="w-full table-fixed text-xs"
+          className="w-full table-auto text-xs"
           aria-label="Provider models"
           columns={[
-            { id: 'name', className: 'xl:w-[31%]' },
+            { id: 'name', className: 'w-0' },
             { id: 'capabilities', visibilityClassName: 'hidden xl:table-cell' },
             { id: 'context', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },
             { id: 'input', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
@@ -121,12 +121,14 @@ export function ProviderModels() {
             {(model) => (
               <Table.Row key={model.id} className="h-12 border-b border-divider last:border-b-0">
                 <Table.Cell column="name" className="min-w-0 px-1 text-left">
-                  <span title={model.name} className="block truncate font-medium">
-                    {Array.from(model.name).length > 50 ? `${Array.from(model.name).slice(0, 50).join('')}…` : model.name}
-                  </span>
-                  <span className="mt-1 block truncate text-xs text-muted-foreground">
-                    {modelTypeLabels(model).join(' · ') || model.description || 'Not declared'}
-                  </span>
+                  <div className="w-max max-w-40 sm:max-w-44">
+                    <span title={model.name} className="block truncate font-medium">
+                      {model.name}
+                    </span>
+                    <span className="mt-1 block truncate text-xs text-muted-foreground">
+                      {modelTypeLabels(model).join(' · ') || model.description || 'Not declared'}
+                    </span>
+                  </div>
                 </Table.Cell>
                 <Table.Cell column="capabilities" className="px-1 py-1 text-left">
                   <div className="flex min-w-0 flex-wrap items-center gap-0.5">

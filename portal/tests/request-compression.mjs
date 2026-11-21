@@ -5,13 +5,14 @@ import { runInNewContext } from 'node:vm'
 
 const source = await readFile(new URL('../public/request-compression-sw.js', import.meta.url), 'utf8')
 
-function worker(fetch, compression = CompressionStream) {
+function worker(fetch, compression = CompressionStream, requestType = Request) {
   const handlers = new Map()
   runInNewContext(source, {
     self: { location: { origin: 'https://portal.example' }, addEventListener: (name, handler) => handlers.set(name, handler) },
     Blob,
     Response,
-    Request,
+    Request: requestType,
+    ReadableStream,
     Headers,
     URL,
     CompressionStream: compression,
@@ -36,7 +37,8 @@ function request(size, init = {}) {
 
 test('worker compresses large GraphQL bodies while retaining request identity and plain fallbacks', async () => {
   const forwarded = []
-  const intercept = worker(async (outgoing) => {
+  const intercept = worker(async (outgoing, options) => {
+    assert.equal(options.duplex, 'half')
     forwarded.push(outgoing)
     return Response.json({ data: { sessionRevoke: { node: true } } })
   })
@@ -78,4 +80,29 @@ test('compression failures fall back before sending and network failures never r
   controller.abort()
   await assert.rejects(intercept(request(20000, { signal: controller.signal })), { name: 'AbortError' })
   assert.equal(attempts, 1)
+})
+
+test('browsers without streaming uploads leave GraphQL requests to the browser network stack', () => {
+  class UnsupportedRequest {
+    constructor(url, options) {
+      if (options.body instanceof ReadableStream) throw new DOMException('Unsupported upload', 'NotSupportedError')
+    }
+  }
+  class StringifiedStreamRequest {
+    constructor() {
+      this.headers = new Headers({ 'Content-Type': 'text/plain' })
+    }
+  }
+  for (const requestType of [UnsupportedRequest, StringifiedStreamRequest]) {
+    let forwarded = 0
+    const intercept = worker(
+      () => {
+        forwarded++
+      },
+      CompressionStream,
+      requestType,
+    )
+    for (const size of [0, 20000, 1024 * 1024 + 1]) assert.equal(intercept(request(size)), undefined)
+    assert.equal(forwarded, 0)
+  }
 })

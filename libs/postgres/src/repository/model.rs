@@ -96,10 +96,12 @@ impl CoreModelRepository for ModelRepository {
                 serde_json::to_value(&model.search).context("invalid search configuration")?
             ),
             limits: Set(serde_json::to_value(model.limits).context("invalid model limits")?),
-            thinking: Set(
-                serde_json::to_value(&model.thinking).context("invalid thinking configuration")?
-            ),
-            pricing: Set(serde_json::to_value(model.pricing).context("invalid model pricing")?),
+            billing: Set(model
+                .billing
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()
+                .context("invalid model billing")?),
         };
         Model::try_from(active_model.insert(db).await.map_err(Self::write_error)?)
     }
@@ -140,10 +142,12 @@ impl CoreModelRepository for ModelRepository {
             Set(serde_json::to_value(&model.search).context("invalid search configuration")?);
         active_model.limits =
             Set(serde_json::to_value(model.limits).context("invalid model limits")?);
-        active_model.thinking =
-            Set(serde_json::to_value(&model.thinking).context("invalid thinking configuration")?);
-        active_model.pricing =
-            Set(serde_json::to_value(model.pricing).context("invalid model pricing")?);
+        active_model.billing = Set(model
+            .billing
+            .as_ref()
+            .map(serde_json::to_value)
+            .transpose()
+            .context("invalid model billing")?);
         Model::try_from(active_model.update(db).await.map_err(Self::write_error)?)
     }
 

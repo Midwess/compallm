@@ -4,8 +4,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::provider::{
-    BodyDefaults, Capability, Connection, Headers, ModelLimits, Pricing, Protocol, RouteSelection,
-    ServiceKind, Thinking,
+    BodyDefaults, Capability, Connection, Headers, ModelLimits, Protocol, RouteSelection,
+    ServiceKind,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -21,18 +21,17 @@ pub struct ModelTemplate {
     pub connections: BTreeMap<Protocol, Connection>,
     pub headers: Headers,
     pub body_defaults: BodyDefaults,
-    pub text: FeatureSupport,
+    pub text: TextCapabilities,
     pub vision: CapabilitySupport<VisionCapability>,
     pub pdf: CapabilitySupport<PdfCapability>,
     pub audio: AudioCapabilities,
     pub video: CapabilitySupport<VideoCapability>,
     pub image_generation: CapabilitySupport<ImageGenerationCapability>,
-    pub thinking: CapabilitySupport<Thinking>,
     pub tools: ToolCapabilities,
     pub structured_output: CapabilitySupport<StructuredOutputCapability>,
     pub search: CapabilitySupport<SearchCapability>,
     pub limits: ModelLimits,
-    pub pricing: Option<Pricing>,
+    pub billing: Option<crate::provider::ModelBilling>,
     pub route_selection: Option<RouteSelection>,
 }
 
@@ -45,7 +44,6 @@ impl ModelTemplate {
             audio: &self.audio,
             video: &self.video,
             image_generation: &self.image_generation,
-            thinking: &self.thinking,
             tools: &self.tools,
             structured_output: &self.structured_output,
             search: &self.search,

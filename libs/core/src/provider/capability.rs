@@ -1,3 +1,4 @@
+use super::CapabilityPricing;
 use serde::{Deserialize, Serialize};
 
 use std::collections::BTreeMap;
@@ -64,29 +65,41 @@ pub struct ThinkingBudget {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(
-    tag = "status",
-    content = "configuration",
-    rename_all = "snake_case",
-    deny_unknown_fields
-)]
+#[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
 pub enum CapabilitySupport<T> {
     #[default]
     Unknown,
     Unsupported,
-    Supported(T),
+    Supported {
+        configuration: T,
+        #[serde(default)]
+        pricing: Option<CapabilityPricing>,
+    },
 }
 
 impl<T> CapabilitySupport<T> {
+    pub fn supported(configuration: T, pricing: Option<CapabilityPricing>) -> Self {
+        Self::Supported {
+            configuration,
+            pricing,
+        }
+    }
+    pub fn pricing(&self) -> Option<&CapabilityPricing> {
+        match self {
+            Self::Supported { pricing, .. } => pricing.as_ref(),
+            _ => None,
+        }
+    }
+
     pub fn configuration(&self) -> Option<&T> {
         match self {
-            Self::Supported(value) => Some(value),
+            Self::Supported { configuration, .. } => Some(configuration),
             _ => None,
         }
     }
 
     pub fn is_supported(&self) -> bool {
-        matches!(self, Self::Supported(_))
+        matches!(self, Self::Supported { .. })
     }
     pub fn is_unsupported(&self) -> bool {
         matches!(self, Self::Unsupported)
@@ -99,6 +112,23 @@ pub struct BasicCapability {}
 
 pub type FeatureSupport = CapabilitySupport<BasicCapability>;
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct TextCapabilities {
+    pub input: CapabilitySupport<TextInput>,
+    pub output: CapabilitySupport<TextGeneration>,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct TextInput {
+    pub max_tokens: Option<u32>,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct TextGeneration {
+    pub max_tokens: Option<u32>,
+    pub thinking: CapabilitySupport<Thinking>,
+}
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct VisionCapability {
@@ -172,21 +202,59 @@ pub struct SearchCapability {
 
 // This view borrows the same fields stored on each entity; it owns no capability state.
 pub(crate) struct CapabilityFields<'a> {
-    pub text: &'a FeatureSupport,
+    pub text: &'a TextCapabilities,
     pub vision: &'a CapabilitySupport<VisionCapability>,
     pub pdf: &'a CapabilitySupport<PdfCapability>,
     pub audio: &'a AudioCapabilities,
     pub video: &'a CapabilitySupport<VideoCapability>,
     pub image_generation: &'a CapabilitySupport<ImageGenerationCapability>,
-    pub thinking: &'a CapabilitySupport<Thinking>,
     pub tools: &'a ToolCapabilities,
     pub structured_output: &'a CapabilitySupport<StructuredOutputCapability>,
     pub search: &'a CapabilitySupport<SearchCapability>,
 }
 
 impl CapabilityFields<'_> {
-    pub fn validate(&self) -> Result<(), validify::ValidationErrors> {
+    pub fn validate(
+        &self,
+        billing: Option<&super::ModelBilling>,
+    ) -> Result<(), validify::ValidationErrors> {
+        use validify::Validate;
+        for price in [
+            self.text.input.pricing(),
+            self.text.output.pricing(),
+            self.vision.pricing(),
+            self.pdf.pricing(),
+            self.audio.input.pricing(),
+            self.audio.output.pricing(),
+            self.video.pricing(),
+            self.image_generation.pricing(),
+            self.tools.calling.pricing(),
+            self.tools.forced_choice.pricing(),
+            self.tools.parallel_calls.pricing(),
+            self.structured_output.pricing(),
+            self.search.pricing(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            if matches!(price, CapabilityPricing::ModelBilling) && billing.is_none() {
+                return Err(super::validation::invalid("unresolved_model_billing"));
+            }
+            price.validate()?;
+        }
         let mut limits = Vec::new();
+        if let Some(v) = self.text.input.configuration() {
+            limits.push(v.max_tokens);
+        }
+        if let Some(v) = self.text.output.configuration() {
+            limits.push(v.max_tokens);
+            if let Some(p) = v.thinking.pricing() {
+                if matches!(p, CapabilityPricing::ModelBilling) && billing.is_none() {
+                    return Err(super::validation::invalid("unresolved_model_billing"));
+                }
+                p.validate()?;
+            }
+        }
         let mut formats = Vec::new();
         if let Some(v) = self.vision.configuration() {
             limits.push(v.max_images);
@@ -249,8 +317,8 @@ impl CapabilityFields<'_> {
         let states = [
             (
                 Capability::Text,
-                self.text.is_supported(),
-                self.text.is_unsupported(),
+                (self.text.input.is_supported() || self.text.output.is_supported()),
+                (self.text.input.is_unsupported() && self.text.output.is_unsupported()),
             ),
             (
                 Capability::Vision,
@@ -289,8 +357,14 @@ impl CapabilityFields<'_> {
             ),
             (
                 Capability::Reasoning,
-                self.thinking.is_supported(),
-                self.thinking.is_unsupported(),
+                self.text
+                    .output
+                    .configuration()
+                    .is_some_and(|v| v.thinking.is_supported()),
+                self.text
+                    .output
+                    .configuration()
+                    .is_some_and(|v| v.thinking.is_unsupported()),
             ),
             (
                 Capability::ToolCall,

@@ -1,10 +1,11 @@
+#[path = "support/capability_pricing.rs"]
+mod pricing_fixture;
 use compallm_core::{
     model::Model,
     persistent::{
         DbContext,
         model::{ModelRepository as _, ModelRepositoryError},
     },
-    provider::Pricing,
 };
 use compallm_postgres::{
     ModelSchema, postgres_connection::PostgresConnection, repository::model::ModelRepository,
@@ -27,7 +28,7 @@ impl Fixture {
             name: name.into(),
             service_kind: "llm".into(),
             enabled: true,
-            text: json!({"status": "supported", "configuration": {}}),
+            text:pricing_fixture::convert(json!({"service_kind":"llm","text":{"status":"supported","configuration":{}},"thinking":{"status":"unknown"},"limits":{},"pricing":Self::pricing()}))["text"].clone(),
             vision: json!({"status": "unknown"}),
             pdf: json!({"status": "unknown"}),
             audio: json!({"input": {"status": "unknown"}, "output": {"status": "unknown"}}),
@@ -37,8 +38,7 @@ impl Fixture {
             structured_output: json!({"status": "unknown"}),
             search: json!({"status": "unknown"}),
             limits: json!({"contextTokens": 128_000}),
-            thinking: json!({"status":"unknown"}),
-            pricing: Self::pricing(),
+            billing:None,
         }
     }
 
@@ -87,18 +87,20 @@ async fn insert_writes_typed_prices_and_configuration() {
         .unwrap();
 
     assert_eq!(model.id, 100);
-    let Pricing::Usage(compallm_core::provider::UsagePricing::Fixed(
-        compallm_core::provider::UsageRates::Token(pricing),
-    )) = model.pricing
+    let Some(compallm_core::provider::CapabilityPricing::Usage(
+        compallm_core::provider::CapabilityUsagePricing::Fixed(
+            compallm_core::provider::CapabilityRates::Token(pricing),
+        ),
+    )) = model.text.input.pricing()
     else {
         panic!("expected token prices")
     };
-    assert_eq!(pricing.input.amount.unwrap(), Decimal::new(125, 2));
+    assert_eq!(pricing.rate.amount.unwrap(), Decimal::new(125, 2));
     assert_eq!(model.limits.context_tokens, Some(128_000));
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
     assert!(log.contains("INSERT INTO"));
-    assert!(log.contains("pricing"));
+    assert!(log.contains("text"));
     assert!(log.contains("limits"));
     assert!(log.contains("enabled"));
     assert!(!log.contains("hidden"));
@@ -191,7 +193,8 @@ async fn invalid_persisted_ids_are_rejected_during_mapping() {
 #[tokio::test]
 async fn negative_persisted_prices_are_rejected_during_mapping() {
     let mut corrupt = Fixture::schema(100, "corrupt-model");
-    corrupt.pricing["usage"]["fixed"]["token"]["input"]["amount"] = json!("-1");
+    corrupt.text["input"]["pricing"]["configuration"]["fixed"]["token"]["rate"]["amount"] =
+        json!("-1");
     let db = Arc::new(
         MockDatabase::new(DbBackend::Postgres)
             .append_query_results([vec![corrupt]])

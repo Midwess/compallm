@@ -37,6 +37,7 @@ type AudioConfiguration {
 
 type AudioSupport {
   configuration: AudioConfiguration
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }
 
@@ -58,6 +59,18 @@ type AvatarUploadPayload {
   node: AvatarUpload!
 }
 
+type BillingAllowance {
+  quota: String
+  resetPeriod: PriceBillingPeriod
+  unit: PriceUnit!
+}
+
+type BillingFee {
+  amount: String
+  currency: String
+  period: PriceBillingPeriod
+}
+
 type BooleanPayload {
   node: Boolean!
 }
@@ -70,10 +83,74 @@ type CalendarPreferences {
   firstDay: PreferenceWeekday!
 }
 
+enum CapabilityCacheMode {
+  INCLUDED
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  UNSUPPORTED
+}
+
+type CapabilityCachePrice {
+  amount: String
+  currency: String
+  mode: CapabilityCacheMode!
+  quantity: String
+}
+
+enum CapabilityPriceMode {
+  FIXED
+  SCHEDULED
+  TIERED_TOKEN
+}
+
+type CapabilityPricing {
+  kind: CapabilityPricingKind!
+  usage: CapabilityUsage
+}
+
+enum CapabilityPricingKind {
+  FREE
+  INCLUDED
+  MODEL_BILLING
+  USAGE
+}
+
+type CapabilityRate {
+  amount: String
+  cache: CapabilityCachePrice
+  conditions: [TemplateHeader!]!
+  credits: String
+  currency: String
+  direction: CreditUsageDirection
+  quantity: String
+  unit: PriceUnit!
+}
+
+type CapabilitySlot {
+  fromHour: Int!
+  pricing: CapabilityUsage!
+  toHour: Int!
+}
+
 enum CapabilityStatus {
   SUPPORTED
   UNKNOWN
   UNSUPPORTED
+}
+
+type CapabilityTier {
+  fromTokens: String!
+  rate: CapabilityRate!
+  toTokens: String
+}
+
+type CapabilityUsage {
+  mode: CapabilityPriceMode!
+  rates: [CapabilityRate!]!
+  slots: [CapabilitySlot!]!
+  tierBasis: PriceTierBasis
+  tiers: [CapabilityTier!]!
+  timezone: String
 }
 
 type CatalogRequiredInput {
@@ -132,6 +209,12 @@ enum CredentialDelivery {
   TOKEN
 }
 
+enum CreditUsageDirection {
+  CACHE_READ
+  INPUT
+  OUTPUT
+}
+
 """
 Email admission succeeded; cookie delivery never exposes the OTP credential.
 """
@@ -184,6 +267,7 @@ input EmailInput {
 }
 
 type FeatureSupport {
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }
 
@@ -250,6 +334,7 @@ type ImageGenerationConfiguration {
 
 type ImageGenerationSupport {
   configuration: ImageGenerationConfiguration
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }
 
@@ -414,8 +499,28 @@ type MessageCompositionPreferences {
   sendShortcut: PreferenceKeyCombination!
 }
 
+type ModelBilling {
+  amountPerCredit: String
+  currency: String
+  description: String
+  entitlements: [BillingAllowance!]!
+  fee: BillingFee
+  kind: ModelBillingKind!
+  plan: String
+  product: String
+  requestRate: CapabilityRate
+}
+
+enum ModelBillingKind {
+  CREDIT
+  FREE
+  REQUEST
+  SUBSCRIPTION
+}
+
 type ModelTemplate {
   audio: AudioCapabilities!
+  billing: ModelBilling
   billingModel: TemplateBillingModel!
   cacheBilling: TemplateCacheBilling!
   cachedPrice: String
@@ -438,7 +543,7 @@ type ModelTemplate {
   search: SearchSupport!
   serviceKind: TemplateServiceKind
   structuredOutput: StructuredOutputSupport!
-  text: FeatureSupport!
+  text: TextCapabilities!
   thinking: ThinkingSupport!
   tools: ToolCapabilities!
   upstreamModelId: String!
@@ -781,6 +886,7 @@ type PdfConfiguration {
 
 type PdfSupport {
   configuration: PdfConfiguration
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }
 
@@ -895,6 +1001,31 @@ enum PreferenceWeekday {
   THURSDAY
   TUESDAY
   WEDNESDAY
+}
+
+enum PriceBillingPeriod {
+  DAY
+  HOUR
+  MINUTE
+  MONTH
+  WEEK
+  YEAR
+}
+
+enum PriceTierBasis {
+  INPUT_TOKENS
+  TOTAL_TOKENS
+}
+
+enum PriceUnit {
+  CHARACTERS
+  CREDITS
+  IMAGES
+  REQUESTS
+  SECONDS
+  TOKENS
+  UTF8_BYTES
+  VIDEOS
 }
 
 input ProfileUpdateInput {
@@ -1227,6 +1358,7 @@ type SearchConfiguration {
 
 type SearchSupport {
   configuration: SearchConfiguration
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }
 
@@ -1365,6 +1497,7 @@ type StructuredOutputConfiguration {
 
 type StructuredOutputSupport {
   configuration: StructuredOutputConfiguration
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }
 
@@ -1496,6 +1629,32 @@ enum TemplateServiceKind {
   VIDEO
 }
 
+type TextCapabilities {
+  input: TextInputSupport!
+  output: TextGenerationSupport!
+}
+
+type TextGenerationConfiguration {
+  maxTokens: Float
+  thinking: ThinkingSupport!
+}
+
+type TextGenerationSupport {
+  configuration: TextGenerationConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
+type TextInputConfiguration {
+  maxTokens: Float
+}
+
+type TextInputSupport {
+  configuration: TextInputConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
 """
 Text operation determining the upstream request and response format.
 """
@@ -1529,6 +1688,7 @@ type ThinkingConfiguration {
 
 type ThinkingSupport {
   configuration: ThinkingConfiguration
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }
 
@@ -1548,6 +1708,7 @@ type ToolCallingConfiguration {
 
 type ToolCallingSupport {
   configuration: ToolCallingConfiguration
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }
 
@@ -1657,6 +1818,7 @@ type VideoConfiguration {
 
 type VideoSupport {
   configuration: VideoConfiguration
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }
 
@@ -1667,5 +1829,6 @@ type VisionConfiguration {
 
 type VisionSupport {
   configuration: VisionConfiguration
+  pricing: CapabilityPricing
   status: CapabilityStatus!
 }

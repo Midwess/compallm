@@ -11,7 +11,7 @@ use crate::authorization::{
 
 use super::ProviderApiKey;
 use super::configuration::{
-    BodyDefaults, Connection, Headers, ModelLimits, ModelTemplateReference, Pricing, Protocol,
+    BodyDefaults, Connection, Headers, ModelLimits, ModelTemplateReference, Protocol,
     RouteSelection, ServiceKind,
 };
 
@@ -44,18 +44,17 @@ pub struct ProviderModel {
     pub connection: Connection,
     pub headers: Headers,
     pub body_defaults: BodyDefaults,
-    pub text: FeatureSupport,
+    pub text: TextCapabilities,
     pub vision: CapabilitySupport<VisionCapability>,
     pub pdf: CapabilitySupport<PdfCapability>,
     pub audio: AudioCapabilities,
     pub video: CapabilitySupport<VideoCapability>,
     pub image_generation: CapabilitySupport<ImageGenerationCapability>,
-    pub thinking: CapabilitySupport<Thinking>,
     pub tools: ToolCapabilities,
     pub structured_output: CapabilitySupport<StructuredOutputCapability>,
     pub search: CapabilitySupport<SearchCapability>,
     pub limits: ModelLimits,
-    pub pricing: Pricing,
+    pub billing: Option<crate::provider::ModelBilling>,
     pub route_selection: Option<RouteSelection>,
 }
 
@@ -81,11 +80,13 @@ impl ProviderModel {
             audio: &self.audio,
             video: &self.video,
             image_generation: &self.image_generation,
-            thinking: &self.thinking,
             tools: &self.tools,
             structured_output: &self.structured_output,
             search: &self.search,
         }
+    }
+    pub fn validate_capabilities(&self) -> Result<(), validify::ValidationErrors> {
+        self.capability_fields().validate(self.billing.as_ref())
     }
     pub fn supported_capabilities(&self) -> Vec<Capability> {
         self.capability_fields().supported()

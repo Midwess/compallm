@@ -42,9 +42,7 @@ pub struct Model {
     #[sea_orm(column_type = "JsonBinary")]
     pub limits: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub thinking: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub pricing: Json,
+    pub billing: Option<Json>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

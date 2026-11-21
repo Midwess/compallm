@@ -118,10 +118,12 @@ impl TryFrom<&ProviderModel> for ProviderModelActiveModel {
                 serde_json::to_value(&model.search).context("invalid search configuration")?
             ),
             limits: Set(serde_json::to_value(&model.limits).context("invalid model limits")?),
-            thinking: Set(
-                serde_json::to_value(&model.thinking).context("invalid thinking configuration")?
-            ),
-            pricing: Set(serde_json::to_value(&model.pricing).context("invalid model pricing")?),
+            billing: Set(model
+                .billing
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()
+                .context("invalid model billing")?),
         })
     }
 }
@@ -135,13 +137,16 @@ impl TryFrom<ProviderModelSchema> for ProviderModel {
             .context("invalid provider model organization ID in database")?;
         let provider_id = crate::from_bigint(model.provider_id)
             .context("invalid provider model provider ID in database")?;
-        let pricing: compallm_core::provider::Pricing = serde_json::from_value(model.pricing)
-            .context("invalid provider model pricing in database")?;
-        pricing
-            .validate()
-            .context("invalid provider model prices in database")?;
+        let billing: Option<compallm_core::provider::ModelBilling> = model
+            .billing
+            .map(serde_json::from_value)
+            .transpose()
+            .context("invalid stored model billing")?;
+        if let Some(value) = &billing {
+            value.validate().context("invalid stored billing")?;
+        }
 
-        Ok(Self {
+        let result = Self {
             id,
             organization_id,
             provider_id,
@@ -188,10 +193,12 @@ impl TryFrom<ProviderModelSchema> for ProviderModel {
                 .context("invalid stored search configuration")?,
             limits: serde_json::from_value(model.limits)
                 .context("invalid provider model limits in database")?,
-            thinking: serde_json::from_value(model.thinking)
-                .context("invalid stored thinking configuration")?,
-            pricing,
-        })
+            billing,
+        };
+        result
+            .validate_capabilities()
+            .context("invalid stored capability pricing")?;
+        Ok(result)
     }
 }
 

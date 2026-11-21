@@ -1,5 +1,7 @@
 #[path = "support/permission.rs"]
 mod permission_fixture;
+#[path = "support/capability_pricing.rs"]
+mod pricing_fixture;
 use compallm_core::authorization::policy::Action;
 
 fn permission() -> compallm_core::authorization::MemberPermission {
@@ -53,7 +55,7 @@ fn provider(name: &str) -> Provider {
             }))
             .unwrap(),
             headers: Default::default(),
-            text:Default::default(),
+            text:serde_json::from_value(pricing_fixture::convert(json!({"service_kind":"llm","limits":{},"text":{"status":"supported","configuration":{}},"thinking":{"status":"unknown"},"pricing":{"usage":{"fixed":{"token":{"input":{"amount":"1.12345678","currency":"USD","quantity":1000000},"output":{"amount":"2.00","currency":"USD","quantity":1000000},"cache":{"type":"included"}}}}}}))["text"].clone()).unwrap(),
         vision:Default::default(),
         pdf:Default::default(),
         audio:Default::default(),
@@ -63,9 +65,7 @@ fn provider(name: &str) -> Provider {
         structured_output:Default::default(),
         search:Default::default(),
             limits: Default::default(),
-            thinking: Default::default(),
-            pricing: serde_json::from_value(json!({"usage":{"fixed":{"token":{"input":{"amount":"1.12345678","currency":"USD","quantity":1000000},"output":{"amount":"2.00","currency":"USD","quantity":1000000},"cache":{"type":"included"}}}}}))
-            .unwrap(),
+            billing:None,
         }],
     }
 }
@@ -168,7 +168,7 @@ async fn creates_batch_in_order_with_fresh_ids_and_parent_ownership() {
     }
     assert_eq!(created[0].models[0].name, "vendor/model.v1");
     assert_eq!(created[0].models[0].connection, expected_model.connection);
-    assert_eq!(created[0].models[0].pricing, expected_model.pricing);
+    assert_eq!(created[0].models[0].text, expected_model.text);
     assert!(!created[0].models[1].enabled);
     assert!(!format!("{created:?}").contains("upstream-api-key"));
     assert!(!format!("{created:?}").contains(&String::from(credential())));
@@ -246,32 +246,55 @@ async fn rejects_invalid_entities_without_exposing_submitted_values() {
         |p| p.models[0].protocol = Protocol::Xai,
         |p| p.models[0].connection.base_url = Some("".into()),
         |p| {
-            p.models[0].tools.calling =
-                CapabilitySupport::Supported(compallm_core::provider::ToolCallingCapability {
-                    max_tools: Some(0),
-                })
+            p.models[0].tools.calling = CapabilitySupport::supported(
+                compallm_core::provider::ToolCallingCapability { max_tools: Some(0) },
+                None,
+            )
         },
         |p| p.models[0].limits.context_tokens = Some(0),
         |p| {
-            p.models[0].thinking = CapabilitySupport::Supported(Thinking {
-                effort_mapping: Default::default(),
-                default_effort: Some(compallm_core::provider::EffortLevel::Low),
-                budget: None,
-            })
+            p.models[0].text.output = CapabilitySupport::supported(
+                compallm_core::provider::TextGeneration {
+                    max_tokens: None,
+                    thinking: CapabilitySupport::supported(
+                        Thinking {
+                            effort_mapping: Default::default(),
+                            default_effort: Some(compallm_core::provider::EffortLevel::Low),
+                            budget: None,
+                        },
+                        None,
+                    ),
+                },
+                None,
+            )
         },
         |p| {
-            p.models[0].thinking = CapabilitySupport::Supported(Thinking {
-                effort_mapping: Default::default(),
-                default_effort: None,
-                budget: Some(ThinkingBudget {
-                    min_tokens: 100,
-                    max_tokens: 200,
-                    default_tokens: Some(300),
-                }),
-            })
+            p.models[0].text.output = CapabilitySupport::supported(
+                compallm_core::provider::TextGeneration {
+                    max_tokens: None,
+                    thinking: CapabilitySupport::supported(
+                        Thinking {
+                            effort_mapping: Default::default(),
+                            default_effort: None,
+                            budget: Some(ThinkingBudget {
+                                min_tokens: 100,
+                                max_tokens: 200,
+                                default_tokens: Some(300),
+                            }),
+                        },
+                        None,
+                    ),
+                },
+                None,
+            )
         },
         |p| {
-            p.models[0].pricing=serde_json::from_value(json!({"usage":{"fixed":{"request":{"rate":{"amount":"-1","currency":"USD","quantity":1}}}}})).unwrap()
+            p.models[0].billing = Some(
+                serde_json::from_value(
+                    json!({"request":{"rate":{"amount":"-1","currency":"USD","quantity":1}}}),
+                )
+                .unwrap(),
+            )
         },
     ];
     for (index, mutate) in mutations.iter().enumerate() {
@@ -327,13 +350,13 @@ async fn persists_models_with_the_connection_and_returns_typed_configuration() {
     let permission = permission();
     let service = CreationService::new(&repository);
     let input = provider("Primary");
-    let pricing = input.models[0].pricing.clone();
+    let pricing = input.models[0].text.clone();
     let created = context
         .scope(service.create(&permission, input))
         .await
         .unwrap();
     assert_eq!(created.models.len(), 1);
-    assert_eq!(created.models[0].pricing, pricing);
+    assert_eq!(created.models[0].text, pricing);
     assert_eq!(
         created.models[0].connection.base_url,
         Some("https://model.example/v2".into())

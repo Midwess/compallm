@@ -72,9 +72,7 @@ async fn entity_creation_owns_ids_and_default_policy_relationships() {
         structured_output:Default::default(),
         search:Default::default(),
         limits: Default::default(),
-        thinking: Default::default(),
-        pricing: serde_json::from_value(serde_json::json!({"usage":{"fixed":{"request":{"rate":{"amount":"1","currency":"USD","quantity":1}}}}}))
-            .unwrap(),
+        billing:Some(serde_json::from_value(serde_json::json!({"request":{"rate":{"amount":"0","currency":"USD","quantity":1}}})).unwrap()),
     };
     let mut expected = model.clone();
     model.initialize_id().await.unwrap();

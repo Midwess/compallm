@@ -12,7 +12,7 @@ impl<T> From<&domain::CapabilitySupport<T>> for CapabilityStatus {
         match value {
             domain::CapabilitySupport::Unknown => Self::Unknown,
             domain::CapabilitySupport::Unsupported => Self::Unsupported,
-            domain::CapabilitySupport::Supported(_) => Self::Supported,
+            domain::CapabilitySupport::Supported { .. } => Self::Supported,
         }
     }
 }
@@ -20,11 +20,13 @@ impl<T> From<&domain::CapabilitySupport<T>> for CapabilityStatus {
 #[derive(GraphQLObject)]
 pub struct FeatureSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
 }
 impl From<&domain::FeatureSupport> for FeatureSupport {
     fn from(value: &domain::FeatureSupport) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
         }
     }
 }
@@ -32,6 +34,7 @@ impl From<&domain::FeatureSupport> for FeatureSupport {
 #[derive(GraphQLObject)]
 pub struct VisionSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
     pub configuration: Option<VisionConfiguration>,
 }
 #[derive(GraphQLObject)]
@@ -43,6 +46,7 @@ impl From<&domain::CapabilitySupport<domain::VisionCapability>> for VisionSuppor
     fn from(value: &domain::CapabilitySupport<domain::VisionCapability>) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
             configuration: value.configuration().map(|value| VisionConfiguration {
                 formats: value.formats.clone(),
                 max_images: value.max_images.map(f64::from),
@@ -54,6 +58,7 @@ impl From<&domain::CapabilitySupport<domain::VisionCapability>> for VisionSuppor
 #[derive(GraphQLObject)]
 pub struct PdfSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
     pub configuration: Option<PdfConfiguration>,
 }
 #[derive(GraphQLObject)]
@@ -65,6 +70,7 @@ impl From<&domain::CapabilitySupport<domain::PdfCapability>> for PdfSupport {
     fn from(value: &domain::CapabilitySupport<domain::PdfCapability>) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
             configuration: value.configuration().map(|value| PdfConfiguration {
                 max_files: value.max_files.map(f64::from),
                 max_pages: value.max_pages.map(f64::from),
@@ -76,6 +82,7 @@ impl From<&domain::CapabilitySupport<domain::PdfCapability>> for PdfSupport {
 #[derive(GraphQLObject)]
 pub struct AudioSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
     pub configuration: Option<AudioConfiguration>,
 }
 #[derive(GraphQLObject)]
@@ -88,6 +95,7 @@ impl From<&domain::CapabilitySupport<domain::AudioCapability>> for AudioSupport 
     fn from(value: &domain::CapabilitySupport<domain::AudioCapability>) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
             configuration: value.configuration().map(|value| AudioConfiguration {
                 formats: value.formats.clone(),
                 max_duration_ms: value.max_duration_ms.map(f64::from),
@@ -100,6 +108,7 @@ impl From<&domain::CapabilitySupport<domain::AudioCapability>> for AudioSupport 
 #[derive(GraphQLObject)]
 pub struct VideoSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
     pub configuration: Option<VideoConfiguration>,
 }
 #[derive(GraphQLObject)]
@@ -112,6 +121,7 @@ impl From<&domain::CapabilitySupport<domain::VideoCapability>> for VideoSupport 
     fn from(value: &domain::CapabilitySupport<domain::VideoCapability>) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
             configuration: value.configuration().map(|value| VideoConfiguration {
                 formats: value.formats.clone(),
                 max_duration_ms: value.max_duration_ms.map(f64::from),
@@ -124,6 +134,7 @@ impl From<&domain::CapabilitySupport<domain::VideoCapability>> for VideoSupport 
 #[derive(GraphQLObject)]
 pub struct ImageGenerationSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
     pub configuration: Option<ImageGenerationConfiguration>,
 }
 #[derive(GraphQLObject)]
@@ -137,6 +148,7 @@ impl From<&domain::CapabilitySupport<domain::ImageGenerationCapability>>
     fn from(value: &domain::CapabilitySupport<domain::ImageGenerationCapability>) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
             configuration: value
                 .configuration()
                 .map(|value| ImageGenerationConfiguration {
@@ -150,6 +162,7 @@ impl From<&domain::CapabilitySupport<domain::ImageGenerationCapability>>
 #[derive(GraphQLObject)]
 pub struct ToolCallingSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
     pub configuration: Option<ToolCallingConfiguration>,
 }
 #[derive(GraphQLObject)]
@@ -160,6 +173,7 @@ impl From<&domain::CapabilitySupport<domain::ToolCallingCapability>> for ToolCal
     fn from(value: &domain::CapabilitySupport<domain::ToolCallingCapability>) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
             configuration: value.configuration().map(|value| ToolCallingConfiguration {
                 max_tools: value.max_tools.map(f64::from),
             }),
@@ -170,6 +184,7 @@ impl From<&domain::CapabilitySupport<domain::ToolCallingCapability>> for ToolCal
 #[derive(GraphQLObject)]
 pub struct StructuredOutputSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
     pub configuration: Option<StructuredOutputConfiguration>,
 }
 #[derive(GraphQLObject)]
@@ -183,6 +198,7 @@ impl From<&domain::CapabilitySupport<domain::StructuredOutputCapability>>
     fn from(value: &domain::CapabilitySupport<domain::StructuredOutputCapability>) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
             configuration: value
                 .configuration()
                 .map(|value| StructuredOutputConfiguration {
@@ -196,6 +212,7 @@ impl From<&domain::CapabilitySupport<domain::StructuredOutputCapability>>
 #[derive(GraphQLObject)]
 pub struct SearchSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
     pub configuration: Option<SearchConfiguration>,
 }
 #[derive(GraphQLObject)]
@@ -206,6 +223,7 @@ impl From<&domain::CapabilitySupport<domain::SearchCapability>> for SearchSuppor
     fn from(value: &domain::CapabilitySupport<domain::SearchCapability>) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
             configuration: value.configuration().map(|value| SearchConfiguration {
                 max_results: value.max_results.map(f64::from),
             }),
@@ -216,6 +234,7 @@ impl From<&domain::CapabilitySupport<domain::SearchCapability>> for SearchSuppor
 #[derive(GraphQLObject)]
 pub struct ThinkingSupport {
     pub status: CapabilityStatus,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
     pub configuration: Option<ThinkingConfiguration>,
 }
 #[derive(GraphQLObject)]
@@ -228,6 +247,7 @@ impl From<&domain::CapabilitySupport<domain::Thinking>> for ThinkingSupport {
     fn from(value: &domain::CapabilitySupport<domain::Thinking>) -> Self {
         Self {
             status: value.into(),
+            pricing: value.pricing().map(Into::into),
             configuration: value.configuration().map(|value| ThinkingConfiguration {
                 effort_mapping: value
                     .effort_mapping
@@ -284,6 +304,57 @@ impl From<&domain::ToolCapabilities> for ToolCapabilities {
             calling: (&v.calling).into(),
             forced_choice: (&v.forced_choice).into(),
             parallel_calls: (&v.parallel_calls).into(),
+        }
+    }
+}
+
+#[derive(GraphQLObject)]
+pub struct TextCapabilities {
+    pub input: TextInputSupport,
+    pub output: TextGenerationSupport,
+}
+#[derive(GraphQLObject)]
+pub struct TextInputSupport {
+    pub status: CapabilityStatus,
+    pub configuration: Option<TextInputConfiguration>,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
+}
+#[derive(GraphQLObject)]
+pub struct TextInputConfiguration {
+    pub max_tokens: Option<f64>,
+}
+#[derive(GraphQLObject)]
+pub struct TextGenerationSupport {
+    pub status: CapabilityStatus,
+    pub configuration: Option<TextGenerationConfiguration>,
+    pub pricing: Option<super::pricing::CapabilityPricing>,
+}
+#[derive(GraphQLObject)]
+pub struct TextGenerationConfiguration {
+    pub max_tokens: Option<f64>,
+    pub thinking: ThinkingSupport,
+}
+impl From<&domain::TextCapabilities> for TextCapabilities {
+    fn from(v: &domain::TextCapabilities) -> Self {
+        Self {
+            input: TextInputSupport {
+                status: (&v.input).into(),
+                configuration: v.input.configuration().map(|v| TextInputConfiguration {
+                    max_tokens: v.max_tokens.map(f64::from),
+                }),
+                pricing: v.input.pricing().map(Into::into),
+            },
+            output: TextGenerationSupport {
+                status: (&v.output).into(),
+                configuration: v
+                    .output
+                    .configuration()
+                    .map(|v| TextGenerationConfiguration {
+                        max_tokens: v.max_tokens.map(f64::from),
+                        thinking: (&v.thinking).into(),
+                    }),
+                pricing: v.output.pricing().map(Into::into),
+            },
         }
     }
 }

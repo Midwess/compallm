@@ -8,6 +8,26 @@ enum AuthenticationPurpose {
   PASSKEY_CHANGE
 }
 
+enum CapabilityCacheMode {
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  INCLUDED
+  UNSUPPORTED
+}
+
+enum CapabilityPriceMode {
+  FIXED
+  TIERED_TOKEN
+  SCHEDULED
+}
+
+enum CapabilityPricingKind {
+  USAGE
+  FREE
+  INCLUDED
+  MODEL_BILLING
+}
+
 enum CapabilityStatus {
   UNKNOWN
   UNSUPPORTED
@@ -20,6 +40,12 @@ enum CredentialDelivery {
   COOKIE
   "Return credentials explicitly without setting browser cookies."
   TOKEN
+}
+
+enum CreditUsageDirection {
+  INPUT
+  OUTPUT
+  CACHE_READ
 }
 
 enum FilterIs {
@@ -37,6 +63,13 @@ enum ImageMediaType {
   JPEG
   PNG
   WEBP
+}
+
+enum ModelBillingKind {
+  SUBSCRIPTION
+  FREE
+  REQUEST
+  CREDIT
 }
 
 enum OnboardingDestination {
@@ -160,6 +193,31 @@ enum PreferenceWeekday {
   THURSDAY
   FRIDAY
   SATURDAY
+}
+
+enum PriceBillingPeriod {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+enum PriceTierBasis {
+  INPUT_TOKENS
+  TOTAL_TOKENS
+}
+
+enum PriceUnit {
+  TOKENS
+  REQUESTS
+  IMAGES
+  SECONDS
+  CHARACTERS
+  UTF8_BYTES
+  CREDITS
+  VIDEOS
 }
 
 "Catalog connection family hint; each configured model selects its own operation."
@@ -691,6 +749,7 @@ type AudioConfiguration {
 
 type AudioSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
   configuration: AudioConfiguration
 }
 
@@ -705,12 +764,68 @@ type AvatarUploadPayload {
   node: AvatarUpload!
 }
 
+type BillingAllowance {
+  unit: PriceUnit!
+  quota: String
+  resetPeriod: PriceBillingPeriod
+}
+
+type BillingFee {
+  amount: String
+  currency: String
+  period: PriceBillingPeriod
+}
+
 type BooleanPayload {
   node: Boolean!
 }
 
 type CalendarPreferences {
   firstDay: PreferenceWeekday!
+}
+
+type CapabilityCachePrice {
+  mode: CapabilityCacheMode!
+  amount: String
+  currency: String
+  quantity: String
+}
+
+type CapabilityPricing {
+  kind: CapabilityPricingKind!
+  usage: CapabilityUsage
+}
+
+type CapabilityRate {
+  unit: PriceUnit!
+  amount: String
+  currency: String
+  quantity: String
+  credits: String
+  direction: CreditUsageDirection
+  cache: CapabilityCachePrice
+  conditions: [TemplateHeader!]!
+}
+
+type CapabilitySlot {
+  fromHour: Int!
+  toHour: Int!
+  pricing: CapabilityUsage!
+}
+
+type CapabilityTier {
+  fromTokens: String!
+  toTokens: String
+  rate: CapabilityRate!
+}
+
+type CapabilityUsage {
+  mode: CapabilityPriceMode!
+  rates: [CapabilityRate!]!
+  tierBasis: PriceTierBasis
+  tiers: [CapabilityTier!]!
+  timezone: String
+  slots: [CapabilitySlot!]!
 }
 
 type CatalogRequiredInput {
@@ -742,6 +857,7 @@ type EmailChallengePayload {
 
 type FeatureSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
 }
 
 type Group {
@@ -777,6 +893,7 @@ type ImageGenerationConfiguration {
 
 type ImageGenerationSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
   configuration: ImageGenerationConfiguration
 }
 
@@ -884,6 +1001,18 @@ type MessageCompositionPreferences {
   sendShortcut: PreferenceKeyCombination!
 }
 
+type ModelBilling {
+  kind: ModelBillingKind!
+  product: String
+  plan: String
+  fee: BillingFee
+  entitlements: [BillingAllowance!]!
+  requestRate: CapabilityRate
+  amountPerCredit: String
+  currency: String
+  description: String
+}
+
 type ModelTemplate {
   id: ID!
   providerTemplateId: ID!
@@ -893,7 +1022,7 @@ type ModelTemplate {
   headers: [TemplateHeader!]!
   operations: [TemplateOperation!]!
   capabilities: [ProviderModelCapability!]!
-  text: FeatureSupport!
+  text: TextCapabilities!
   vision: VisionSupport!
   pdf: PdfSupport!
   audio: AudioCapabilities!
@@ -910,6 +1039,7 @@ type ModelTemplate {
   inputPrice: String
   outputPrice: String
   cachedPrice: String
+  billing: ModelBilling
   billingModel: TemplateBillingModel!
   pricingMode: TemplatePricingMode!
   cacheBilling: TemplateCacheBilling!
@@ -1106,6 +1236,7 @@ type PdfConfiguration {
 
 type PdfSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
   configuration: PdfConfiguration
 }
 
@@ -1217,6 +1348,7 @@ type SearchConfiguration {
 
 type SearchSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
   configuration: SearchConfiguration
 }
 
@@ -1293,6 +1425,7 @@ type StructuredOutputConfiguration {
 
 type StructuredOutputSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
   configuration: StructuredOutputConfiguration
 }
 
@@ -1343,6 +1476,32 @@ type TemplateOperation {
   path: String!
 }
 
+type TextCapabilities {
+  input: TextInputSupport!
+  output: TextGenerationSupport!
+}
+
+type TextGenerationConfiguration {
+  maxTokens: Float
+  thinking: ThinkingSupport!
+}
+
+type TextGenerationSupport {
+  status: CapabilityStatus!
+  configuration: TextGenerationConfiguration
+  pricing: CapabilityPricing
+}
+
+type TextInputConfiguration {
+  maxTokens: Float
+}
+
+type TextInputSupport {
+  status: CapabilityStatus!
+  configuration: TextInputConfiguration
+  pricing: CapabilityPricing
+}
+
 type ThemePreferences {
   mode: PreferenceAppearanceMode!
   palettes: PalettePreferences!
@@ -1362,6 +1521,7 @@ type ThinkingConfiguration {
 
 type ThinkingSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
   configuration: ThinkingConfiguration
 }
 
@@ -1379,6 +1539,7 @@ type ToolCallingConfiguration {
 
 type ToolCallingSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
   configuration: ToolCallingConfiguration
 }
 
@@ -1438,6 +1599,7 @@ type VideoConfiguration {
 
 type VideoSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
   configuration: VideoConfiguration
 }
 
@@ -1448,5 +1610,6 @@ type VisionConfiguration {
 
 type VisionSupport {
   status: CapabilityStatus!
+  pricing: CapabilityPricing
   configuration: VisionConfiguration
 }

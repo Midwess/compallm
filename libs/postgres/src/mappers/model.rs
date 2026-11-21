@@ -16,12 +16,16 @@ impl TryFrom<ModelSchema> for Model {
                 "model and organization IDs in database must be positive"
             )));
         }
-        let pricing: compallm_core::provider::Pricing =
-            serde_json::from_value(model.pricing).context("invalid model pricing in database")?;
-        pricing
-            .validate()
-            .context("invalid model prices in database")?;
-        Ok(Self {
+        let billing: Option<compallm_core::provider::ModelBilling> = model
+            .billing
+            .map(serde_json::from_value)
+            .transpose()
+            .context("invalid stored model billing")?;
+        if let Some(value) = &billing {
+            value.validate().context("invalid stored billing")?;
+        }
+
+        let result = Self {
             id,
             organization_id,
             name: model.name,
@@ -47,9 +51,11 @@ impl TryFrom<ModelSchema> for Model {
                 .context("invalid stored search configuration")?,
             limits: serde_json::from_value(model.limits)
                 .context("invalid model limits in database")?,
-            thinking: serde_json::from_value(model.thinking)
-                .context("invalid stored thinking configuration")?,
-            pricing,
-        })
+            billing,
+        };
+        result
+            .validate_capabilities()
+            .context("invalid stored capability pricing")?;
+        Ok(result)
     }
 }

@@ -27,8 +27,7 @@ fn model() -> Model {
         structured_output:Default::default(),
         search:Default::default(),
         limits: ModelLimits::default(),
-        thinking: Default::default(),
-        pricing: serde_json::from_value(serde_json::json!({"usage":{"fixed":{"request":{"rate":{"amount":"0","currency":"USD","quantity":1}}}}})).unwrap(),
+        billing:Some(serde_json::from_value(serde_json::json!({"request":{"rate":{"amount":"0","currency":"USD","quantity":1}}})).unwrap()),
     }
 }
 

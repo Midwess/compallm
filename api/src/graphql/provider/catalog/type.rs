@@ -87,13 +87,18 @@ impl ModelTemplate {
                 else {
                     return false;
                 };
-                let prices = super::output::TokenDefaults::from(value.pricing.as_ref());
+                let prices = super::output::TokenDefaults::from(&value.text);
                 let (Some(input), Some(output), Some(cached)) =
                     (prices.input, prices.output, prices.cached)
                 else {
                     return false;
                 };
-                let efforts = value.thinking.configuration().map(|v| &v.effort_mapping);
+                let efforts = value
+                    .text
+                    .output
+                    .configuration()
+                    .and_then(|v| v.thinking.configuration())
+                    .map(|v| &v.effort_mapping);
                 let effort = |level| efforts.and_then(|v| v.get(&level)).cloned();
                 let input = super::super::input::ProviderModelConfiguration {
                     name: value.name.clone(),
@@ -102,12 +107,16 @@ impl ModelTemplate {
                     max_context_tokens: context,
                     context_limit_enabled: true,
                     max_input_tokens: value
-                        .limits
-                        .max_input_tokens
+                        .text
+                        .input
+                        .configuration()
+                        .and_then(|v| v.max_tokens)
                         .and_then(|v| super::super::scalar::ContextTokens::try_from(v).ok()),
                     max_output_tokens: value
-                        .limits
-                        .max_output_tokens
+                        .text
+                        .output
+                        .configuration()
+                        .and_then(|v| v.max_tokens)
                         .and_then(|v| super::super::scalar::ContextTokens::try_from(v).ok()),
                     headers: vec![],
                     body_defaults: vec![],
@@ -258,7 +267,7 @@ impl ModelTemplate {
             .map(Into::into)
             .collect()
     }
-    fn text(&self) -> super::capability::FeatureSupport {
+    fn text(&self) -> super::capability::TextCapabilities {
         (&self.0.text).into()
     }
     fn vision(&self) -> super::capability::VisionSupport {
@@ -277,7 +286,12 @@ impl ModelTemplate {
         (&self.0.image_generation).into()
     }
     fn thinking(&self) -> super::capability::ThinkingSupport {
-        (&self.0.thinking).into()
+        self.0
+            .text
+            .output
+            .configuration()
+            .map(|v| (&v.thinking).into())
+            .unwrap_or_else(|| (&domain::CapabilitySupport::Unknown).into())
     }
     fn tools(&self) -> super::capability::ToolCapabilities {
         (&self.0.tools).into()
@@ -300,8 +314,10 @@ impl ModelTemplate {
     fn max_input_tokens(&self) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
         let detail = &self.0;
         detail
-            .limits
-            .max_input_tokens
+            .text
+            .input
+            .configuration()
+            .and_then(|v| v.max_tokens)
             .map(super::super::scalar::ContextTokens::try_from)
             .transpose()
             .map_err(|_| Error::internal())
@@ -309,8 +325,10 @@ impl ModelTemplate {
     fn max_output_tokens(&self) -> Result<Option<super::super::scalar::ContextTokens>, Error> {
         let detail = &self.0;
         detail
-            .limits
-            .max_output_tokens
+            .text
+            .output
+            .configuration()
+            .and_then(|v| v.max_tokens)
             .map(super::super::scalar::ContextTokens::try_from)
             .transpose()
             .map_err(|_| Error::internal())
@@ -318,8 +336,11 @@ impl ModelTemplate {
     fn effort_mapping(&self) -> Result<Vec<TemplateEffort>, Error> {
         let detail = &self.0;
         Ok(detail
-            .thinking
+            .text
+            .output
             .configuration()
+            .map(|v| &v.thinking)
+            .and_then(|v| v.configuration())
             .into_iter()
             .flat_map(|v| v.effort_mapping.iter())
             .map(|(level, value)| TemplateEffort {
@@ -329,39 +350,42 @@ impl ModelTemplate {
             .collect())
     }
     fn input_price(&self) -> Option<String> {
-        super::output::TokenDefaults::from(self.0.pricing.as_ref()).input
+        super::output::TokenDefaults::from(&self.0.text).input
     }
     fn output_price(&self) -> Option<String> {
-        super::output::TokenDefaults::from(self.0.pricing.as_ref()).output
+        super::output::TokenDefaults::from(&self.0.text).output
     }
     fn cached_price(&self) -> Option<String> {
-        super::output::TokenDefaults::from(self.0.pricing.as_ref()).cached
+        super::output::TokenDefaults::from(&self.0.text).cached
+    }
+    fn billing(&self) -> Option<super::pricing::ModelBilling> {
+        self.0.billing.as_ref().map(Into::into)
     }
     fn billing_model(&self) -> TemplateBillingModel {
-        match &self.0.pricing {
-            Some(domain::Pricing::Subscription(value)) if value.overage.is_some() => {
-                TemplateBillingModel::SubscriptionWithOverage
+        match &self.0.billing {
+            Some(domain::ModelBilling::Subscription(_)) => TemplateBillingModel::Subscription,
+            Some(domain::ModelBilling::Free(_)) => TemplateBillingModel::Free,
+            _ => {
+                if self.0.text.input.pricing().is_some() || self.0.text.output.pricing().is_some() {
+                    TemplateBillingModel::Metered
+                } else {
+                    TemplateBillingModel::Unknown
+                }
             }
-            Some(domain::Pricing::Usage(_)) => TemplateBillingModel::Metered,
-            Some(domain::Pricing::Subscription(_)) => TemplateBillingModel::Subscription,
-            Some(domain::Pricing::Free(_)) => TemplateBillingModel::Free,
-            None => TemplateBillingModel::Unknown,
         }
     }
     fn pricing_mode(&self) -> TemplatePricingMode {
-        match self.0.pricing {
-            Some(domain::Pricing::Usage(domain::UsagePricing::Fixed(_))) => {
+        match self.0.text.input.pricing() {
+            Some(domain::CapabilityPricing::Usage(domain::CapabilityUsagePricing::Fixed(_))) => {
                 TemplatePricingMode::Fixed
             }
-            Some(domain::Pricing::Usage(domain::UsagePricing::TieredToken(_))) => {
-                TemplatePricingMode::Tiered
-            }
-            Some(domain::Pricing::Usage(domain::UsagePricing::Scheduled(_))) => {
-                TemplatePricingMode::Scheduled
-            }
-            Some(domain::Pricing::Subscription(_) | domain::Pricing::Free(_)) => {
-                TemplatePricingMode::NotApplicable
-            }
+            Some(domain::CapabilityPricing::Usage(
+                domain::CapabilityUsagePricing::TieredToken(_),
+            )) => TemplatePricingMode::Tiered,
+            Some(domain::CapabilityPricing::Usage(domain::CapabilityUsagePricing::Scheduled(
+                _,
+            ))) => TemplatePricingMode::Scheduled,
+            Some(_) => TemplatePricingMode::NotApplicable,
             None => TemplatePricingMode::Unknown,
         }
     }
@@ -369,9 +393,9 @@ impl ModelTemplate {
         if self.0.route_selection.is_some() {
             return TemplateCacheBilling::PerRoute;
         }
-        match &self.0.pricing {
-            Some(domain::Pricing::Usage(domain::UsagePricing::Fixed(
-                domain::UsageRates::Token(v),
+        match self.0.text.input.pricing() {
+            Some(domain::CapabilityPricing::Usage(domain::CapabilityUsagePricing::Fixed(
+                domain::CapabilityRates::Token(v),
             ))) => match &v.cache {
                 Some(domain::CachePricing::SeparateRate(_)) => TemplateCacheBilling::SeparateRate,
                 Some(domain::CachePricing::StandardInputRate) => {

@@ -4,7 +4,7 @@ use compallm_utils::input;
 use validify::{Validate, ValidationError, ValidationErrors};
 
 use super::{
-    ApiKeyAuthentication, Authentication, CachePricing, Connection, Headers, Pricing, Provider,
+    ApiKeyAuthentication, Authentication, CachePricing, Connection, Headers, Provider,
     ProviderModel,
 };
 
@@ -155,30 +155,61 @@ impl Validate for ProviderModel {
         }
         self.connection.validate()?;
         headers(&self.headers)?;
-        self.pricing.validate()?;
-        self.capability_fields().validate()?;
+        if let Some(billing) = &self.billing {
+            billing.validate()?;
+        }
+        self.capability_fields().validate(self.billing.as_ref())?;
+        if self.billing.is_none() {
+            let complete = match self.service_kind {
+                super::ServiceKind::Llm => {
+                    self.text.input.pricing().is_some() && self.text.output.pricing().is_some()
+                }
+                super::ServiceKind::Embedding | super::ServiceKind::Rerank => {
+                    self.text.input.pricing().is_some()
+                }
+                super::ServiceKind::Image => self.image_generation.pricing().is_some(),
+                super::ServiceKind::Video => self.video.pricing().is_some(),
+                super::ServiceKind::Tts => self.audio.output.pricing().is_some(),
+                super::ServiceKind::Stt => self.audio.input.pricing().is_some(),
+                super::ServiceKind::Audio => {
+                    self.audio.input.pricing().is_some() || self.audio.output.pricing().is_some()
+                }
+            };
+            if !complete {
+                return Err(invalid("unresolved_pricing"));
+            }
+        }
+
         let limits = &self.limits;
         if [
             limits.context_tokens,
-            limits.max_input_tokens,
-            limits.max_output_tokens,
+            self.text.input.configuration().and_then(|v| v.max_tokens),
+            self.text.output.configuration().and_then(|v| v.max_tokens),
         ]
         .contains(&Some(0))
         {
             return Err(invalid("invalid_limits"));
         }
         if let Some(context) = limits.context_tokens
-            && [limits.max_input_tokens, limits.max_output_tokens]
-                .into_iter()
-                .flatten()
-                .any(|cap| cap > context)
+            && [
+                self.text.input.configuration().and_then(|v| v.max_tokens),
+                self.text.output.configuration().and_then(|v| v.max_tokens),
+            ]
+            .into_iter()
+            .flatten()
+            .any(|cap| cap > context)
         {
             return Err(invalid("limit_exceeds_context"));
         }
         if let Some(selection) = &self.route_selection {
             selection.validate()?;
         }
-        if let Some(thinking) = self.thinking.configuration() {
+        if let Some(thinking) = self
+            .text
+            .output
+            .configuration()
+            .and_then(|v| v.thinking.configuration())
+        {
             if thinking
                 .default_effort
                 .is_some_and(|level| !thinking.effort_mapping.contains_key(&level))
@@ -239,178 +270,6 @@ fn validate_currency(currency: Option<&str>) -> Result<(), ValidationErrors> {
     Ok(())
 }
 
-impl Validate for super::TokenPricing {
-    fn validate(&self) -> Result<(), ValidationErrors> {
-        self.input.validate()?;
-        self.output.validate()?;
-        match &self.cache {
-            Some(CachePricing::SeparateRate(rate)) => rate.rate.validate()?,
-            Some(
-                CachePricing::StandardInputRate
-                | CachePricing::Included
-                | CachePricing::Unsupported,
-            ) => {}
-            None => return Err(invalid("unresolved_cache_pricing")),
-        }
-        Ok(())
-    }
-}
-
-impl Validate for super::UsageRates {
-    fn validate(&self) -> Result<(), ValidationErrors> {
-        match self {
-            Self::Token(value) => value.validate(),
-            Self::Audio(super::AudioPricing::Duration(value)) => value.rate.validate(),
-            Self::Audio(super::AudioPricing::Character(value)) => value.rate.validate(),
-            Self::Audio(super::AudioPricing::Utf8Bytes(value)) => value.rate.validate(),
-            Self::Image(value) => {
-                if value.rates.is_empty() {
-                    return Err(invalid("empty_image_rates"));
-                }
-                for rate in &value.rates {
-                    rate.rate.validate()?;
-                }
-                Ok(())
-            }
-            Self::Video(value) => {
-                if value.rates.is_empty() {
-                    return Err(invalid("empty_video_rates"));
-                }
-                for rate in &value.rates {
-                    rate.rate.validate()?;
-                }
-                Ok(())
-            }
-            Self::Request(value) => value.rate.validate(),
-            Self::Credit(value) => value.validate(),
-        }
-    }
-}
-
-impl Validate for super::CreditPricing {
-    fn validate(&self) -> Result<(), ValidationErrors> {
-        if self.rates.is_empty() {
-            return Err(invalid("empty_credit_rates"));
-        }
-        for rate in &self.rates {
-            let credits = rate
-                .credits
-                .ok_or_else(|| invalid("unresolved_credit_rate"))?;
-            if rate.quantity.is_none_or(|value| value == 0) {
-                return Err(invalid("unresolved_credit_quantity"));
-            }
-            validate_amounts(&[credits])?;
-        }
-        let conversion = self
-            .conversion
-            .as_ref()
-            .ok_or_else(|| invalid("unresolved_credit_conversion"))?;
-        validate_currency(conversion.currency.as_deref())?;
-        let amount = conversion
-            .amount_per_credit
-            .ok_or_else(|| invalid("unresolved_credit_conversion"))?;
-        if amount <= rust_decimal::Decimal::ZERO {
-            return Err(invalid("invalid_credit_conversion"));
-        }
-        validate_amounts(&[amount])
-    }
-}
-
-impl Validate for super::TieredTokenPricing {
-    fn validate(&self) -> Result<(), ValidationErrors> {
-        if self.tiers.is_empty() {
-            return Err(invalid("empty_price_tiers"));
-        }
-        let mut from = 0;
-        for (index, tier) in self.tiers.iter().enumerate() {
-            if tier.from_tokens != from
-                || tier.to_tokens.is_some_and(|end| end <= tier.from_tokens)
-                || (tier.to_tokens.is_none() != (index + 1 == self.tiers.len()))
-            {
-                return Err(invalid("invalid_price_tiers"));
-            }
-            tier.rates.validate()?;
-            if let Some(end) = tier.to_tokens {
-                from = end;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl Validate for super::ScheduledRates {
-    fn validate(&self) -> Result<(), ValidationErrors> {
-        match self {
-            Self::Fixed(value) => value.validate(),
-            Self::TieredToken(value) => value.validate(),
-        }
-    }
-}
-
-impl Validate for super::ScheduledPricing {
-    fn validate(&self) -> Result<(), ValidationErrors> {
-        if self.timezone != "UTC" || self.slots.is_empty() {
-            return Err(invalid("invalid_price_schedule"));
-        }
-        let mut hour = 0;
-        for slot in &self.slots {
-            if slot.from_hour != hour || slot.to_hour <= slot.from_hour || slot.to_hour > 24 {
-                return Err(invalid("invalid_price_schedule"));
-            }
-            hour = slot.to_hour;
-            slot.pricing.validate()?;
-        }
-        if hour != 24 {
-            return Err(invalid("incomplete_price_schedule"));
-        }
-        Ok(())
-    }
-}
-
-impl Validate for super::UsagePricing {
-    fn validate(&self) -> Result<(), ValidationErrors> {
-        match self {
-            Self::Fixed(value) => value.validate(),
-            Self::TieredToken(value) => value.validate(),
-            Self::Scheduled(value) => value.validate(),
-        }
-    }
-}
-
-impl Validate for Pricing {
-    fn validate(&self) -> Result<(), ValidationErrors> {
-        match self {
-            Self::Usage(value) => value.validate(),
-            Self::Subscription(value) => {
-                if input::nonblank(&value.product).is_err()
-                    || value
-                        .plan
-                        .as_deref()
-                        .is_none_or(|plan| input::nonblank(plan).is_err())
-                {
-                    return Err(invalid("invalid_subscription"));
-                }
-                let fee = value
-                    .fee
-                    .as_ref()
-                    .ok_or_else(|| invalid("unresolved_subscription_fee"))?;
-                if fee.period.is_none() {
-                    return Err(invalid("unresolved_subscription_period"));
-                }
-                validate_currency(fee.currency.as_deref())?;
-                validate_amounts(&[fee
-                    .amount
-                    .ok_or_else(|| invalid("unresolved_subscription_fee"))?])?;
-                if let Some(overage) = &value.overage {
-                    overage.validate()?;
-                }
-                Ok(())
-            }
-            Self::Free(_) => Ok(()),
-        }
-    }
-}
-
 impl Validate for super::RouteSelection {
     fn validate(&self) -> Result<(), ValidationErrors> {
         let mut ids = HashSet::new();
@@ -432,10 +291,169 @@ impl Validate for super::RouteSelection {
             .iter()
             .find(|option| &option.id == selected)
             .ok_or_else(|| invalid("invalid_route_selection"))?;
-        option
-            .pricing
-            .as_ref()
-            .ok_or_else(|| invalid("unresolved_route_pricing"))?
-            .validate()
+        for pricing in [option.text.input.pricing(), option.text.output.pricing()]
+            .into_iter()
+            .flatten()
+        {
+            if matches!(pricing, super::CapabilityPricing::ModelBilling) && option.billing.is_none()
+            {
+                return Err(invalid("unresolved_model_billing"));
+            }
+            pricing.validate()?;
+        }
+        if let Some(billing) = &option.billing {
+            billing.validate()?;
+        }
+        Ok(())
+    }
+}
+
+impl Validate for super::CapabilityPricing {
+    fn validate(&self) -> Result<(), ValidationErrors> {
+        match self {
+            Self::Usage(v) => v.validate(),
+            Self::Free | Self::Included | Self::ModelBilling => Ok(()),
+        }
+    }
+}
+impl Validate for super::CapabilityTokenRate {
+    fn validate(&self) -> Result<(), ValidationErrors> {
+        self.rate.validate()?;
+        if let Some(CachePricing::SeparateRate(v)) = &self.cache {
+            v.rate.validate()?;
+        }
+        Ok(())
+    }
+}
+impl Validate for super::CapabilityRates {
+    fn validate(&self) -> Result<(), ValidationErrors> {
+        match self {
+            Self::Token(v) => v.validate(),
+            Self::Audio(v) => match v {
+                super::AudioPricing::Duration(v) => v.rate.validate(),
+                super::AudioPricing::Character(v) => v.rate.validate(),
+                super::AudioPricing::Utf8Bytes(v) => v.rate.validate(),
+            },
+            Self::Image(v) => {
+                if v.rates.is_empty() {
+                    return Err(invalid("empty_image_rates"));
+                }
+                for r in &v.rates {
+                    r.rate.validate()?;
+                }
+                Ok(())
+            }
+            Self::Video(v) => {
+                if v.rates.is_empty() {
+                    return Err(invalid("empty_video_rates"));
+                }
+                for r in &v.rates {
+                    r.rate.validate()?;
+                }
+                Ok(())
+            }
+            Self::Request(v) => v.rate.validate(),
+            Self::Credit(v) => {
+                if v.rates.is_empty() {
+                    return Err(invalid("empty_credit_rates"));
+                }
+                for rate in &v.rates {
+                    validate_amounts(&[rate
+                        .credits
+                        .ok_or_else(|| invalid("unresolved_credit_rate"))?])?;
+                    if rate.quantity.is_none_or(|v| v == 0) {
+                        return Err(invalid("unresolved_credit_quantity"));
+                    }
+                }
+                Ok(())
+            }
+        }
+    }
+}
+impl Validate for super::CapabilityTokenTiers {
+    fn validate(&self) -> Result<(), ValidationErrors> {
+        if self.tiers.is_empty() {
+            return Err(invalid("empty_price_tiers"));
+        }
+        let mut from = 0;
+        for (index, tier) in self.tiers.iter().enumerate() {
+            if tier.from_tokens != from
+                || tier.to_tokens.is_some_and(|v| v <= from)
+                || (tier.to_tokens.is_none() != (index + 1 == self.tiers.len()))
+            {
+                return Err(invalid("invalid_price_tiers"));
+            }
+            tier.rate.validate()?;
+            if let Some(end) = tier.to_tokens {
+                from = end;
+            }
+        }
+        Ok(())
+    }
+}
+impl Validate for super::CapabilityUsagePricing {
+    fn validate(&self) -> Result<(), ValidationErrors> {
+        match self {
+            Self::Fixed(v) => v.validate(),
+            Self::TieredToken(v) => v.validate(),
+            Self::Scheduled(v) => {
+                if v.timezone != "UTC" || v.slots.is_empty() {
+                    return Err(invalid("invalid_price_schedule"));
+                }
+                let mut hour = 0;
+                for slot in &v.slots {
+                    if slot.from_hour != hour || slot.to_hour <= hour || slot.to_hour > 24 {
+                        return Err(invalid("invalid_price_schedule"));
+                    }
+                    match &slot.pricing {
+                        super::CapabilityScheduledRates::Fixed(v) => v.validate()?,
+                        super::CapabilityScheduledRates::TieredToken(v) => v.validate()?,
+                    };
+                    hour = slot.to_hour;
+                }
+                if hour != 24 {
+                    return Err(invalid("incomplete_price_schedule"));
+                }
+                Ok(())
+            }
+        }
+    }
+}
+impl Validate for super::ModelBilling {
+    fn validate(&self) -> Result<(), ValidationErrors> {
+        match self {
+            Self::Subscription(v) => {
+                if input::nonblank(&v.product).is_err()
+                    || v.plan
+                        .as_deref()
+                        .is_none_or(|v| input::nonblank(v).is_err())
+                {
+                    return Err(invalid("invalid_subscription"));
+                }
+                let fee = v
+                    .fee
+                    .as_ref()
+                    .ok_or_else(|| invalid("unresolved_subscription_fee"))?;
+                if fee.period.is_none() {
+                    return Err(invalid("unresolved_subscription_period"));
+                }
+                validate_currency(fee.currency.as_deref())?;
+                validate_amounts(&[fee
+                    .amount
+                    .ok_or_else(|| invalid("unresolved_subscription_fee"))?])
+            }
+            Self::Free(_) => Ok(()),
+            Self::Request(v) => v.rate.validate(),
+            Self::Credit(v) => {
+                validate_currency(v.currency.as_deref())?;
+                let amount = v
+                    .amount_per_credit
+                    .ok_or_else(|| invalid("unresolved_credit_conversion"))?;
+                if amount <= rust_decimal::Decimal::ZERO {
+                    return Err(invalid("invalid_credit_conversion"));
+                }
+                validate_amounts(&[amount])
+            }
+        }
     }
 }

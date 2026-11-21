@@ -2,8 +2,12 @@ use compallm_core::{model::ModelTemplate, provider::ProviderTemplate};
 use sea_orm::DbErr;
 use serde::de::DeserializeOwned;
 fn decode<T: DeserializeOwned>(value: serde_json::Value) -> Result<T, DbErr> {
-    serde_json::from_value(value)
-        .map_err(|_| DbErr::Custom("invalid stored shared configuration".into()))
+    serde_json::from_value(value).map_err(|error| {
+        DbErr::Custom(format!(
+            "invalid stored {}: {error}",
+            std::any::type_name::<T>()
+        ))
+    })
 }
 impl TryFrom<crate::ProviderTemplateSchema> for ProviderTemplate {
     type Error = DbErr;
@@ -48,8 +52,7 @@ impl TryFrom<crate::ProviderModelTemplateSchema> for ModelTemplate {
             structured_output: decode(v.structured_output)?,
             search: decode(v.search)?,
             limits: decode(v.limits)?,
-            thinking: decode(v.thinking)?,
-            pricing: v.pricing.map(decode).transpose()?,
+            billing: v.billing.map(decode).transpose()?,
             route_selection: v.route_selection.map(decode).transpose()?,
         })
     }

@@ -17,6 +17,16 @@ async fn setup() -> anyhow::Result<(DatabaseTransaction, CatalogMigrations)> {
     tx.execute_unprepared("LOCK TABLE provider_templates IN ACCESS EXCLUSIVE MODE")
         .await?;
     let mut migrations = Migrator::migrations();
+    let pricing = migrations.remove(
+        migrations
+            .iter()
+            .position(|m| m.name().ends_with("capability_pricing"))
+            .unwrap(),
+    );
+    let has_pricing=tx.query_one(&Query::select().expr(Expr::cust("EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='provider_model_templates' AND column_name='billing')")).to_owned()).await?.unwrap().try_get_by_index::<bool>(0)?;
+    if has_pricing {
+        pricing.down(&SchemaManager::new(&tx)).await?;
+    }
     let capabilities = migrations.remove(
         migrations
             .iter()
@@ -32,6 +42,7 @@ async fn setup() -> anyhow::Result<(DatabaseTransaction, CatalogMigrations)> {
     let migration = CatalogMigrations {
         shared,
         capabilities,
+        pricing,
     };
     let has_capabilities=tx.query_one(&Query::select().expr(Expr::cust("EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='provider_model_templates' AND column_name='vision')")).to_owned()).await?.unwrap().try_get_by_index::<bool>(0)?;
     if has_capabilities {
@@ -84,7 +95,7 @@ async fn snapshot<C: ConnectionTrait>(db: &C) -> anyhow::Result<Value> {
 }
 
 #[tokio::test]
-#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49, 50, or 51"]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 through 52"]
 async fn shared_catalog_migration_preserves_every_row_and_decodes_shared_entities()
 -> anyhow::Result<()> {
     let (tx, migration) = setup().await?;
@@ -92,6 +103,22 @@ async fn shared_catalog_migration_preserves_every_row_and_decodes_shared_entitie
     let before = snapshot(&tx).await?;
     for _ in 0..2 {
         migration.up(&SchemaManager::new(&tx)).await?;
+        let journal = table_rows(&tx, "capability_pricing_rollback").await?;
+        for archived in &journal {
+            let original = &archived["original"];
+            let mut before = Vec::new();
+            amounts(&original["pricing"], &mut before);
+            amounts(&original["route_selection"], &mut before);
+            let mut after = Vec::new();
+            amounts(&archived["migrated"], &mut after);
+            before.sort();
+            after.sort();
+            assert_eq!(
+                before, after,
+                "monetary rates changed for {} {}",
+                archived["table_name"], archived["row_key"]
+            );
+        }
         let providers = Providers::find().all(&tx).await?;
         let models = Models::find().all(&tx).await?;
         assert_eq!(
@@ -122,10 +149,18 @@ async fn shared_catalog_migration_preserves_every_row_and_decodes_shared_entitie
         {
             let value = compallm_core::model::Model::try_from(row)?;
             assert_eq!(value.vision.configuration().unwrap().max_images, Some(8));
-            assert!(value.thinking.is_supported());
+            assert!(
+                value
+                    .text
+                    .output
+                    .configuration()
+                    .is_some_and(|v| v.thinking.is_supported())
+            );
         }
         for row in models {
-            let template = ModelTemplate::try_from(row)?;
+            let id = format!("{} {}", row.provider_template_id, row.id);
+            let template =
+                ModelTemplate::try_from(row).map_err(|e| anyhow::anyhow!("{id}: {e}"))?;
             let encoded = serde_json::to_value(&template)?;
             assert_eq!(template, serde_json::from_value::<ModelTemplate>(encoded)?);
         }
@@ -176,7 +211,7 @@ async fn update<C: ConnectionTrait>(
 }
 
 #[tokio::test]
-#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49, 50, or 51"]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 through 52"]
 async fn shared_catalog_research_links_and_rollback_preserve_later_edits() -> anyhow::Result<()> {
     let (tx, migration) = setup().await?;
     migration.up(&SchemaManager::new(&tx)).await?;
@@ -234,7 +269,7 @@ async fn shared_catalog_research_links_and_rollback_preserve_later_edits() -> an
 }
 
 #[tokio::test]
-#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49, 50, or 51"]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 through 52"]
 async fn shared_catalog_rejects_invalid_capabilities_and_reflects_missing_configuration()
 -> anyhow::Result<()> {
     let (tx, migration) = setup().await?;
@@ -265,7 +300,22 @@ async fn shared_catalog_rejects_invalid_capabilities_and_reflects_missing_config
     );
     nested.rollback().await?;
     let nested = tx.begin().await?;
-    update(&nested,"provider_model_templates",&model.id,"pricing",json!({"usage":{"fixed":{"token":{"input":{"amount":null,"currency":"USD","quantity":1000000},"output":{"amount":"1","currency":"USD","quantity":1000000},"cache":{"type":"included"}}}}})).await?;
+    let mut invalid = model.text.clone();
+    invalid["input"]["pricing"] = json!({"type":"usage","configuration":{"fixed":{"token":{"rate":{"amount":"-1","currency":"USD","quantity":1000000},"cache":{"type":"included"}}}}});
+    assert!(
+        update(
+            &nested,
+            "provider_model_templates",
+            &model.id,
+            "text",
+            invalid
+        )
+        .await
+        .is_err()
+    );
+    nested.rollback().await?;
+    let nested = tx.begin().await?;
+    update(&nested,"provider_model_templates",&model.id,"text",json!({"input":{"status":"supported","configuration":{"maxTokens":null},"pricing":null},"output":{"status":"supported","configuration":{"maxTokens":null,"thinking":{"status":"unknown"}},"pricing":null}})).await?;
     let states = table_rows(&nested, "provider_catalog_readiness").await?;
     assert!(
         states
@@ -351,7 +401,14 @@ async fn seed_configured(db: &DatabaseTransaction) -> anyhow::Result<()> {
                     organization_id.into(),
                     organization_id.into(),
                     format!("model-{index}").into(),
-                    "llm".into(),
+                    (match index {
+                        2 => "stt",
+                        3 => "tts",
+                        4 => "image",
+                        5 => "video",
+                        _ => "llm",
+                    })
+                    .into(),
                     "openai".into(),
                     connection.clone().into(),
                     pricing.into(),
@@ -363,21 +420,59 @@ async fn seed_configured(db: &DatabaseTransaction) -> anyhow::Result<()> {
     }
     db.execute(&Query::insert().into_table(Alias::new("models"))
         .columns(["id","organization_id","name","service_kind","capabilities","limits","thinking","pricing"].map(Alias::new))
-        .values_panic([organization_id.into(),organization_id.into(),"migration-model".into(),"llm".into(),json!(["text","vision","reasoning"]).into(),json!({"contextTokens":128000,"maxImagesPerRequest":8,"maxAudioBytes":1000000}).into(),json!({"effortMapping":{"low":"minimal"},"budget":null}).into(),json!({"usage":{"fixed":{"token":{"input":{"amount":"1","currency":"USD","quantity":1000000},"output":{"amount":"2","currency":"USD","quantity":1000000},"cache":{"type":"included"}}}}}).into()]).to_owned()).await?;
+        .values_panic([organization_id.into(),organization_id.into(),"migration-model".into(),"llm".into(),json!(["text","vision","reasoning"]).into(),json!({"contextTokens":128000,"maxImagesPerRequest":8,"maxAudioBytes":1000000}).into(),json!({"effortMapping":{"low":"minimal"},"budget":null}).into(),json!({"token":{"inputUsdPerMillionTokens":"1","outputUsdPerMillionTokens":"2","cachedUsdPerMillionTokens":"0"}}).into()]).to_owned()).await?;
     Ok(())
 }
 
 struct CatalogMigrations {
     shared: Box<dyn MigrationTrait>,
     capabilities: Box<dyn MigrationTrait>,
+    pricing: Box<dyn MigrationTrait>,
 }
 impl CatalogMigrations {
     async fn up(&self, manager: &SchemaManager<'_>) -> Result<(), sea_orm::DbErr> {
         self.shared.up(manager).await?;
-        self.capabilities.up(manager).await
+        self.capabilities.up(manager).await?;
+        self.pricing.up(manager).await
     }
     async fn down(&self, manager: &SchemaManager<'_>) -> Result<(), sea_orm::DbErr> {
+        self.pricing.down(manager).await?;
         self.capabilities.down(manager).await?;
         self.shared.down(manager).await
+    }
+}
+
+fn amounts(value: &Value, result: &mut Vec<String>) {
+    match value {
+        Value::Object(fields) => {
+            for (key, value) in fields {
+                if [
+                    "amount",
+                    "credits",
+                    "amountPerCredit",
+                    "inputUsdPerMillionTokens",
+                    "outputUsdPerMillionTokens",
+                    "cachedUsdPerMillionTokens",
+                    "usdPerRequest",
+                    "usdPerSecond",
+                    "usdPerMillionCharacters",
+                    "usdPerImage",
+                ]
+                .contains(&key.as_str())
+                {
+                    if let Some(amount) = value.as_str() {
+                        result.push(amount.to_owned());
+                    }
+                } else {
+                    amounts(value, result);
+                }
+            }
+        }
+        Value::Array(values) => {
+            for value in values {
+                amounts(value, result);
+            }
+        }
+        _ => {}
     }
 }

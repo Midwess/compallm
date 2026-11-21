@@ -159,36 +159,42 @@ pub(super) struct TokenDefaults {
     pub output: Option<String>,
     pub cached: Option<String>,
 }
-impl From<Option<&domain::Pricing>> for TokenDefaults {
-    fn from(value: Option<&domain::Pricing>) -> Self {
-        fn amount(rate: &domain::Rate) -> Option<String> {
-            (rate.currency.as_deref() == Some("USD") && rate.quantity == Some(1_000_000))
-                .then(|| rate.amount.map(|v| v.to_string()))
-                .flatten()
-        }
-        match value {
-            Some(domain::Pricing::Free(_)) => Self {
-                input: Some("0".into()),
-                output: Some("0".into()),
-                cached: None,
-            },
-            Some(domain::Pricing::Usage(domain::UsagePricing::Fixed(
-                domain::UsageRates::Token(value),
-            ))) => {
-                let input = amount(&value.input);
-                let cached = match &value.cache {
-                    Some(domain::CachePricing::SeparateRate(value)) => amount(&value.rate),
-                    Some(domain::CachePricing::StandardInputRate) => input.clone(),
-                    Some(domain::CachePricing::Included) => Some("0".into()),
-                    _ => None,
-                };
-                Self {
-                    input,
-                    output: amount(&value.output),
-                    cached,
-                }
+impl From<&domain::TextCapabilities> for TokenDefaults {
+    fn from(value: &domain::TextCapabilities) -> Self {
+        fn rate(value: Option<&domain::CapabilityPricing>) -> Option<&domain::CapabilityTokenRate> {
+            match value {
+                Some(domain::CapabilityPricing::Usage(domain::CapabilityUsagePricing::Fixed(
+                    domain::CapabilityRates::Token(v),
+                ))) => Some(v),
+                _ => None,
             }
-            _ => Self::default(),
+        }
+        fn amount(rate: &domain::Rate) -> Option<String> {
+            if rate.currency.as_deref() == Some("USD") && rate.quantity == Some(1000000) {
+                rate.amount.map(|v| v.to_string())
+            } else {
+                None
+            }
+        }
+        fn scalar(value: Option<&domain::CapabilityPricing>) -> Option<String> {
+            match value {
+                Some(domain::CapabilityPricing::Free | domain::CapabilityPricing::Included) => {
+                    Some("0".into())
+                }
+                _ => rate(value).and_then(|v| amount(&v.rate)),
+            }
+        }
+        let input = scalar(value.input.pricing());
+        let cached = rate(value.input.pricing()).and_then(|v| match &v.cache {
+            Some(domain::CachePricing::SeparateRate(v)) => amount(&v.rate),
+            Some(domain::CachePricing::StandardInputRate) => input.clone(),
+            Some(domain::CachePricing::Included) => Some("0".into()),
+            _ => None,
+        });
+        Self {
+            input,
+            output: scalar(value.output.pricing()),
+            cached,
         }
     }
 }

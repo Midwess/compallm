@@ -45,6 +45,7 @@ export interface AudioConfiguration {
 
 export interface AudioSupport {
   configuration: AudioConfiguration | null
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'AudioSupport'
 }
@@ -64,6 +65,20 @@ export interface AvatarUploadPayload {
   __typename: 'AvatarUploadPayload'
 }
 
+export interface BillingAllowance {
+  quota: Scalars['String'] | null
+  resetPeriod: PriceBillingPeriod | null
+  unit: PriceUnit
+  __typename: 'BillingAllowance'
+}
+
+export interface BillingFee {
+  amount: Scalars['String'] | null
+  currency: Scalars['String'] | null
+  period: PriceBillingPeriod | null
+  __typename: 'BillingFee'
+}
+
 export interface BooleanPayload {
   node: Scalars['Boolean']
   __typename: 'BooleanPayload'
@@ -74,7 +89,63 @@ export interface CalendarPreferences {
   __typename: 'CalendarPreferences'
 }
 
+export type CapabilityCacheMode = 'INCLUDED' | 'SEPARATE_RATE' | 'STANDARD_INPUT_RATE' | 'UNSUPPORTED'
+
+export interface CapabilityCachePrice {
+  amount: Scalars['String'] | null
+  currency: Scalars['String'] | null
+  mode: CapabilityCacheMode
+  quantity: Scalars['String'] | null
+  __typename: 'CapabilityCachePrice'
+}
+
+export type CapabilityPriceMode = 'FIXED' | 'SCHEDULED' | 'TIERED_TOKEN'
+
+export interface CapabilityPricing {
+  kind: CapabilityPricingKind
+  usage: CapabilityUsage | null
+  __typename: 'CapabilityPricing'
+}
+
+export type CapabilityPricingKind = 'FREE' | 'INCLUDED' | 'MODEL_BILLING' | 'USAGE'
+
+export interface CapabilityRate {
+  amount: Scalars['String'] | null
+  cache: CapabilityCachePrice | null
+  conditions: TemplateHeader[]
+  credits: Scalars['String'] | null
+  currency: Scalars['String'] | null
+  direction: CreditUsageDirection | null
+  quantity: Scalars['String'] | null
+  unit: PriceUnit
+  __typename: 'CapabilityRate'
+}
+
+export interface CapabilitySlot {
+  fromHour: Scalars['Int']
+  pricing: CapabilityUsage
+  toHour: Scalars['Int']
+  __typename: 'CapabilitySlot'
+}
+
 export type CapabilityStatus = 'SUPPORTED' | 'UNKNOWN' | 'UNSUPPORTED'
+
+export interface CapabilityTier {
+  fromTokens: Scalars['String']
+  rate: CapabilityRate
+  toTokens: Scalars['String'] | null
+  __typename: 'CapabilityTier'
+}
+
+export interface CapabilityUsage {
+  mode: CapabilityPriceMode
+  rates: CapabilityRate[]
+  slots: CapabilitySlot[]
+  tierBasis: PriceTierBasis | null
+  tiers: CapabilityTier[]
+  timezone: Scalars['String'] | null
+  __typename: 'CapabilityUsage'
+}
 
 export interface CatalogRequiredInput {
   allowedValues: Scalars['String'][] | null
@@ -99,6 +170,8 @@ export interface CodeFontPreferences {
 /** How the request delivers credentials; this is never stored in signed claims. */
 export type CredentialDelivery = 'COOKIE' | 'TOKEN'
 
+export type CreditUsageDirection = 'CACHE_READ' | 'INPUT' | 'OUTPUT'
+
 /** Email admission succeeded; cookie delivery never exposes the OTP credential. */
 export interface EmailChallenge {
   lifetime: TokenLifetime
@@ -112,6 +185,7 @@ export interface EmailChallengePayload {
 }
 
 export interface FeatureSupport {
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'FeatureSupport'
 }
@@ -159,6 +233,7 @@ export interface ImageGenerationConfiguration {
 
 export interface ImageGenerationSupport {
   configuration: ImageGenerationConfiguration | null
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'ImageGenerationSupport'
 }
@@ -286,8 +361,24 @@ export interface MessageCompositionPreferences {
   __typename: 'MessageCompositionPreferences'
 }
 
+export interface ModelBilling {
+  amountPerCredit: Scalars['String'] | null
+  currency: Scalars['String'] | null
+  description: Scalars['String'] | null
+  entitlements: BillingAllowance[]
+  fee: BillingFee | null
+  kind: ModelBillingKind
+  plan: Scalars['String'] | null
+  product: Scalars['String'] | null
+  requestRate: CapabilityRate | null
+  __typename: 'ModelBilling'
+}
+
+export type ModelBillingKind = 'CREDIT' | 'FREE' | 'REQUEST' | 'SUBSCRIPTION'
+
 export interface ModelTemplate {
   audio: AudioCapabilities
+  billing: ModelBilling | null
   billingModel: TemplateBillingModel
   cacheBilling: TemplateCacheBilling
   cachedPrice: Scalars['String'] | null
@@ -310,7 +401,7 @@ export interface ModelTemplate {
   search: SearchSupport
   serviceKind: TemplateServiceKind | null
   structuredOutput: StructuredOutputSupport
-  text: FeatureSupport
+  text: TextCapabilities
   thinking: ThinkingSupport
   tools: ToolCapabilities
   upstreamModelId: Scalars['String']
@@ -541,6 +632,7 @@ export interface PdfConfiguration {
 
 export interface PdfSupport {
   configuration: PdfConfiguration | null
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'PdfSupport'
 }
@@ -594,6 +686,13 @@ export type PreferenceSidebarCategory = 'CONVERSATIONS' | 'ORGANIZATION' | 'ROUT
 export type PreferenceSidebarVisibility = 'ALWAYS' | 'HIDDEN' | 'WHEN_BADGED'
 
 export type PreferenceWeekday = 'FRIDAY' | 'MONDAY' | 'SATURDAY' | 'SUNDAY' | 'THURSDAY' | 'TUESDAY' | 'WEDNESDAY'
+
+export type PriceBillingPeriod = 'DAY' | 'HOUR' | 'MINUTE' | 'MONTH' | 'WEEK' | 'YEAR'
+
+export type PriceTierBasis = 'INPUT_TOKENS' | 'TOTAL_TOKENS'
+
+export type PriceUnit =
+  'CHARACTERS' | 'CREDITS' | 'IMAGES' | 'REQUESTS' | 'SECONDS' | 'TOKENS' | 'UTF8_BYTES' | 'VIDEOS'
 
 /** Catalog connection family hint; each configured model selects its own operation. */
 export type ProviderApiProtocol = 'ANTHROPIC' | 'OPENAI_COMPATIBLE' | 'PROVIDER_SPECIFIC'
@@ -713,6 +812,7 @@ export interface SearchConfiguration {
 
 export interface SearchSupport {
   configuration: SearchConfiguration | null
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'SearchSupport'
 }
@@ -800,6 +900,7 @@ export interface StructuredOutputConfiguration {
 
 export interface StructuredOutputSupport {
   configuration: StructuredOutputConfiguration | null
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'StructuredOutputSupport'
 }
@@ -881,6 +982,37 @@ export type TemplatePricingMode =
 
 export type TemplateServiceKind = 'AUDIO' | 'EMBEDDING' | 'IMAGE' | 'RERANK' | 'STT' | 'TEXT' | 'TTS' | 'VIDEO'
 
+export interface TextCapabilities {
+  input: TextInputSupport
+  output: TextGenerationSupport
+  __typename: 'TextCapabilities'
+}
+
+export interface TextGenerationConfiguration {
+  maxTokens: Scalars['Float'] | null
+  thinking: ThinkingSupport
+  __typename: 'TextGenerationConfiguration'
+}
+
+export interface TextGenerationSupport {
+  configuration: TextGenerationConfiguration | null
+  pricing: CapabilityPricing | null
+  status: CapabilityStatus
+  __typename: 'TextGenerationSupport'
+}
+
+export interface TextInputConfiguration {
+  maxTokens: Scalars['Float'] | null
+  __typename: 'TextInputConfiguration'
+}
+
+export interface TextInputSupport {
+  configuration: TextInputConfiguration | null
+  pricing: CapabilityPricing | null
+  status: CapabilityStatus
+  __typename: 'TextInputSupport'
+}
+
 /** Text operation determining the upstream request and response format. */
 export type TextModelProtocol = 'ANTHROPIC_MESSAGES' | 'OPENAI_CHAT_COMPLETIONS' | 'OPENAI_RESPONSES'
 
@@ -906,6 +1038,7 @@ export interface ThinkingConfiguration {
 
 export interface ThinkingSupport {
   configuration: ThinkingConfiguration | null
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'ThinkingSupport'
 }
@@ -926,6 +1059,7 @@ export interface ToolCallingConfiguration {
 
 export interface ToolCallingSupport {
   configuration: ToolCallingConfiguration | null
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'ToolCallingSupport'
 }
@@ -1006,6 +1140,7 @@ export interface VideoConfiguration {
 
 export interface VideoSupport {
   configuration: VideoConfiguration | null
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'VideoSupport'
 }
@@ -1018,6 +1153,7 @@ export interface VisionConfiguration {
 
 export interface VisionSupport {
   configuration: VisionConfiguration | null
+  pricing: CapabilityPricing | null
   status: CapabilityStatus
   __typename: 'VisionSupport'
 }
@@ -1071,6 +1207,7 @@ export interface AudioConfigurationGenqlSelection {
 
 export interface AudioSupportGenqlSelection {
   configuration?: AudioConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -1091,6 +1228,22 @@ export interface AvatarUploadPayloadGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface BillingAllowanceGenqlSelection {
+  quota?: boolean | number
+  resetPeriod?: boolean | number
+  unit?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface BillingFeeGenqlSelection {
+  amount?: boolean | number
+  currency?: boolean | number
+  period?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface BooleanPayloadGenqlSelection {
   node?: boolean | number
   __typename?: boolean | number
@@ -1103,6 +1256,62 @@ export interface CalendarPatchInput {
 
 export interface CalendarPreferencesGenqlSelection {
   firstDay?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface CapabilityCachePriceGenqlSelection {
+  amount?: boolean | number
+  currency?: boolean | number
+  mode?: boolean | number
+  quantity?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface CapabilityPricingGenqlSelection {
+  kind?: boolean | number
+  usage?: CapabilityUsageGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface CapabilityRateGenqlSelection {
+  amount?: boolean | number
+  cache?: CapabilityCachePriceGenqlSelection
+  conditions?: TemplateHeaderGenqlSelection
+  credits?: boolean | number
+  currency?: boolean | number
+  direction?: boolean | number
+  quantity?: boolean | number
+  unit?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface CapabilitySlotGenqlSelection {
+  fromHour?: boolean | number
+  pricing?: CapabilityUsageGenqlSelection
+  toHour?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface CapabilityTierGenqlSelection {
+  fromTokens?: boolean | number
+  rate?: CapabilityRateGenqlSelection
+  toTokens?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface CapabilityUsageGenqlSelection {
+  mode?: boolean | number
+  rates?: CapabilityRateGenqlSelection
+  slots?: CapabilitySlotGenqlSelection
+  tierBasis?: boolean | number
+  tiers?: CapabilityTierGenqlSelection
+  timezone?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1193,6 +1402,7 @@ export interface EmailInput {
 }
 
 export interface FeatureSupportGenqlSelection {
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -1262,6 +1472,7 @@ export interface ImageGenerationConfigurationGenqlSelection {
 
 export interface ImageGenerationSupportGenqlSelection {
   configuration?: ImageGenerationConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -1445,8 +1656,23 @@ export interface MessageCompositionPreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface ModelBillingGenqlSelection {
+  amountPerCredit?: boolean | number
+  currency?: boolean | number
+  description?: boolean | number
+  entitlements?: BillingAllowanceGenqlSelection
+  fee?: BillingFeeGenqlSelection
+  kind?: boolean | number
+  plan?: boolean | number
+  product?: boolean | number
+  requestRate?: CapabilityRateGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface ModelTemplateGenqlSelection {
   audio?: AudioCapabilitiesGenqlSelection
+  billing?: ModelBillingGenqlSelection
   billingModel?: boolean | number
   cacheBilling?: boolean | number
   cachedPrice?: boolean | number
@@ -1469,7 +1695,7 @@ export interface ModelTemplateGenqlSelection {
   search?: SearchSupportGenqlSelection
   serviceKind?: boolean | number
   structuredOutput?: StructuredOutputSupportGenqlSelection
-  text?: FeatureSupportGenqlSelection
+  text?: TextCapabilitiesGenqlSelection
   thinking?: ThinkingSupportGenqlSelection
   tools?: ToolCapabilitiesGenqlSelection
   upstreamModelId?: boolean | number
@@ -1778,6 +2004,7 @@ export interface PdfConfigurationGenqlSelection {
 
 export interface PdfSupportGenqlSelection {
   configuration?: PdfConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2074,6 +2301,7 @@ export interface SearchConfigurationGenqlSelection {
 
 export interface SearchSupportGenqlSelection {
   configuration?: SearchConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2210,6 +2438,7 @@ export interface StructuredOutputConfigurationGenqlSelection {
 
 export interface StructuredOutputSupportGenqlSelection {
   configuration?: StructuredOutputConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2278,6 +2507,42 @@ export interface TemplateOperationGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface TextCapabilitiesGenqlSelection {
+  input?: TextInputSupportGenqlSelection
+  output?: TextGenerationSupportGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TextGenerationConfigurationGenqlSelection {
+  maxTokens?: boolean | number
+  thinking?: ThinkingSupportGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TextGenerationSupportGenqlSelection {
+  configuration?: TextGenerationConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TextInputConfigurationGenqlSelection {
+  maxTokens?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TextInputSupportGenqlSelection {
+  configuration?: TextInputConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
+  status?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface ThemePatchInput {
   mode?: PreferenceAppearanceMode | null
   palettes?: PalettePatchInput | null
@@ -2308,6 +2573,7 @@ export interface ThinkingConfigurationGenqlSelection {
 
 export interface ThinkingSupportGenqlSelection {
   configuration?: ThinkingConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2331,6 +2597,7 @@ export interface ToolCallingConfigurationGenqlSelection {
 
 export interface ToolCallingSupportGenqlSelection {
   configuration?: ToolCallingConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2432,6 +2699,7 @@ export interface VideoConfigurationGenqlSelection {
 
 export interface VideoSupportGenqlSelection {
   configuration?: VideoConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2446,6 +2714,7 @@ export interface VisionConfigurationGenqlSelection {
 
 export interface VisionSupportGenqlSelection {
   configuration?: VisionConfigurationGenqlSelection
+  pricing?: CapabilityPricingGenqlSelection
   status?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2499,6 +2768,18 @@ export const isAvatarUploadPayload = (obj?: { __typename?: any } | null): obj is
   return AvatarUploadPayload_possibleTypes.includes(obj.__typename)
 }
 
+const BillingAllowance_possibleTypes: string[] = ['BillingAllowance']
+export const isBillingAllowance = (obj?: { __typename?: any } | null): obj is BillingAllowance => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isBillingAllowance"')
+  return BillingAllowance_possibleTypes.includes(obj.__typename)
+}
+
+const BillingFee_possibleTypes: string[] = ['BillingFee']
+export const isBillingFee = (obj?: { __typename?: any } | null): obj is BillingFee => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isBillingFee"')
+  return BillingFee_possibleTypes.includes(obj.__typename)
+}
+
 const BooleanPayload_possibleTypes: string[] = ['BooleanPayload']
 export const isBooleanPayload = (obj?: { __typename?: any } | null): obj is BooleanPayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isBooleanPayload"')
@@ -2509,6 +2790,42 @@ const CalendarPreferences_possibleTypes: string[] = ['CalendarPreferences']
 export const isCalendarPreferences = (obj?: { __typename?: any } | null): obj is CalendarPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isCalendarPreferences"')
   return CalendarPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const CapabilityCachePrice_possibleTypes: string[] = ['CapabilityCachePrice']
+export const isCapabilityCachePrice = (obj?: { __typename?: any } | null): obj is CapabilityCachePrice => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCapabilityCachePrice"')
+  return CapabilityCachePrice_possibleTypes.includes(obj.__typename)
+}
+
+const CapabilityPricing_possibleTypes: string[] = ['CapabilityPricing']
+export const isCapabilityPricing = (obj?: { __typename?: any } | null): obj is CapabilityPricing => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCapabilityPricing"')
+  return CapabilityPricing_possibleTypes.includes(obj.__typename)
+}
+
+const CapabilityRate_possibleTypes: string[] = ['CapabilityRate']
+export const isCapabilityRate = (obj?: { __typename?: any } | null): obj is CapabilityRate => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCapabilityRate"')
+  return CapabilityRate_possibleTypes.includes(obj.__typename)
+}
+
+const CapabilitySlot_possibleTypes: string[] = ['CapabilitySlot']
+export const isCapabilitySlot = (obj?: { __typename?: any } | null): obj is CapabilitySlot => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCapabilitySlot"')
+  return CapabilitySlot_possibleTypes.includes(obj.__typename)
+}
+
+const CapabilityTier_possibleTypes: string[] = ['CapabilityTier']
+export const isCapabilityTier = (obj?: { __typename?: any } | null): obj is CapabilityTier => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCapabilityTier"')
+  return CapabilityTier_possibleTypes.includes(obj.__typename)
+}
+
+const CapabilityUsage_possibleTypes: string[] = ['CapabilityUsage']
+export const isCapabilityUsage = (obj?: { __typename?: any } | null): obj is CapabilityUsage => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCapabilityUsage"')
+  return CapabilityUsage_possibleTypes.includes(obj.__typename)
 }
 
 const CatalogRequiredInput_possibleTypes: string[] = ['CatalogRequiredInput']
@@ -2693,6 +3010,12 @@ export const isMessageCompositionPreferences = (
 ): obj is MessageCompositionPreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isMessageCompositionPreferences"')
   return MessageCompositionPreferences_possibleTypes.includes(obj.__typename)
+}
+
+const ModelBilling_possibleTypes: string[] = ['ModelBilling']
+export const isModelBilling = (obj?: { __typename?: any } | null): obj is ModelBilling => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isModelBilling"')
+  return ModelBilling_possibleTypes.includes(obj.__typename)
 }
 
 const ModelTemplate_possibleTypes: string[] = ['ModelTemplate']
@@ -3057,6 +3380,38 @@ export const isTemplateOperation = (obj?: { __typename?: any } | null): obj is T
   return TemplateOperation_possibleTypes.includes(obj.__typename)
 }
 
+const TextCapabilities_possibleTypes: string[] = ['TextCapabilities']
+export const isTextCapabilities = (obj?: { __typename?: any } | null): obj is TextCapabilities => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTextCapabilities"')
+  return TextCapabilities_possibleTypes.includes(obj.__typename)
+}
+
+const TextGenerationConfiguration_possibleTypes: string[] = ['TextGenerationConfiguration']
+export const isTextGenerationConfiguration = (
+  obj?: { __typename?: any } | null,
+): obj is TextGenerationConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTextGenerationConfiguration"')
+  return TextGenerationConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const TextGenerationSupport_possibleTypes: string[] = ['TextGenerationSupport']
+export const isTextGenerationSupport = (obj?: { __typename?: any } | null): obj is TextGenerationSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTextGenerationSupport"')
+  return TextGenerationSupport_possibleTypes.includes(obj.__typename)
+}
+
+const TextInputConfiguration_possibleTypes: string[] = ['TextInputConfiguration']
+export const isTextInputConfiguration = (obj?: { __typename?: any } | null): obj is TextInputConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTextInputConfiguration"')
+  return TextInputConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const TextInputSupport_possibleTypes: string[] = ['TextInputSupport']
+export const isTextInputSupport = (obj?: { __typename?: any } | null): obj is TextInputSupport => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTextInputSupport"')
+  return TextInputSupport_possibleTypes.includes(obj.__typename)
+}
+
 const ThemePreferences_possibleTypes: string[] = ['ThemePreferences']
 export const isThemePreferences = (obj?: { __typename?: any } | null): obj is ThemePreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isThemePreferences"')
@@ -3170,6 +3525,26 @@ export const enumAuthenticationPurpose = {
   PASSKEY_CHANGE: 'PASSKEY_CHANGE' as const,
 }
 
+export const enumCapabilityCacheMode = {
+  INCLUDED: 'INCLUDED' as const,
+  SEPARATE_RATE: 'SEPARATE_RATE' as const,
+  STANDARD_INPUT_RATE: 'STANDARD_INPUT_RATE' as const,
+  UNSUPPORTED: 'UNSUPPORTED' as const,
+}
+
+export const enumCapabilityPriceMode = {
+  FIXED: 'FIXED' as const,
+  SCHEDULED: 'SCHEDULED' as const,
+  TIERED_TOKEN: 'TIERED_TOKEN' as const,
+}
+
+export const enumCapabilityPricingKind = {
+  FREE: 'FREE' as const,
+  INCLUDED: 'INCLUDED' as const,
+  MODEL_BILLING: 'MODEL_BILLING' as const,
+  USAGE: 'USAGE' as const,
+}
+
 export const enumCapabilityStatus = {
   SUPPORTED: 'SUPPORTED' as const,
   UNKNOWN: 'UNKNOWN' as const,
@@ -3179,6 +3554,12 @@ export const enumCapabilityStatus = {
 export const enumCredentialDelivery = {
   COOKIE: 'COOKIE' as const,
   TOKEN: 'TOKEN' as const,
+}
+
+export const enumCreditUsageDirection = {
+  CACHE_READ: 'CACHE_READ' as const,
+  INPUT: 'INPUT' as const,
+  OUTPUT: 'OUTPUT' as const,
 }
 
 export const enumFilterIs = {
@@ -3196,6 +3577,13 @@ export const enumImageMediaType = {
   JPEG: 'JPEG' as const,
   PNG: 'PNG' as const,
   WEBP: 'WEBP' as const,
+}
+
+export const enumModelBillingKind = {
+  CREDIT: 'CREDIT' as const,
+  FREE: 'FREE' as const,
+  REQUEST: 'REQUEST' as const,
+  SUBSCRIPTION: 'SUBSCRIPTION' as const,
 }
 
 export const enumOnboardingDestination = {
@@ -3319,6 +3707,31 @@ export const enumPreferenceWeekday = {
   THURSDAY: 'THURSDAY' as const,
   TUESDAY: 'TUESDAY' as const,
   WEDNESDAY: 'WEDNESDAY' as const,
+}
+
+export const enumPriceBillingPeriod = {
+  DAY: 'DAY' as const,
+  HOUR: 'HOUR' as const,
+  MINUTE: 'MINUTE' as const,
+  MONTH: 'MONTH' as const,
+  WEEK: 'WEEK' as const,
+  YEAR: 'YEAR' as const,
+}
+
+export const enumPriceTierBasis = {
+  INPUT_TOKENS: 'INPUT_TOKENS' as const,
+  TOTAL_TOKENS: 'TOTAL_TOKENS' as const,
+}
+
+export const enumPriceUnit = {
+  CHARACTERS: 'CHARACTERS' as const,
+  CREDITS: 'CREDITS' as const,
+  IMAGES: 'IMAGES' as const,
+  REQUESTS: 'REQUESTS' as const,
+  SECONDS: 'SECONDS' as const,
+  TOKENS: 'TOKENS' as const,
+  UTF8_BYTES: 'UTF8_BYTES' as const,
+  VIDEOS: 'VIDEOS' as const,
 }
 
 export const enumProviderApiProtocol = {

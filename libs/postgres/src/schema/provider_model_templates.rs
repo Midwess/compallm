@@ -41,9 +41,7 @@ pub struct Model {
     #[sea_orm(column_type = "JsonBinary")]
     pub limits: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub thinking: Json,
-    #[sea_orm(column_type = "JsonBinary")]
-    pub pricing: Option<Json>,
+    pub billing: Option<Json>,
     pub research_id: String,
     #[sea_orm(column_type = "JsonBinary")]
     pub body_defaults: Json,

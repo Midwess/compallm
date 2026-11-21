@@ -183,43 +183,6 @@ pub struct ApiKeyHeader {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ModelLimits {
     pub context_tokens: Option<u32>,
-    pub max_input_tokens: Option<u32>,
-    pub max_output_tokens: Option<u32>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Pricing {
-    Usage(UsagePricing),
-    Subscription(SubscriptionPricing),
-    Free(FreePricing),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum UsagePricing {
-    Fixed(UsageRates),
-    TieredToken(TieredTokenPricing),
-    Scheduled(ScheduledPricing),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum UsageRates {
-    Token(TokenPricing),
-    Audio(AudioPricing),
-    Image(ImagePricing),
-    Video(VideoPricing),
-    Request(RequestPricing),
-    Credit(CreditPricing),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct TokenPricing {
-    pub input: Rate,
-    pub output: Rate,
-    pub cache: Option<CachePricing>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -303,13 +266,6 @@ pub struct CacheTokenRate {
     pub rate: Rate,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct TieredTokenPricing {
-    pub measured_by: TokenTierBasis,
-    pub tiers: Vec<TokenPriceTier>,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TokenTierBasis {
@@ -319,48 +275,11 @@ pub enum TokenTierBasis {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct TokenPriceTier {
-    pub from_tokens: u64,
-    pub to_tokens: Option<u64>,
-    pub rates: TokenPricing,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct ScheduledPricing {
-    pub timezone: String,
-    pub slots: Vec<PriceSlot>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct PriceSlot {
-    pub from_hour: u8,
-    pub to_hour: u8,
-    pub pricing: ScheduledRates,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ScheduledRates {
-    Fixed(UsageRates),
-    TieredToken(TieredTokenPricing),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct SubscriptionPricing {
-    pub product: String,
-    pub plan: Option<String>,
-    pub fee: Option<SubscriptionFee>,
-    pub entitlements: Vec<UsageAllowance>,
-    pub overage: Option<UsagePricing>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct SubscriptionFee {
-    #[serde(with = "rust_decimal::serde::str_option")]
+    #[serde(
+        serialize_with = "rust_decimal::serde::str_option::serialize",
+        deserialize_with = "optional_decimal"
+    )]
     pub amount: Option<Decimal>,
     pub currency: Option<String>,
     pub period: Option<BillingPeriod>,
@@ -408,7 +327,10 @@ pub struct FreePricing {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Rate {
-    #[serde(with = "rust_decimal::serde::str_option")]
+    #[serde(
+        serialize_with = "rust_decimal::serde::str_option::serialize",
+        deserialize_with = "optional_decimal"
+    )]
     pub amount: Option<Decimal>,
     pub currency: Option<String>,
     pub quantity: Option<u64>,
@@ -429,18 +351,14 @@ pub struct AudioBytePricing {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct CreditPricing {
-    pub rates: Vec<CreditRate>,
-    pub conversion: Option<CreditConversion>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct CreditRate {
     pub unit: BillingUnit,
     pub direction: Option<UsageDirection>,
     pub quantity: Option<u64>,
-    #[serde(with = "rust_decimal::serde::str_option")]
+    #[serde(
+        serialize_with = "rust_decimal::serde::str_option::serialize",
+        deserialize_with = "optional_decimal"
+    )]
     pub credits: Option<Decimal>,
     #[serde(default)]
     pub conditions: RateConditions,
@@ -457,7 +375,10 @@ pub enum UsageDirection {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct CreditConversion {
-    #[serde(with = "rust_decimal::serde::str_option")]
+    #[serde(
+        serialize_with = "rust_decimal::serde::str_option::serialize",
+        deserialize_with = "optional_decimal"
+    )]
     pub amount_per_credit: Option<Decimal>,
     pub currency: Option<String>,
 }
@@ -469,7 +390,8 @@ pub struct ModelRouteOption {
     pub provider: String,
     pub upstream_model_id: String,
     pub limits: ModelLimits,
-    pub pricing: Option<Pricing>,
+    pub text: super::TextCapabilities,
+    pub billing: Option<super::ModelBilling>,
     pub implicit_caching: Option<bool>,
 }
 
@@ -480,4 +402,13 @@ pub struct RouteSelection {
     pub selected: Option<String>,
     pub allow_fallbacks: bool,
     pub exact_provider_selection: bool,
+}
+
+fn optional_decimal<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Decimal>, D::Error> {
+    let value = Option::<String>::deserialize(deserializer)?;
+    value
+        .map(|v| v.parse::<Decimal>().map_err(serde::de::Error::custom))
+        .transpose()
 }

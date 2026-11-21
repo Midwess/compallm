@@ -9,7 +9,7 @@ use crate::authorization::{
     policy::{EntityType, Policy},
 };
 
-use crate::provider::{Capability, ModelLimits, Pricing, ServiceKind, Thinking};
+use crate::provider::{Capability, ModelLimits, ServiceKind};
 
 /// An organization-owned logical model and its organization-facing prices.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -19,18 +19,17 @@ pub struct Model {
     pub name: String,
     pub service_kind: ServiceKind,
     pub enabled: bool,
-    pub text: FeatureSupport,
+    pub text: TextCapabilities,
     pub vision: CapabilitySupport<VisionCapability>,
     pub pdf: CapabilitySupport<PdfCapability>,
     pub audio: AudioCapabilities,
     pub video: CapabilitySupport<VideoCapability>,
     pub image_generation: CapabilitySupport<ImageGenerationCapability>,
-    pub thinking: CapabilitySupport<Thinking>,
     pub tools: ToolCapabilities,
     pub structured_output: CapabilitySupport<StructuredOutputCapability>,
     pub search: CapabilitySupport<SearchCapability>,
     pub limits: ModelLimits,
-    pub pricing: Pricing,
+    pub billing: Option<crate::provider::ModelBilling>,
 }
 
 impl Model {
@@ -42,11 +41,13 @@ impl Model {
             audio: &self.audio,
             video: &self.video,
             image_generation: &self.image_generation,
-            thinking: &self.thinking,
             tools: &self.tools,
             structured_output: &self.structured_output,
             search: &self.search,
         }
+    }
+    pub fn validate_capabilities(&self) -> Result<(), validify::ValidationErrors> {
+        self.capability_fields().validate(self.billing.as_ref())
     }
     pub fn supported_capabilities(&self) -> Vec<Capability> {
         self.capability_fields().supported()

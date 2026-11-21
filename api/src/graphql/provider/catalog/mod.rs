@@ -1,3 +1,4 @@
+mod pricing;
 mod capability;
 pub mod input;
 mod output;

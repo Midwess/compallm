@@ -284,7 +284,7 @@ pub struct TokenPricing {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "type", content = "configuration", rename_all = "snake_case")]
 pub enum AudioPricing {
     Duration(AudioDurationPricing),
     Character(AudioCharacterPricing),
@@ -341,6 +341,8 @@ pub struct RequestPricing {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct RateConditions {
+    #[serde(default)]
+    pub parameters: BTreeMap<String, String>,
     pub resolution: Option<String>,
     pub quality: Option<String>,
     pub audio: Option<bool>,
@@ -422,7 +424,7 @@ pub struct SubscriptionFee {
     #[serde(with = "rust_decimal::serde::str_option")]
     pub amount: Option<Decimal>,
     pub currency: Option<String>,
-    pub period: BillingPeriod,
+    pub period: Option<BillingPeriod>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

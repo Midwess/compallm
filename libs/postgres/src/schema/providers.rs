@@ -20,6 +20,9 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_type = "JsonBinary")]
     pub connection: Json,
+    pub description: Option<String>,
+    pub logo_url: Option<String>,
+    pub template_id: Option<String>,
     #[sea_orm(column_type = "JsonBinary")]
     pub headers: Json,
     #[sea_orm(column_type = "Text")]

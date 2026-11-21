@@ -6,6 +6,8 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(schema_name = "public", table_name = "provider_template_research")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
+    pub id: String,
+    #[sea_orm(column_type = "Text")]
     pub provider_template_id: String,
     #[sea_orm(column_type = "JsonBinary")]
     pub metadata: Json,
@@ -21,25 +23,11 @@ pub struct Model {
     pub endpoint_config: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub authentication: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub configuration_snapshot: Json,
     pub state: super::sea_orm_active_enums::CatalogResearchProgress,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::provider_templates::Entity",
-        from = "Column::ProviderTemplateId",
-        to = "super::provider_templates::Column::Id",
-        on_update = "NoAction",
-        on_delete = "Cascade"
-    )]
-    ProviderTemplates,
-}
-
-impl Related<super::provider_templates::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderTemplates.def()
-    }
-}
-
+pub enum Relation {}
 impl ActiveModelBehavior for ActiveModel {}

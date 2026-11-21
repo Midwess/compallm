@@ -401,6 +401,9 @@ impl Validate for Pricing {
                     .fee
                     .as_ref()
                     .ok_or_else(|| invalid("unresolved_subscription_fee"))?;
+                if fee.period.is_none() {
+                    return Err(invalid("unresolved_subscription_period"));
+                }
                 validate_currency(fee.currency.as_deref())?;
                 validate_amounts(&[fee
                     .amount

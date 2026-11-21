@@ -46,6 +46,9 @@ impl TryFrom<Provider> for ProviderInsert {
                 organization_id: Set(crate::to_bigint(provider.organization_id)
                     .context("organization ID exceeds BIGINT")?),
                 name: Set(provider.name),
+                description: Set(provider.description),
+                logo_url: Set(provider.logo_url),
+                template_id: Set(provider.template_id),
                 connection: Set(serde_json::to_value(provider.connection)
                     .context("invalid provider connection")?),
                 headers: Set(
@@ -72,6 +75,23 @@ impl TryFrom<&ProviderModel> for ProviderModelActiveModel {
             ),
             name: Set(model.name.clone()),
             enabled: Set(model.enabled),
+            display_name: Set(model.display_name.clone()),
+            description: Set(model.description.clone()),
+            template: Set(model
+                .template
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()
+                .context("invalid provider model configuration")?),
+            body_defaults: Set(
+                serde_json::to_value(&model.body_defaults).context("invalid body defaults")?
+            ),
+            route_selection: Set(model
+                .route_selection
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()
+                .context("invalid provider model configuration")?),
             service_kind: Set(model.service_kind.into()),
             protocol: Set(serde_json::to_value(model.protocol)
                 .context("invalid provider model protocol")?
@@ -117,6 +137,20 @@ impl TryFrom<ProviderModelSchema> for ProviderModel {
             organization_id,
             provider_id,
             name: model.name,
+            display_name: model.display_name,
+            description: model.description,
+            template: model
+                .template
+                .map(serde_json::from_value)
+                .transpose()
+                .context("invalid stored provider model configuration")?,
+            body_defaults: serde_json::from_value(model.body_defaults)
+                .context("invalid stored body defaults")?,
+            route_selection: model
+                .route_selection
+                .map(serde_json::from_value)
+                .transpose()
+                .context("invalid stored provider model configuration")?,
             enabled: model.enabled,
             service_kind: serde_json::from_value(model.service_kind.into())
                 .context("invalid provider model service kind in database")?,
@@ -157,6 +191,9 @@ impl TryFrom<ProviderSchema> for Provider {
             id,
             organization_id,
             name: model.name,
+            description: model.description,
+            logo_url: model.logo_url,
+            template_id: model.template_id,
             connection: serde_json::from_value(model.connection)
                 .context("invalid provider connection in database")?,
             api_key: ProviderApiKey::try_from(model.credentials)

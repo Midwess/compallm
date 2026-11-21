@@ -9,8 +9,10 @@ use sea_orm::entity::prelude::*;
 )]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
+    pub id: String,
+    #[sea_orm(column_type = "Text")]
     pub provider_template_id: String,
-    #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
+    #[sea_orm(column_type = "Text")]
     pub model_template_id: String,
     #[sea_orm(column_type = "JsonBinary")]
     pub metadata: Json,
@@ -29,38 +31,11 @@ pub struct Model {
     pub resolution_plan: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub unresolved_fields: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub configuration_snapshot: Json,
     pub state: super::sea_orm_active_enums::CatalogResearchProgress,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::provider_model_templates::Entity",
-        from = "(Column::ProviderTemplateId, Column::ModelTemplateId)",
-        to = "(super::provider_model_templates::Column::ProviderTemplateId, super::provider_model_templates::Column::Id)",
-        on_update = "NoAction",
-        on_delete = "Cascade"
-    )]
-    ProviderModelTemplates,
-}
-
-impl Related<super::provider_model_templates::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProviderModelTemplates.def()
-    }
-}
-
-impl Related<super::provider_templates::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::provider_model_templates::Relation::ProviderTemplates.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::provider_model_templates::Relation::ProviderModelTemplateResearch
-                .def()
-                .rev(),
-        )
-    }
-}
-
+pub enum Relation {}
 impl ActiveModelBehavior for ActiveModel {}

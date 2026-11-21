@@ -2,10 +2,7 @@ use crate::{
     ProviderCatalogAuthReadinessSchema, ProviderModelTemplateSchema, ProviderTemplateSchema,
     postgres_connection::PostgresConnection, query::IntoSeaQuery,
 };
-use compallm_core::{
-    persistent::DbContext,
-    provider_template::{ModelTemplate, ProviderTemplate},
-};
+use compallm_core::{model::ModelTemplate, persistent::DbContext, provider::ProviderTemplate};
 use compallm_query::{IntoQuery, OrderBy, Pagination};
 use sea_orm::{
     ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
@@ -74,7 +71,7 @@ impl CatalogRepository {
         Models::find()
             .filter(M::ProviderTemplateId.eq(provider))
             .filter(M::Id.in_subquery(eligible))
-            .order_by_asc(M::UpstreamModelId)
+            .order_by_asc(M::Name)
             .order_by_asc(M::Id)
             .all(db)
             .await?

@@ -31,6 +31,14 @@ pub struct Model {
     )]
     pub protocol: String,
     pub enabled: bool,
+    pub display_name: Option<String>,
+    pub description: Option<String>,
+    #[sea_orm(column_type = "JsonBinary", nullable)]
+    pub template: Option<Json>,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub body_defaults: Json,
+    #[sea_orm(column_type = "JsonBinary", nullable)]
+    pub route_selection: Option<Json>,
     #[sea_orm(column_type = "JsonBinary")]
     pub connection: Json,
     #[sea_orm(column_type = "JsonBinary")]

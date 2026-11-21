@@ -7,6 +7,7 @@ use crate::model::template::ModelTemplate;
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ProviderTemplate {
     pub id: String,
+    pub research_id: String,
     pub name: String,
     pub description: Option<String>,
     pub logo_url: Option<String>,

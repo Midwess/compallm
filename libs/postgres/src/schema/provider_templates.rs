@@ -11,17 +11,23 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
     #[sea_orm(column_type = "Text")]
-    pub logo_path: String,
+    pub logo_url: Option<String>,
     #[sea_orm(column_type = "JsonBinary")]
     pub connection: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub headers: Json,
-    pub readiness: super::sea_orm_active_enums::CatalogReadiness,
+    pub research_id: String,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub authentication_options: Json,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_one = "super::provider_template_research::Entity")]
+    #[sea_orm(
+        belongs_to = "super::provider_template_research::Entity",
+        from = "Column::ResearchId",
+        to = "super::provider_template_research::Column::Id"
+    )]
     ProviderTemplateResearch,
     #[sea_orm(has_many = "super::provider_model_templates::Entity")]
     ProviderModelTemplates,

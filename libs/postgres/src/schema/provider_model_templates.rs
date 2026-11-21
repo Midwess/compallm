@@ -10,14 +10,14 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,
     #[sea_orm(column_type = "Text")]
-    pub upstream_model_id: String,
+    pub name: String,
     #[sea_orm(column_type = "Text", nullable)]
     pub display_name: Option<String>,
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
-    pub service_kind: super::sea_orm_active_enums::CatalogServiceKind,
+    pub service_kind: Option<String>,
     #[sea_orm(column_type = "JsonBinary")]
-    pub connection: Json,
+    pub connections: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub headers: Json,
     #[sea_orm(column_type = "JsonBinary")]
@@ -25,15 +25,23 @@ pub struct Model {
     #[sea_orm(column_type = "JsonBinary")]
     pub limits: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub thinking: Json,
+    pub thinking: Option<Json>,
     #[sea_orm(column_type = "JsonBinary")]
-    pub pricing: Json,
-    pub readiness: super::sea_orm_active_enums::CatalogReadiness,
+    pub pricing: Option<Json>,
+    pub research_id: String,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub body_defaults: Json,
+    #[sea_orm(column_type = "JsonBinary", nullable)]
+    pub route_selection: Option<Json>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_one = "super::provider_model_template_research::Entity")]
+    #[sea_orm(
+        belongs_to = "super::provider_model_template_research::Entity",
+        from = "Column::ResearchId",
+        to = "super::provider_model_template_research::Column::Id"
+    )]
     ProviderModelTemplateResearch,
     #[sea_orm(
         belongs_to = "super::provider_templates::Entity",

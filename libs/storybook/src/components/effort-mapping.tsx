@@ -316,6 +316,13 @@ function CompactEffortMapping({
                 onChange={(event) => change(level, event.target.value)}
                 onBlur={field?.blur}
                 onKeyDown={(event) => {
+                  if (event.key === 'Tab') {
+                    const next = active + (event.shiftKey ? -1 : 1)
+                    if (next >= 0 && next <= last) {
+                      event.preventDefault()
+                      choose(next)
+                    }
+                  }
                   if (event.key === 'ArrowLeft' && (event.ctrlKey || event.metaKey)) {
                     event.preventDefault()
                     choose(active - 1)
@@ -332,6 +339,7 @@ function CompactEffortMapping({
                   type="button"
                   disabled={disabled}
                   aria-label={`Edit ${level} effort mapping`}
+                  onFocus={() => choose(index)}
                   onClick={() => choose(index)}
                   className="h-7 w-full min-w-0 truncate rounded-lg text-xs text-muted-foreground hover:bg-hover
                 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-ring"

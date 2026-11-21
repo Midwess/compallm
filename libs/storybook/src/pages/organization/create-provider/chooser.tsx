@@ -34,7 +34,11 @@ export function ProviderChooser() {
           `${item.name} ${item.id} ${item.protocol} ${item.baseUrl ?? ''}`.toLowerCase().includes(query.toLowerCase()),
       )
   return (
-    <div className="mx-auto grid w-full max-w-4xl gap-4 px-4 py-6">
+    <div className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-8">
+      <div className="grid gap-1 px-4">
+        <h2 className="text-2xl font-medium">Choose provider</h2>
+        <p className="text-xsm text-muted-foreground">Select a provider to configure its connection and models.</p>
+      </div>
       <div className="flex items-center gap-3">
         <Searchbox.Root className="flex-1">
           <Searchbox.Input

@@ -258,9 +258,10 @@ export class CreateProviderController implements Controller {
   onAddModel = () => {}
   onModelDraftChanged: Controller['onModelDraftChanged'] = (patch) => {
     const draft = this.store.getState().modelDraft
-    if (draft) this.store.setState({ modelDraft: { ...draft, ...patch } })
+    if (draft && this.model === draft.id) this.store.setState({ modelDraft: { ...draft, ...patch } })
   }
   onSaveModel: Controller['onSaveModel'] = (draft) => {
+    if (!this.model || this.model !== draft.id) return false
     this.store.setState({ modelDraft: draft })
     return draft
   }

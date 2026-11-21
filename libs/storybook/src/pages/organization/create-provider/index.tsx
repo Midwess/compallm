@@ -88,7 +88,10 @@ function ProviderContent() {
 export function CreateProviderPage() {
   useProviderForm()
   const intent = useProvider((state) => state.intent)
-  const modelId = useProvider((state) => state.modelDraft?.id, ['modelDraft.id'])
+  const modelId = useProvider(
+    (state) => (state.templatePreview ? state.editingModelId : state.modelDraft?.id),
+    ['modelDraft.id'],
+  )
   const templatePreview = useProvider((state) => state.templatePreview)
   const loading = useProvider((state) => state.modelLoading || !!state.catalogError)
   const content = (

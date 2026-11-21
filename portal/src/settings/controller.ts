@@ -37,7 +37,16 @@ export const settingsPages = [
 export class SettingsController implements Controller {
   reopenOnboarding?: () => void
   private readonly permissions?: PermissionController
-  readonly store = createSettingsStore({ readonly: true, codeExamples })
+  readonly store = createSettingsStore({
+    readonly: true,
+    codeExamples,
+    navigationLoaded: false,
+    membersLoaded: false,
+    invitationsLoaded: false,
+    sessionsLoaded: false,
+    profileLoaded: false,
+    organizationProfileLoaded: false,
+  })
   readonly pages: ReturnType<typeof createSettingsPages>
   readonly role: ReturnType<typeof createSettingsPages>['role']
   readonly group: ReturnType<typeof createSettingsPages>['group']
@@ -76,7 +85,7 @@ export class SettingsController implements Controller {
     this.locationRequest = undefined
     this.store.setState({ sessionLocation: null })
     const generation = ++this.generation
-    this.store.setState({ roles: [], groups: [] })
+    this.store.setState({ navigationLoading: true, navigationLoadError: false })
     if (this.store.getState().location.page === 'members') this.pages.members.start()
     void this.loadPermissions(controller.signal, generation)
     const location = this.store.getState().location
@@ -108,7 +117,12 @@ export class SettingsController implements Controller {
     }
   }
 
+  reloadNavigation = () => {
+    if (this.request && !this.request.signal.aborted) void this.loadPermissions(this.request.signal, this.generation)
+  }
+
   private async loadPermissions(signal: AbortSignal, generation: number) {
+    this.store.setState({ navigationLoading: true, navigationLoadError: false })
     try {
       const checks = (['role.read', 'group.read', 'member.read'] as const).map((action) => ({
         action,
@@ -137,7 +151,7 @@ export class SettingsController implements Controller {
           : {}),
       } satisfies QueryGenqlSelection
       if (!Object.keys(selection).length) {
-        this.store.setState({ roles: [], groups: [] })
+        this.store.setState({ roles: [], groups: [], navigationLoaded: true })
         return
       }
       const result = await graphql(signal).query(selection)
@@ -158,6 +172,7 @@ export class SettingsController implements Controller {
         ),
       )
       this.store.setState((state) => ({
+        navigationLoaded: true,
         currentMemberId: result.me?.node.id,
         actorIsOwner: result.me?.node.organizationOwner ?? false,
         ownerMemberIds: result.organization?.node.ownerMemberIds ?? [],
@@ -189,10 +204,13 @@ export class SettingsController implements Controller {
       }))
     } catch (error) {
       if (!signal.aborted && generation === this.generation) {
+        this.store.setState({ navigationLoadError: true })
         notify.apiError(error, () => {
           if (!signal.aborted && generation === this.generation) void this.loadPermissions(signal, generation)
         })
       }
+    } finally {
+      if (!signal.aborted && generation === this.generation) this.store.setState({ navigationLoading: false })
     }
   }
 
@@ -314,6 +332,7 @@ export class SettingsController implements Controller {
         otherSessions: append
           ? [...state.otherSessions, ...records.filter((record) => !state.otherSessions.some((s) => s.id === record.id))]
           : records,
+        sessionsLoaded: true,
         sessionsHasNextPage: result.sessions.pageInfo.hasNextPage,
         sessionsLoading: false,
       }))
@@ -383,6 +402,8 @@ export class SettingsController implements Controller {
     this.role.cancel()
     this.group.cancel()
     this.store.setState({ location: { page, id } })
+    if (!this.request && id && page === 'role') this.role.store.setState({ loading: true, draft: null })
+    if (!this.request && id && page === 'group') this.group.store.setState({ loading: true, draft: null })
     if (page === 'organization' && this.request && !this.stopOrganization)
       this.stopOrganization = this.pages.organization.start()
     if (page === 'profile' && this.request && !this.stopProfile) this.stopProfile = this.pages.profile.start()

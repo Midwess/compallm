@@ -22,7 +22,7 @@ const policyPanelVariants = {
   cedarHidden: { opacity: 0, x: animation.panelDistance, transitionEnd: { display: 'none' } },
 }
 
-import { SettingsContent, Heading, Section, Rows, Row, Empty } from '../shared'
+import { SettingsContent, Heading, Section, Rows, Row, Empty, SettingsDetailLoading } from '../shared'
 
 function EditingMode() {
   const timing = useTransition('panel')
@@ -177,12 +177,14 @@ function RoleEditorContent() {
     readonly = useSettings((s) => s.readonly),
     loading = useRole((s) => s.loading),
     busy = useRole((s) => s.busy)
+  const confirmedTitle = useSettings((s) => s.roles.find((role) => role.id === s.location.id)?.name ?? 'Role')
   const policyPermission = usePermission({
     actions: ['role.policy.update'],
     resource: { type: 'Role', id: draft?.id },
     enabled: !!draft?.id,
   })
-  if (loading) return <SettingsContent aria-busy="true" aria-label="Loading role" />
+  if (loading && !draft)
+    return <SettingsDetailLoading title={confirmedTitle} sections={['Role details', 'Permissions', 'Danger']} />
   if (!draft)
     return (
       <SettingsContent>
@@ -301,6 +303,7 @@ export function RoleEditorSettings() {
   const form = c.store.form
   const settings = useSettingsController()
   useEffect(() => {
+    if (!c.store.getState().draft) return
     form.reset(form.values)
     form.configure({
       mode: id ? 'blur' : 'button',

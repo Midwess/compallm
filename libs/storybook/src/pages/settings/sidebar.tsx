@@ -10,7 +10,7 @@ import { UsersIcon } from '@phosphor-icons/react/dist/csr/Users'
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree'
 import { ChartLineIcon } from '@phosphor-icons/react/dist/csr/ChartLine'
 import { ShieldCheckIcon } from '@phosphor-icons/react/dist/csr/ShieldCheck'
-import { Sidebar, SidebarSection, SidebarFolder, SidebarItem } from '../../components/sidebar'
+import { Sidebar, SidebarSection, SidebarFolder, SidebarItem, SidebarLoading } from '../../components/sidebar'
 import { SearchField } from '../../components/fields'
 import { Indicator } from './shared'
 import { useSettings, useSettingsController } from './controller'
@@ -44,6 +44,8 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
   const c = useSettingsController(),
     location = useSettings((s) => s.location),
     query = useSettings((s) => s.navigationQuery)
+  const navigationReady = useSettings((s) => s.navigationLoaded !== false)
+  const navigationError = useSettings((s) => s.navigationLoadError)
   const actorIsOwner = useSettings((s) => s.actorIsOwner)
   const roles = useSettings((s) => s.roles),
     groups = useSettings((s) => s.groups)
@@ -93,6 +95,12 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
       <SidebarSection label="Organization" className={category}>
         {links(organization)}
       </SidebarSection>
+      {navigationError ? (
+        <button type="button" onClick={() => c.reloadNavigation?.()} className="px-2 text-left text-xs text-muted-foreground">
+          Retry navigation
+        </button>
+      ) : null}
+      {roleRead.pending || groupRead.pending ? <SidebarLoading rows={2} /> : null}
       {roleRead.allowed || groupRead.allowed ? (
         <SidebarSection label="Permissions" className={category}>
           {groupRead.allowed ? (
@@ -103,6 +111,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
               onAdd={groupCreate.allowed ? () => navigate('new-group') : undefined}
               addLabel="Create group"
             >
+              {!navigationReady && !navigationError ? <SidebarLoading /> : null}
               {groups
                 .filter((g) => match(g.name))
                 .map((g) => (
@@ -126,6 +135,7 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
               onAdd={roleCreate.allowed ? () => navigate('new-role') : undefined}
               addLabel="Create role"
             >
+              {!navigationReady && !navigationError ? <SidebarLoading /> : null}
               {roles
                 .filter((r) => (!r.owner || actorIsOwner) && match(r.name))
                 .map((r) => (
@@ -150,17 +160,21 @@ export function SettingsNavigation({ onNavigate }: { onNavigate?: () => void }) 
 function NavigationPermission({ page, children }: { page: SettingsDestination; children: React.ReactNode }) {
   if (page === 'organization-onboarding')
     return (
-      <PermissionRequest actions={['organization.onboarding.read']}>
+      <PermissionRequest pending={<SidebarLoading rows={1} />} actions={['organization.onboarding.read']}>
         {(allowed) => (allowed ? <>{children}</> : null)}
       </PermissionRequest>
     )
   if (page === 'organization')
     return (
-      <PermissionRequest actions={['organization.settings.read']}>
+      <PermissionRequest pending={<SidebarLoading rows={1} />} actions={['organization.settings.read']}>
         {(allowed) => (allowed ? <>{children}</> : null)}
       </PermissionRequest>
     )
   if (page === 'members')
-    return <PermissionRequest actions={['member.read']}>{(allowed) => (allowed ? <>{children}</> : null)}</PermissionRequest>
+    return (
+      <PermissionRequest pending={<SidebarLoading rows={1} />} actions={['member.read']}>
+        {(allowed) => (allowed ? <>{children}</> : null)}
+      </PermissionRequest>
+    )
   return children
 }

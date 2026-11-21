@@ -1,3 +1,4 @@
+import { LoadingRegion, Skeleton } from '../../../components/loading'
 import { useOnboardingController } from '../../onboarding/controller'
 import set from 'lodash-es/set.js'
 import get from 'lodash-es/get.js'
@@ -68,6 +69,7 @@ export function OrganizationOnboardingEditor() {
   const controller = settings.pages.onboarding!
   const status = useFormStore(controller.store, (s) => s.status)
   const saved = useFormStore(controller.store, (s) => s.saved)
+  const ready = !!saved
   const color = useFormValue<string | null>(controller.store.form, 'draft.artworkColor')
   const permission = usePermission({ actions: ['organization.onboarding.update'] })
   const editable = permission.allowed
@@ -77,6 +79,7 @@ export function OrganizationOnboardingEditor() {
     return controller.cancel
   }, [controller])
   useEffect(() => {
+    if (!ready) return
     const form = controller.store.form
     form.configure({
       mode: 'blur',
@@ -96,7 +99,7 @@ export function OrganizationOnboardingEditor() {
       submit: async (_values, patch, signal) => ({ draft: await controller.update(patch.draft ?? {}, signal) }),
     })
     return () => form.stop()
-  }, [controller, settings])
+  }, [controller, settings, ready])
   useEffect(() => {
     if (saved)
       preview.store.setState((state) => ({
@@ -111,13 +114,43 @@ export function OrganizationOnboardingEditor() {
         },
       }))
   }, [saved, preview, settings])
-  if (status === 'loading' || status === 'idle')
+  if ((status === 'loading' || status === 'idle') && !ready)
     return (
       <SettingsContent>
         <Heading>Onboarding</Heading>
+        <LoadingRegion ready={false} pending label="Loading onboarding" className="grid gap-12">
+          <Section title="Preview">
+            <Skeleton>
+              <div className="aspect-21/13 rounded-control bg-inset" />
+            </Skeleton>
+          </Section>
+          <Section title="General">
+            <Rows>
+              <Row label="Welcome message">
+                <Skeleton>
+                  <span className="block h-8 w-64 rounded-lg" />
+                </Skeleton>
+              </Row>
+              <Row label="Open after onboarding" last>
+                <Skeleton>
+                  <span className="block h-8 w-44 rounded-lg" />
+                </Skeleton>
+              </Row>
+            </Rows>
+          </Section>
+          <Section title="Appearance">
+            <Rows>
+              <Row label="Artwork color" last>
+                <Skeleton>
+                  <span className="block h-8 w-16 rounded-lg" />
+                </Skeleton>
+              </Row>
+            </Rows>
+          </Section>
+        </LoadingRegion>
       </SettingsContent>
     )
-  if (status !== 'ready')
+  if (status !== 'ready' && !ready)
     return (
       <SettingsContent>
         <Heading>Onboarding</Heading>

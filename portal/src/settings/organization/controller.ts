@@ -64,7 +64,11 @@ export class OrganizationController implements Contract {
         organization: { ...this.settings.getState().organization, name: '', logo: null },
         organizationUpload: null,
       })
-      this.settings.setState({ organizationProfileStatus: next ? 'loading' : 'denied', organizationProfileSaving: false })
+      this.settings.setState({
+        organizationProfileStatus: next ? 'loading' : 'denied',
+        organizationProfileLoaded: false,
+        organizationProfileSaving: false,
+      })
       if (next) void this.load()
     }
     const unsubscribe = this.auth.store?.subscribe(synchronize)
@@ -114,9 +118,11 @@ export class OrganizationController implements Contract {
         name: organizationProfile.node.name,
         logo: organizationProfile.node.avatarUrl,
       }
-      this.settings.form.reset({ ...this.settings.form.values, organization, organizationUpload: null })
+      if (!this.settings.form.dirty)
+        this.settings.form.reset({ ...this.settings.form.values, organization, organizationUpload: null })
       this.settings.setState({
         organizationProfileStatus: 'ready',
+        organizationProfileLoaded: true,
         organizationCanUpdateProfile: organizationProfile.node.canUpdateProfile,
         organizationSavedName: organizationProfile.node.name,
       })

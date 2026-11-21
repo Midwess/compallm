@@ -36,3 +36,5 @@ export const EmptyCategory: Story = {
     />
   ),
 }
+
+export const SidebarLoading: Story = { render: () => <OrganizationDemo sidebarLoading /> }

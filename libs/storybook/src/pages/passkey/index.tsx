@@ -1,3 +1,5 @@
+import { LoadingRegion } from '../../components/loading'
+import { List } from '../../components/list'
 import { useContext } from 'react'
 import { useStore } from 'zustand'
 import { AuthControllerContext, PasskeyControllerContext } from '../../context'
@@ -41,6 +43,7 @@ export function SecurityEnhancementPage({ onSkip }: { onSkip: () => void }) {
 }
 export function PasskeySettings() {
   const controller = useController()
+  const ready = useStore(controller.store, (s) => s.status !== 'denied' && (s.loaded ?? s.status === 'ready'))
   const records = useStore(controller.store, (s) => s.records)
   const status = useStore(controller.store, (s) => s.status)
   const error = useStore(controller.store, (s) => s.error)
@@ -58,12 +61,16 @@ export function PasskeySettings() {
         ) : undefined
       }
     >
-      {status === 'loading' ? (
-        <Rows>
-          <div role="status" className="p-4 text-xsm text-muted-foreground">
-            Loading passkeys…
-          </div>
-        </Rows>
+      {!ready && status === 'loading' ? (
+        <LoadingRegion ready={false} pending label="Loading passkeys">
+          <Rows>
+            <List.Root>
+              <List.Items items={[]} getKey={() => ''}>
+                {() => null}
+              </List.Items>
+            </List.Root>
+          </Rows>
+        </LoadingRegion>
       ) : null}
       {status === 'error' || status === 'denied' ? (
         <Empty
@@ -73,7 +80,7 @@ export function PasskeySettings() {
           {error}
         </Empty>
       ) : null}
-      {status === 'ready' ? (
+      {ready ? (
         records.length ? (
           <Rows>
             <ul className="m-0 list-none p-0">

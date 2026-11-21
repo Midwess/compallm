@@ -1,3 +1,4 @@
+import { LoadingRegion, Skeleton } from '../components/loading'
 import { useContext } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { EmailCodeInput } from '@compallm/contract/validation'
@@ -64,7 +65,12 @@ decoration-foreground/25 decoration-1 underline-offset-4"
       </span>
     </span>
   ) : (
-    'You’re invited by'
+    <span className="grid gap-3">
+      <span className="text-base font-normal text-muted-foreground">You’re invited by</span>
+      <Skeleton loading>
+        <span className="block h-8 w-48 rounded-lg" />
+      </Skeleton>
+    </span>
   )
   const description = unavailable ? (
     'Ask your team for a fresh invitation.\nWe’ll keep a place for you.'
@@ -78,79 +84,101 @@ decoration-foreground/25 decoration-1 underline-offset-4"
       data-theme="basic-dark"
       className="dark grid min-h-dvh place-items-center bg-background p-4 font-sans text-foreground sm:p-8"
     >
-      <Form.Root model={form} className="w-full max-w-3xl">
-        <OnboardingPanel
-          title={title}
-          description={description}
-          progress={code ? 0.18 : state.step === 'confirmed' ? 0.24 : 0.08}
-          action={
-            context && !state.loading ? (
-              <Button
-                type={code ? 'submit' : 'button'}
-                variant="primary"
-                size="authentication"
-                className="h-12 w-full text-base"
-                loading={state.busy}
-                onClick={
-                  code
-                    ? undefined
-                    : () => {
-                        void (state.step === 'confirmed' ? controller.confirm('') : controller.continue())
-                      }
-                }
-              >
-                {code ? 'Accept invitation' : state.step === 'confirmed' ? 'Enter organization' : 'Continue'}
-              </Button>
-            ) : unavailable && controller.reload ? (
-              <Button variant="primary" size="authentication" className="h-12 w-full text-base" onClick={controller.reload}>
-                Try again
-              </Button>
-            ) : (
-              <div className="h-12" />
-            )
-          }
-          footer={
-            <div className="mt-2 flex h-8 items-center justify-center">
-              {code ? (
+      <LoadingRegion
+        ready={!!context || !state.loading}
+        pending={state.loading}
+        label="Loading invitation"
+        className="w-full max-w-3xl"
+      >
+        <Form.Root model={form} className="w-full max-w-3xl">
+          <OnboardingPanel
+            title={title}
+            description={description}
+            progress={code ? 0.18 : state.step === 'confirmed' ? 0.24 : 0.08}
+            action={
+              context && !state.loading ? (
                 <Button
-                  variant="ghost"
-                  className="text-disabled"
+                  type={code ? 'submit' : 'button'}
+                  variant="primary"
+                  size="authentication"
+                  className="h-12 w-full text-base"
                   loading={state.busy}
-                  onClick={() => {
-                    void controller.continue()
-                  }}
+                  onClick={
+                    code
+                      ? undefined
+                      : () => {
+                          void (state.step === 'confirmed' ? controller.confirm('') : controller.continue())
+                        }
+                  }
                 >
-                  Resend verification code
+                  {code ? 'Accept invitation' : state.step === 'confirmed' ? 'Enter organization' : 'Continue'}
                 </Button>
-              ) : null}
-            </div>
-          }
-        >
-          {context && !state.loading ? (
-            code ? (
-              <div className="grid gap-3">
-                <CodeEntry name="code" aria-label="Email verification code" disabled={state.busy} />
-                <Form.Error name="code" />
+              ) : unavailable && controller.reload ? (
+                <Button variant="primary" size="authentication" className="h-12 w-full text-base" onClick={controller.reload}>
+                  Try again
+                </Button>
+              ) : (
+                <Skeleton>
+                  <div className="h-12 w-full rounded-xl" />
+                </Skeleton>
+              )
+            }
+            footer={
+              <div className="mt-2 flex h-8 items-center justify-center">
+                {code ? (
+                  <Button
+                    variant="ghost"
+                    className="text-disabled"
+                    loading={state.busy}
+                    onClick={() => {
+                      void controller.continue()
+                    }}
+                  >
+                    Resend verification code
+                  </Button>
+                ) : null}
               </div>
-            ) : (
-              <div className="grid gap-6">
-                <div className="grid gap-2">
-                  <label htmlFor="invitation-recipient" className="text-sm text-muted-foreground">
-                    Your email
-                  </label>
-                  <TextField
-                    id="invitation-recipient"
-                    aria-label="Invitation recipient"
-                    variant="constant"
-                    value={context.email}
-                    className="h-10 text-base"
-                  />
+            }
+          >
+            {context && !state.loading ? (
+              code ? (
+                <div className="grid gap-3">
+                  <CodeEntry name="code" aria-label="Email verification code" disabled={state.busy} />
+                  <Form.Error name="code" />
                 </div>
+              ) : (
+                <div className="grid gap-6">
+                  <div className="grid gap-2">
+                    <label htmlFor="invitation-recipient" className="text-sm text-muted-foreground">
+                      Your email
+                    </label>
+                    <TextField
+                      id="invitation-recipient"
+                      aria-label="Invitation recipient"
+                      variant="constant"
+                      value={context.email}
+                      className="h-10 text-base"
+                    />
+                  </div>
+                </div>
+              )
+            ) : state.loading ? (
+              <div className="grid gap-2">
+                <label htmlFor="invitation-recipient" className="text-sm text-muted-foreground">
+                  Your email
+                </label>
+                <TextField
+                  id="invitation-recipient"
+                  aria-label="Invitation recipient"
+                  variant="constant"
+                  value=""
+                  className="h-10 text-base"
+                />
               </div>
-            )
-          ) : null}
-        </OnboardingPanel>
-      </Form.Root>
+            ) : null}
+          </OnboardingPanel>
+        </Form.Root>
+      </LoadingRegion>
       {state.error && context ? (
         <div className="fixed right-6 bottom-6 z-50 max-w-[calc(100vw-3rem)]">
           <Toast tone="error" message={state.error} onDismiss={() => controller.store.setState({ error: null })} />

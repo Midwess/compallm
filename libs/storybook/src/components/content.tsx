@@ -1,3 +1,4 @@
+import { Skeleton } from './loading'
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
 import { useState } from 'react'
 import { FileTextIcon } from '@phosphor-icons/react/dist/csr/FileText'
@@ -64,19 +65,21 @@ export function Avatar({ name, src, size = 40 }: { name: string; src?: string; s
   ]
   const tone = tones[(initial.codePointAt(0) ?? 0) % tones.length]
   return (
-    <span
-      className={cx(
-        `relative inline-flex flex-none items-center justify-center overflow-hidden rounded-full text-xsm
+    <Skeleton>
+      <span
+        className={cx(
+          `relative inline-flex flex-none items-center justify-center overflow-hidden rounded-full text-xsm
 size-(--avatar-size) font-medium [&>img]:size-full [&>img]:object-cover`,
-        tone,
-      )}
-      style={{ '--avatar-size': `${size}px` } as CSSProperties}
-      role="img"
-      aria-label={name}
-    >
-      <span aria-hidden="true">{initial}</span>
-      {src ? <AvatarImage key={src} src={src} /> : null}
-    </span>
+          tone,
+        )}
+        style={{ '--avatar-size': `${size}px` } as CSSProperties}
+        role="img"
+        aria-label={name}
+      >
+        <span aria-hidden="true">{initial}</span>
+        {src ? <AvatarImage key={src} src={src} /> : null}
+      </span>
+    </Skeleton>
   )
 }
 

@@ -168,9 +168,11 @@ Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) an
 - Mount structure early, but never create fake domain records or initialize editable form defaults from placeholders. Wait for
   authoritative data before configuring validation/autosave/default reconciliation. Skeletons are inert and hidden from
   assistive technology; announce loading once per region. Keep navigation outside inert regions and retry actions usable.
-- Initial loading uses skeletons; background refresh keeps content, drafts, focus, and scroll. Show an empty state only after a
-  successful empty response. Failure retains the layout and exposes explicit retry feedback; never automatically replay writes.
-- Reserve loading geometry immediately. Reveal skeleton decoration after the shared 120 ms delay in `animation.skeleton`; keep
+- Initial loading uses skeletons; background refresh keeps content, drafts, focus, and scroll. Provider search/pagination may
+  opt into `LoadingRegion.refreshing` to mask existing cells after the shared delay without unmounting rows or controls. Show an
+  empty state only after a successful empty response. Failure retains the layout and exposes explicit retry feedback; never
+  automatically replay writes.
+- Reserve loading geometry immediately. Reveal skeleton decoration after the shared 180 ms delay in `animation.skeleton`; keep
   one reveal timer per region, with the shared adapter handling standalone skeletons. Fast requests show no skeleton flash.
   Replace placeholders immediately when data is ready; never impose a minimum skeleton-visible duration.
 - Page/section loading ends as soon as the request settles. Keep the shared request-progress bar. Do not add per-page timers,
@@ -179,3 +181,10 @@ Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) an
 - Provide offline first-load, loaded, refresh, empty, and error previews when changing data-backed UI. Inspect delayed reads,
   cancellation, failure recovery, keyboard focus, and geometry in Safari/WebKit and Chromium. Follow Portal-rendering for
   performance traces. Do not add Storybook browser/interaction test suites.
+
+- Apply loading regions to every implemented asynchronous read surface, including Members/invitations, profile, organization,
+  preferences, sessions/passkeys, onboarding settings, role/group details, and both main/settings sidebar catalogs. Unknown
+  permissions remain denied; show neutral `SidebarLoading` placeholders until permission facts arrive, never protected data. Do
+  not invent loading states for destinations without a backend read. Table categories use DOM-free LoadingScope so loading never
+  introduces invalid div/tbody nesting. Initial-load errors expose retry outside inert regions; confirmed refresh errors retain
+  rows and drafts. No empty state before the first successful response.

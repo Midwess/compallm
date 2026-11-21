@@ -56,10 +56,17 @@ export class GroupController implements Contract {
     this.request = undefined
   }
   load = async (id: string) => {
+    const retained = this.store.getState().draft?.id === id ? this.store.getState().draft : null
+    if (retained && (this.store.form.dirty || this.store.form.pending)) return
     this.cancel()
     const request = new AbortController()
     this.request = request
-    this.store.setState({ loading: true, draft: null, query: '', members: [], hasNextPage: false, membersLoadError: false })
+    this.store.setState({
+      loading: true,
+      ...(retained
+        ? {}
+        : { membersLoaded: false, draft: null, query: '', members: [], hasNextPage: false, membersLoadError: false }),
+    })
     try {
       if (this.permissions) await requirePermissions(this.permissions, [{ action: 'group.read', resourceType: 'Organization' }])
       if (request.signal.aborted || this.request !== request) return
@@ -95,6 +102,7 @@ export class GroupController implements Contract {
         this.store.setState({ loading: false, draft: null })
         return
       }
+      if (retained && (this.store.form.dirty || this.store.form.pending)) return
       this.permissions?.setFacts?.([
         { resourceType: 'Group', id, ...(group.roles ? { roleIds: group.roles.edges.map(({ node }) => node.id) } : {}) },
       ])
@@ -120,6 +128,7 @@ export class GroupController implements Contract {
       this.store.setState({
         loading: false,
         draft,
+        membersLoaded: true,
         memberCount: (group.memberIds ?? []).length,
         roles: roles.edges.map(({ node }) => ({ ...node, source: '', builtin: node.owner })),
         members: members.edges.map(({ node: member }) => ({

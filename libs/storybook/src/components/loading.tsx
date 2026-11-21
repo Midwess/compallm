@@ -10,6 +10,11 @@ export function useInitialLoading() {
   return useContext(LoadingRegionContext)?.initial ?? false
 }
 
+export function useRefreshingSkeleton() {
+  const region = useContext(LoadingRegionContext)
+  return !!region?.refreshing && region.visible
+}
+
 function useSkeletonVisibility(active: boolean) {
   const [state, setState] = useState({ active, visible: false })
   if (state.active !== active) setState({ active, visible: false })
@@ -48,15 +53,42 @@ export function Skeleton({ loading, ...props }: ComponentProps<typeof RadixSkele
   return <Placeholder {...props} loading={loading ?? region.initial} visible={region.visible} />
 }
 
+export function LoadingScope({
+  ready,
+  refreshing = false,
+  children,
+}: {
+  ready: boolean
+  refreshing?: boolean
+  children: ReactNode
+}) {
+  const parent = useContext(LoadingRegionContext)
+  const initial = !ready
+  const visible = useSkeletonVisibility(initial || refreshing)
+  const inherited = !initial && !refreshing && parent?.refreshing
+  return (
+    <LoadingRegionContext
+      value={{ initial, visible: inherited ? parent.visible : visible, refreshing: refreshing || !!inherited }}
+    >
+      {children}
+    </LoadingRegionContext>
+  )
+}
+
 function Region({
   ready,
   pending = false,
+  refreshing = false,
   label,
   children,
   ...props
-}: HTMLAttributes<HTMLDivElement> & { ready: boolean; pending?: boolean; label: string; children: ReactNode }) {
-  const initial = !ready
-  const visible = useSkeletonVisibility(initial)
+}: HTMLAttributes<HTMLDivElement> & {
+  ready: boolean
+  pending?: boolean
+  refreshing?: boolean
+  label: string
+  children: ReactNode
+}) {
   return (
     <div {...props} aria-busy={pending || undefined}>
       {pending ? (
@@ -64,11 +96,17 @@ function Region({
           {label}
         </span>
       ) : null}
-      <LoadingRegionContext value={{ initial, visible }}>
-        <div className="contents" inert={!ready || undefined}>
-          {children}
-        </div>
-      </LoadingRegionContext>
+      <LoadingScope ready={ready} refreshing={refreshing}>
+        <RegionContent ready={ready}>{children}</RegionContent>
+      </LoadingScope>
+    </div>
+  )
+}
+
+function RegionContent({ ready, children }: { ready: boolean; children: ReactNode }) {
+  return (
+    <div className="contents" inert={!ready || undefined}>
+      {children}
     </div>
   )
 }

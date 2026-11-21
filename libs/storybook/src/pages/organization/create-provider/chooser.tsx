@@ -58,7 +58,13 @@ export function ProviderChooser() {
         </Searchbox.Root>
         {!templatePreview ? <ProviderFilters /> : null}
       </div>
-      <LoadingRegion ready={ready} pending={loading} controller={controller.loading?.providers} label="Loading providers">
+      <LoadingRegion
+        ready={ready}
+        refreshing={!!loading && ready}
+        pending={loading}
+        controller={controller.loading?.providers}
+        label="Loading providers"
+      >
         <Table.Root>
           <Table.Content
             className="w-full table-fixed text-left text-xs"

@@ -1,3 +1,4 @@
+import { LoadingRegion, Skeleton } from './loading'
 import { useId, useRef, type HTMLAttributes, type ReactNode, type PointerEvent } from 'react'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/csr/MagnifyingGlass'
@@ -446,5 +447,22 @@ aria-[current=page]:bg-selection aria-[current=page]:text-selection-foreground
       </span>
       <span className="min-w-0 truncate">{label}</span>
     </animated.a>
+  )
+}
+
+export function SidebarLoading({ rows = 3 }: { rows?: number }) {
+  return (
+    <LoadingRegion ready={false} pending label="Loading navigation" className="grid gap-1 px-2">
+      {Array.from({ length: rows }, (_, index) => (
+        <div key={index} className="flex h-7 items-center gap-2">
+          <Skeleton>
+            <span className="size-3 shrink-0 rounded" />
+          </Skeleton>
+          <Skeleton>
+            <span className="h-3 w-3/4 rounded-md" />
+          </Skeleton>
+        </div>
+      ))}
+    </LoadingRegion>
   )
 }

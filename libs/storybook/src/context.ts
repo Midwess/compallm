@@ -9,7 +9,7 @@ import type { SettingsController } from './pages/settings/types'
 import type { FormScope } from './components/form-model'
 import type { AppController } from './app'
 
-export const LoadingRegionContext = createContext<{ initial: boolean; visible: boolean } | null>(null)
+export const LoadingRegionContext = createContext<{ initial: boolean; visible: boolean; refreshing: boolean } | null>(null)
 
 export const AppControllerContext = createContext<AppController | null>(null)
 

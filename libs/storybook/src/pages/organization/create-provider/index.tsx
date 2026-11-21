@@ -29,7 +29,6 @@ export type {
 
 function ProviderHeader() {
   const controller = useController()
-  const templatePreview = useProvider((state) => state.templatePreview)
   const step = useProvider((state) => state.step)
   const intent = useProvider((state) => state.intent)
   const name = useProvider((state) => (state.intent === 'edit' ? state.savedProvider?.name : state.name), ['name'])
@@ -50,19 +49,19 @@ function ProviderHeader() {
     )
   return (
     <PageHeader>
-      <h1 className="flex min-w-0 items-center gap-6 text-xs leading-5 font-normal">
+      <Title className="flex items-center gap-6">
         <button
           type="button"
           onClick={controller.onChooseProvider}
           className="cursor-pointer text-muted-foreground hover:text-foreground focus-visible:outline-ring"
         >
-          {templatePreview ? 'Provider templates' : 'Create provider'}
+          Choose provider
         </button>
         <span aria-hidden="true" className="text-muted-foreground">
           /
         </span>
-        <span>{templatePreview ? 'Configure template' : 'Configure'}</span>
-      </h1>
+        <span>Configure</span>
+      </Title>
     </PageHeader>
   )
 }

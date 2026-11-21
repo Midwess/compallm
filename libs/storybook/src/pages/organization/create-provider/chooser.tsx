@@ -1,3 +1,4 @@
+import { providerPageLayout } from './layout'
 import { Table } from '../../../components/table'
 import { Searchbox } from '../../../components/fields'
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/csr/ArrowRight'
@@ -34,12 +35,12 @@ export function ProviderChooser() {
           `${item.name} ${item.id} ${item.protocol} ${item.baseUrl ?? ''}`.toLowerCase().includes(query.toLowerCase()),
       )
   return (
-    <div className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-8">
+    <div className={`${providerPageLayout} gap-6`}>
       <div className="grid gap-1 px-4">
         <h2 className="text-2xl font-medium">Choose provider</h2>
         <p className="text-xsm text-muted-foreground">Select a provider to configure its connection and models.</p>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pl-4">
         <Searchbox.Root className="flex-1">
           <Searchbox.Input
             aria-label="Search providers…"
@@ -71,7 +72,9 @@ export function ProviderChooser() {
               <Table.Head column="endpoint" className="px-4 font-normal">
                 Base URL
               </Table.Head>
-              <Table.Head className="text-center">Choose</Table.Head>
+              <Table.Head column="choose" className="pr-0 text-right">
+                Choose
+              </Table.Head>
             </Table.Row>
           </Table.Header>
           <Table.Body
@@ -91,7 +94,13 @@ export function ProviderChooser() {
             {(provider) => (
               <Table.Row
                 key={provider.id}
-                className="h-14 cursor-pointer border-b border-divider hover:bg-inset"
+                className="h-14 cursor-pointer border-b border-divider
+[&>td]:relative [&>td>div]:relative [&>td>div]:z-1
+[&>td]:before:pointer-events-none [&>td]:before:absolute [&>td]:before:inset-x-0 [&>td]:before:inset-y-1
+[&>td]:before:bg-hover [&>td]:before:opacity-0 hover:[&>td]:before:opacity-100
+focus-within:[&>td]:before:opacity-100
+[&>td:first-child]:before:left-0.5 [&>td:first-child]:before:rounded-l-lg
+[&>td:last-child]:before:right-0.5 [&>td:last-child]:before:rounded-r-lg"
                 onClick={() => controller.onSelectProvider(provider.id)}
               >
                 <Table.Cell className="px-4">
@@ -115,10 +124,10 @@ export function ProviderChooser() {
                 <Table.Cell column="endpoint" className="truncate px-4 text-muted-foreground">
                   {provider.baseUrl ?? 'Configure endpoint'}
                 </Table.Cell>
-                <Table.Cell className="text-center">
+                <Table.Cell column="choose" className="pr-0 text-right">
                   <ToolbarAction
                     label={`Choose ${provider.name}`}
-                    className="size-6"
+                    className="ml-auto size-6"
                     onClick={(event) => {
                       event.stopPropagation()
                       controller.onSelectProvider(provider.id)

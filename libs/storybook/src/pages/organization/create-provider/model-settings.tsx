@@ -1,3 +1,4 @@
+import { providerPageLayout } from './layout'
 import { useEffect, useState } from 'react'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { ArrowCounterClockwiseIcon } from '@phosphor-icons/react/dist/csr/ArrowCounterClockwise'
@@ -182,7 +183,7 @@ export function ModelSettingsPage() {
             </Popup.Root>
           </Functions>
         </PageHeader>
-        <fieldset disabled={!access} className="mx-auto grid w-full min-w-0 max-w-2xl gap-8 px-4 py-8">
+        <fieldset disabled={!access} className={`${providerPageLayout} gap-8`}>
           <ModelHeading />
           <CatalogStatus />
           <ModelSection

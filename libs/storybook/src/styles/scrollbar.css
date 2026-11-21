@@ -4,6 +4,10 @@ body {
   overscroll-behavior: none;
 }
 
+html {
+  overflow-y: scroll;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--muted-foreground) 55%, transparent) transparent;

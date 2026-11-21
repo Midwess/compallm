@@ -52,11 +52,7 @@ disabled:cursor-not-allowed disabled:opacity-50`,
             className,
           )}
         >
-          {src ? (
-            <img src={src} alt="Provider avatar" className="size-full object-cover" />
-          ) : (
-            <ProviderIcon provider={provider} className="size-5" />
-          )}
+          <ProviderIcon provider={provider} logoPath={src ?? undefined} className="size-5" />
         </Popup.Trigger>
         <Popup.Content aria-label="Change provider avatar">
           <Popup.Item onSelect={() => input.current?.click()}>Upload image</Popup.Item>

@@ -1,3 +1,4 @@
+import { providerPageLayout } from './layout'
 import { CatalogStatus } from './catalog-status'
 import { ImageUploadInput } from '@compallm/contract/validation'
 import { DisabledTooltip } from '../../../components/feedback'
@@ -203,13 +204,12 @@ export function ProviderConfiguration() {
   const form = controller.store.form
   const templatePreview = useProvider((state) => state.templatePreview)
   return (
-    <Form.Root model={form} className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8">
-      {templatePreview ? (
-        <>
-          <p className="px-4 text-xs text-muted-foreground">Template preview · Changes stay in this page</p>
-          <CatalogStatus />
-        </>
-      ) : null}
+    <Form.Root model={form} className={`${providerPageLayout} gap-6`}>
+      <div className="grid gap-1 px-4">
+        <h2 className="text-2xl font-medium">Configure</h2>
+        {templatePreview ? <p className="text-xsm text-muted-foreground">Changes stay on this page.</p> : null}
+      </div>
+      {templatePreview ? <CatalogStatus /> : null}
       {intent === 'edit' && !edit.allowed ? (
         <p className="text-xs text-muted-foreground">You do not have permission to edit this provider configuration.</p>
       ) : null}

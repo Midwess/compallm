@@ -217,8 +217,8 @@ export function SidebarHeader({
           {mark ?? (
             <span
               aria-hidden="true"
-              className="flex aspect-square h-4.5 shrink-0 items-center justify-center rounded-md bg-brand-mark
-              p-0.5 text-xs leading-none font-bold text-brand-mark-foreground"
+              className="flex aspect-square h-4.5 pb-0.5 shrink-0 items-center justify-center rounded-md bg-brand-mark
+              text-xs leading-none font-bold text-brand-mark-foreground"
             >
               c
             </span>

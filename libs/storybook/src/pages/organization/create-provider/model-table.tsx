@@ -2,7 +2,7 @@ import { PermissionRequest, usePermissionChecks } from '../../../components/perm
 import { Table } from '../../../components/table'
 import { SectionSurface } from '../../../components/surfaces'
 import { Searchbox } from '../../../components/fields'
-import { Checkbox } from '../../../components/selection'
+import { Switch } from '../../../components/selection'
 import { Popup } from '../../../components/popup'
 import { ProviderIcon } from '../../../components/provider-icons'
 import { CapabilityIndicator } from '../../../components/capability-icon'
@@ -66,19 +66,7 @@ export function ProviderModels() {
               )))) &&
       capabilities.every((capability) => model.capabilities?.includes(capability)),
   )
-  const selectable = visible.filter(
-    (model) => templatePreview || (supported(model) && hasValidModelPrices(model) && editable(model.id)),
-  )
-  const selected = selectable.filter((model) => model.enabled).length
-  const all = selectable.length > 0 && selected === selectable.length
   const enabled = models.filter((model) => model.enabled).length
-  function toggleAll(value: boolean) {
-    const ids = new Set(selectable.map((model) => model.id))
-    controller.store.form.change(
-      'models',
-      models.map((model) => (ids.has(model.id) ? { ...model, enabled: value } : model)),
-    )
-  }
   return (
     <SectionSurface className="grid min-w-0 gap-4">
       <div className="flex items-center gap-3">
@@ -97,28 +85,18 @@ export function ProviderModels() {
           className="w-full table-fixed text-xs"
           aria-label="Provider models"
           columns={[
-            { id: 'enabled', className: 'w-10' },
-            { id: 'name' },
-            { id: 'capabilities', className: 'w-28', visibilityClassName: 'hidden xl:table-cell' },
+            { id: 'name', className: 'xl:w-[31%]' },
+            { id: 'capabilities', visibilityClassName: 'hidden xl:table-cell' },
             { id: 'context', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },
             { id: 'input', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
             { id: 'output', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
             { id: 'cached', className: 'w-20', visibilityClassName: 'hidden xl:table-cell' },
             { id: 'actions', className: 'w-12' },
+            { id: 'enabled', className: 'w-12' },
           ]}
         >
           <Table.Header className="h-8 text-muted-foreground">
             <Table.Row className="border-b border-divider">
-              <Table.Head column="enabled" className="p-0 text-left">
-                <Checkbox
-                  size="compact"
-                  aria-label="Enable all matching models"
-                  checked={all}
-                  indeterminate={selected > 0 && !all}
-                  disabled={busy || !selectable.length}
-                  onChange={(event) => toggleAll(event.target.checked)}
-                />
-              </Table.Head>
               {[
                 ['name', 'Model name'],
                 ['capabilities', 'Capabilities'],
@@ -134,26 +112,19 @@ export function ProviderModels() {
               <Table.Head className="p-0">
                 <span className="sr-only">Actions</span>
               </Table.Head>
+              <Table.Head column="enabled" className="p-0 text-right">
+                <span className="sr-only">Enabled</span>
+              </Table.Head>
             </Table.Row>
           </Table.Header>
           <Table.Body items={visible} getKey={(model) => model.id}>
             {(model) => (
               <Table.Row key={model.id} className="h-12 border-b border-divider last:border-b-0">
-                <Table.Cell column="enabled" className="p-0 text-left">
-                  <Checkbox
-                    size="compact"
-                    aria-label={`Enable ${model.name}`}
-                    name={`models[${models.indexOf(model)}].enabled`}
-                    disabled={
-                      busy || (!templatePreview && (!editable(model.id) || !supported(model) || !hasValidModelPrices(model)))
-                    }
-                  />
-                </Table.Cell>
                 <Table.Cell column="name" className="min-w-0 px-1 text-left">
-                  <span title={model.name} className="block max-w-44 truncate font-medium">
+                  <span title={model.name} className="block truncate font-medium">
                     {Array.from(model.name).length > 50 ? `${Array.from(model.name).slice(0, 50).join('')}…` : model.name}
                   </span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
+                  <span className="mt-1 block truncate text-xs text-muted-foreground">
                     {modelTypeLabels(model).join(' · ') || model.description || 'Not declared'}
                   </span>
                 </Table.Cell>
@@ -196,6 +167,15 @@ disabled:opacity-50"
                       Edit
                     </button>
                   ) : null}
+                </Table.Cell>
+                <Table.Cell column="enabled" className="p-0 text-right">
+                  <Switch
+                    aria-label={`Enable ${model.name}`}
+                    name={`models[${models.indexOf(model)}].enabled`}
+                    disabled={
+                      busy || (!templatePreview && (!editable(model.id) || !supported(model) || !hasValidModelPrices(model)))
+                    }
+                  />
                 </Table.Cell>
               </Table.Row>
             )}

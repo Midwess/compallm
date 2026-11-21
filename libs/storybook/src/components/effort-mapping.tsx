@@ -269,7 +269,7 @@ function CompactEffortMapping({
   }
   return (
     <div
-      className="flex h-9 min-w-0 items-stretch gap-1"
+      className="flex min-h-10 min-w-0 items-center gap-2"
       data-form-field={name}
       aria-invalid={field?.invalid || undefined}
       aria-describedby={name ? `${name}-error` : undefined}
@@ -280,26 +280,24 @@ function CompactEffortMapping({
           aria-label="Previous effort level"
           disabled={disabled || active === 0}
           onClick={() => choose(active - 1)}
-          className="flex w-3 shrink-0 cursor-pointer items-center text-foreground
-          disabled:text-muted-foreground/40 focus-visible:outline-ring"
+          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-elevated
+          text-muted-foreground hover:bg-hover hover:text-foreground disabled:opacity-30 focus-visible:outline-ring"
         >
-          <svg viewBox="0 0 12 30" className="h-full w-full fill-current" aria-hidden="true">
-            <path d="M10 1.5Q12 0 12 2.5V27.5Q12 30 10 28.5L1 17Q-0.5 15 1 13Z" />
-          </svg>
+          <CaretLeftIcon className="size-3.5" aria-hidden="true" />
         </animated.button>
       </DisabledTooltip>
-      <div className="relative grid min-w-0 flex-1 grid-cols-5 gap-1 overflow-hidden rounded-lg bg-inset px-3 pb-1">
+      <div className="relative grid min-h-10 min-w-0 flex-1 grid-cols-5 gap-1 overflow-hidden rounded-lg px-1 pb-2">
         <div
           aria-hidden="true"
           data-effort-glow
           className="pointer-events-none absolute inset-x-0 bottom-0
           bg-linear-to-r from-(--effort-low) via-(--effort-medium) to-(--effort-high) blur-sm"
-          style={{ height: 4 + active * 0.5, opacity: 0.24 + active * 0.025 }}
+          style={{ height: 4 + active * 0.5, opacity: 0.18 + active * 0.02 }}
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-1
-          bg-linear-to-r from-(--effort-low) via-(--effort-medium) to-(--effort-high) opacity-90"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5
+          bg-linear-to-r from-(--effort-low) via-(--effort-medium) to-(--effort-high) opacity-70"
         />
         {effortLevels.map((level, index) => (
           <div key={level} className="relative z-1 flex min-w-0 items-center justify-center">
@@ -314,10 +312,17 @@ function CompactEffortMapping({
                 autoFocus={defaultFocused === level}
                 disabled={disabled}
                 maxLength={ProviderInputRulesConstraints.effortValue.maxLength}
-                className="h-6 w-full rounded-md border-ring/60 px-1 text-center text-xs"
+                className="h-7 w-full rounded-lg border-ring/50 bg-elevated px-1 text-center text-xs"
                 onChange={(event) => change(level, event.target.value)}
                 onBlur={field?.blur}
                 onKeyDown={(event) => {
+                  if (event.key === 'Tab') {
+                    const next = active + (event.shiftKey ? -1 : 1)
+                    if (next >= 0 && next <= last) {
+                      event.preventDefault()
+                      choose(next)
+                    }
+                  }
                   if (event.key === 'ArrowLeft' && (event.ctrlKey || event.metaKey)) {
                     event.preventDefault()
                     choose(active - 1)
@@ -334,8 +339,9 @@ function CompactEffortMapping({
                   type="button"
                   disabled={disabled}
                   aria-label={`Edit ${level} effort mapping`}
+                  onFocus={() => choose(index)}
                   onClick={() => choose(index)}
-                  className="h-6 w-full min-w-0 truncate rounded-md text-xs text-muted-foreground hover:bg-hover
+                  className="h-7 w-full min-w-0 truncate rounded-lg text-xs text-muted-foreground hover:bg-hover
                 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-ring"
                 >
                   {values[level] || '\u00a0'}
@@ -345,18 +351,16 @@ function CompactEffortMapping({
           </div>
         ))}
       </div>
-      <DisabledTooltip disabled={disabled || active === last} reason="Configure this effort before adding the next level.">
+      <DisabledTooltip disabled={disabled || active === last} reason="This is the last effort level.">
         <animated.button
           type="button"
           aria-label="Next effort level"
           disabled={disabled || active === last}
           onClick={() => choose(active + 1)}
-          className="flex w-3 shrink-0 cursor-pointer items-center text-foreground
-          disabled:text-muted-foreground/40 focus-visible:outline-ring"
+          className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-elevated
+          text-muted-foreground hover:bg-hover hover:text-foreground disabled:opacity-30 focus-visible:outline-ring"
         >
-          <svg viewBox="0 0 12 30" className="h-full w-full fill-current" aria-hidden="true">
-            <path d="M2 1.5Q0 0 0 2.5V27.5Q0 30 2 28.5L11 17Q12.5 15 11 13Z" />
-          </svg>
+          <CaretRightIcon className="size-3.5" aria-hidden="true" />
         </animated.button>
       </DisabledTooltip>
     </div>

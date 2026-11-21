@@ -16,28 +16,46 @@ impl TryFrom<ModelSchema> for Model {
                 "model and organization IDs in database must be positive"
             )));
         }
-        let pricing: compallm_core::provider::Pricing =
-            serde_json::from_value(model.pricing).context("invalid model pricing in database")?;
-        pricing
-            .validate()
-            .context("invalid model prices in database")?;
-        Ok(Self {
+        let billing: Option<compallm_core::provider::ModelBilling> = model
+            .billing
+            .map(serde_json::from_value)
+            .transpose()
+            .context("invalid stored model billing")?;
+        if let Some(value) = &billing {
+            value.validate().context("invalid stored billing")?;
+        }
+
+        let result = Self {
             id,
             organization_id,
             name: model.name,
             service_kind: serde_json::from_value(model.service_kind.into())
                 .context("invalid model service kind in database")?,
             enabled: model.enabled,
-            capabilities: serde_json::from_value(model.capabilities)
-                .context("invalid model capabilities in database")?,
+            text: serde_json::from_value(model.text)
+                .context("invalid stored text configuration")?,
+            vision: serde_json::from_value(model.vision)
+                .context("invalid stored vision configuration")?,
+            pdf: serde_json::from_value(model.pdf).context("invalid stored pdf configuration")?,
+            audio: serde_json::from_value(model.audio)
+                .context("invalid stored audio configuration")?,
+            video: serde_json::from_value(model.video)
+                .context("invalid stored video configuration")?,
+            image_generation: serde_json::from_value(model.image_generation)
+                .context("invalid stored image_generation configuration")?,
+            tools: serde_json::from_value(model.tools)
+                .context("invalid stored tools configuration")?,
+            structured_output: serde_json::from_value(model.structured_output)
+                .context("invalid stored structured_output configuration")?,
+            search: serde_json::from_value(model.search)
+                .context("invalid stored search configuration")?,
             limits: serde_json::from_value(model.limits)
                 .context("invalid model limits in database")?,
-            thinking: model
-                .thinking
-                .map(serde_json::from_value)
-                .transpose()
-                .context("invalid model thinking in database")?,
-            pricing,
-        })
+            billing,
+        };
+        result
+            .validate_capabilities()
+            .context("invalid stored capability pricing")?;
+        Ok(result)
     }
 }

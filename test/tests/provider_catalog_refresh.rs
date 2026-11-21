@@ -1,4 +1,9 @@
-use compallm_postgres::{Migrator, ProviderTemplateSchema};
+use compallm_postgres::Migrator;
+#[path = "support/catalog_legacy_provider_model_templates.rs"]
+mod legacy_models;
+#[path = "support/catalog_legacy_provider_templates.rs"]
+mod legacy_providers;
+use legacy_providers::Model as ProviderTemplateSchema;
 use sea_orm::{
     ColumnTrait, Database, EntityTrait, ExprTrait, ModelTrait, QueryFilter, QueryOrder,
     TransactionTrait,
@@ -8,7 +13,7 @@ use sea_orm_migration::{MigratorTrait, SchemaManager};
 
 type Providers = <ProviderTemplateSchema as ModelTrait>::Entity;
 type Column = <Providers as EntityTrait>::Column;
-type Models = <compallm_postgres::ProviderModelTemplateSchema as ModelTrait>::Entity;
+type Models = <legacy_models::Model as ModelTrait>::Entity;
 type ModelColumn = <Models as EntityTrait>::Column;
 
 #[tokio::test]
@@ -85,7 +90,7 @@ async fn catalog_refresh_round_trips_and_preserves_concurrent_edits() {
         );
         transaction.rollback().await.unwrap();
     }
-    let models = <compallm_postgres::ProviderModelTemplateSchema as ModelTrait>::Entity::find()
+    let models = <legacy_models::Model as ModelTrait>::Entity::find()
         .all(&db)
         .await
         .unwrap();

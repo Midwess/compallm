@@ -26,7 +26,7 @@ impl Fixture {
 
     fn connection() -> serde_json::Value {
         json!({"baseUrl": "https://provider.example/v1", "timeoutMs": 30000,
-            "authentication": {"apiKeyHeader": {"name": "Authorization", "prefix": "Bearer "}}})
+            "authentication":{"type":"api_key","configuration":{"placement":{"apiKeyHeader":{"name":"Authorization","prefix":"Bearer "}},"requiredInputs":[]}},"endpoint":{"mode":"fixed","urlTemplate":null,"requiredInputs":[]}})
     }
 
     fn provider(id: i64, name: &str, api_key: &str) -> ProviderSchema {
@@ -34,6 +34,9 @@ impl Fixture {
             id,
             organization_id: 84,
             name: name.into(),
+            description: None,
+            logo_url: None,
+            template_id: None,
             connection: Self::connection(),
             headers: json!({}),
             credentials: String::from(Self::key(api_key)),
@@ -53,6 +56,9 @@ impl Fixture {
             id: 100,
             organization_id: 84,
             name: "Primary".into(),
+            description: None,
+            logo_url: None,
+            template_id: None,
             connection: serde_json::from_value(Self::connection()).unwrap(),
             headers: Default::default(),
             api_key: Self::key("upstream-api-key"),
@@ -85,7 +91,7 @@ async fn find_all_applies_the_requested_limit_and_scopes_to_the_organization() {
     assert_eq!(providers[0].organization_id, 84);
     assert_eq!(
         providers[0].connection.base_url,
-        "https://provider.example/v1"
+        Some("https://provider.example/v1".into())
     );
 
     let log = format!("{:?}", Arc::try_unwrap(db).unwrap().into_transaction_log());
@@ -112,7 +118,7 @@ async fn insert_writes_connection_and_secret_without_business_validation_queries
         .await
         .unwrap();
     assert_eq!(provider.id, 100);
-    assert_eq!(provider.connection.timeout_ms, 30000);
+    assert_eq!(provider.connection.timeout_ms, Some(30000));
     assert_eq!(
         provider.api_key.read(&Fixture::cipher()).unwrap(),
         "upstream-api-key"

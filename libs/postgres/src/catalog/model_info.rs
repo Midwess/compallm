@@ -7,6 +7,8 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct ModelInfoSource {
     pub kind: SourceKind,
     pub url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference: Option<String>,
     pub access: SourceAccess,
     pub status: SourceStatus,
     pub fields: Vec<ModelInfoField>,
@@ -156,6 +158,7 @@ impl TryFrom<serde_json::Value> for ModelInfoSources {
             match source.kind {
                 SourceKind::Manual => {
                     if source.url.is_some()
+                        || source.reference.is_some()
                         || source.request.is_some()
                         || source.response.is_some()
                         || source.pagination.is_some()
@@ -168,8 +171,9 @@ impl TryFrom<serde_json::Value> for ModelInfoSources {
                 }
                 SourceKind::Repository | SourceKind::Documentation => {
                     if source
-                        .url
+                        .reference
                         .as_deref()
+                        .or(source.url.as_deref())
                         .is_none_or(|value| value.trim().is_empty())
                     {
                         return Err("source reference is required");

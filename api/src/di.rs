@@ -69,6 +69,7 @@ struct Settings {
 
 /// Own all application dependencies in one permanent container.
 pub struct Di {
+    catalog: compallm_postgres::catalog::repository::CatalogRepository,
     db: Box<DbContext>,
     storage: Option<Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>>,
     s3: Option<std::sync::Arc<compallm_storage::S3Storage>>,
@@ -160,6 +161,7 @@ impl Di {
             compallm_postgres::repository::dictionary::DictionaryRepository::new(db.clone())
                 .expect("application dictionary connection must be committed");
         Self {
+            catalog: Default::default(),
             db: Box::new(db),
             storage: None,
             org_storage: None,
@@ -657,5 +659,11 @@ impl juniper::FromContext<Di> for Box<dyn compallm_core::persistent::passkey::Pa
 impl juniper::FromContext<Di> for Box<dyn SessionRepository> {
     fn from(di: &Di) -> &Self {
         &di.sessions
+    }
+}
+
+impl juniper::FromContext<Di> for compallm_postgres::catalog::repository::CatalogRepository {
+    fn from(context: &Di) -> &Self {
+        &context.catalog
     }
 }

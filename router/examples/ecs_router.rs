@@ -6,7 +6,7 @@
 
 use compallm_core::{
     model::Model,
-    provider::{ModelLimits, Pricing, RequestPricing, ServiceKind},
+    provider::{ModelBilling, ModelLimits, Rate, RequestPricing, ServiceKind},
 };
 use router::prelude::*;
 use std::{io, num::NonZeroUsize, sync::Arc};
@@ -164,12 +164,23 @@ async fn main() -> io::Result<()> {
         name: "general-chat".into(),
         service_kind: ServiceKind::Llm,
         enabled: true,
-        capabilities: vec![],
+        text: Default::default(),
+        vision: Default::default(),
+        pdf: Default::default(),
+        audio: Default::default(),
+        video: Default::default(),
+        image_generation: Default::default(),
+        tools: Default::default(),
+        structured_output: Default::default(),
+        search: Default::default(),
         limits: ModelLimits::default(),
-        thinking: None,
-        pricing: Pricing::Request(RequestPricing {
-            usd_per_request: 0.into(),
-        }),
+        billing: Some(ModelBilling::Request(RequestPricing {
+            rate: Rate {
+                amount: Some(0.into()),
+                currency: Some("USD".into()),
+                quantity: Some(1),
+            },
+        })),
     };
     let providers = Arc::new(ProviderPool {
         instances: vec![

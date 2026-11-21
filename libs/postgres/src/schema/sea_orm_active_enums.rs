@@ -216,3 +216,16 @@ pub enum CatalogReadiness {
     #[sea_orm(string_value = "incomplete")]
     Incomplete,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "Enum",
+    db_type = "Enum",
+    enum_name = "catalog_research_progress"
+)]
+pub enum CatalogResearchProgress {
+    #[sea_orm(string_value = "in_progress")]
+    InProgress,
+    #[sea_orm(string_value = "complete")]
+    Complete,
+}

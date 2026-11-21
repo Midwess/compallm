@@ -581,3 +581,22 @@ fn validate_header(header: &ProviderHeader) -> Result<(), validify::ValidationEr
 fn validate_header_contract() -> serde_json::Value {
     serde_json::json!({"x-compallm-object-rule": "header", "x-compallm-messages": {"x-compallm-object-rule": "Enter a valid Authorization header value."}})
 }
+
+impl From<compallm_core::provider::Capability> for ProviderModelCapability {
+    fn from(v: compallm_core::provider::Capability) -> Self {
+        match v {
+            compallm_core::provider::Capability::Text => Self::Text,
+            compallm_core::provider::Capability::Vision => Self::Vision,
+            compallm_core::provider::Capability::Pdf => Self::Pdf,
+            compallm_core::provider::Capability::Audio => Self::Audio,
+            compallm_core::provider::Capability::Video => Self::Video,
+            compallm_core::provider::Capability::ImageGeneration => Self::ImageGeneration,
+            compallm_core::provider::Capability::AudioGeneration => Self::AudioGeneration,
+            compallm_core::provider::Capability::Search => Self::Search,
+            compallm_core::provider::Capability::Reasoning => Self::Reasoning,
+            compallm_core::provider::Capability::ToolCall => Self::ToolCall,
+            compallm_core::provider::Capability::ForcedToolChoice => Self::ForcedToolChoice,
+            compallm_core::provider::Capability::StructuredOutput => Self::StructuredOutput,
+        }
+    }
+}

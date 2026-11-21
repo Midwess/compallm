@@ -1,5 +1,1 @@
-import { OrganizationCatalogPage } from '@compallm/storybook/pages/organization'
-
-export function Component() {
-  return <OrganizationCatalogPage kind="providers" />
-}
+export { Component } from './create-provider'

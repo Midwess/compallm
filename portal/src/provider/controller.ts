@@ -1,366 +1,276 @@
 import {
   createCreateProviderStore,
-  isValidModelDraft,
-  providerSnapshot,
-  initializeModelDraft,
   type CreateProviderController as Controller,
-  type ApiProtocol,
-  type EndpointMode,
   type ModelDraft,
   type ProviderModel,
-  type TextModelProtocol,
-  type HeaderEntry,
-  type ModelCapability,
-  type ModelStatusFilter,
 } from '@compallm/storybook/pages/organization/create-provider'
-import { notify } from '../notifications/toast'
+import { processInSlices } from '@compallm/storybook'
 import type { OrganizationController } from '@compallm/storybook/pages/organization'
-import { UrlController } from '../url/controller'
-import { readProviderUrl, writeProviderUrl, emptyModel, modelFingerprint } from './url-state'
-import { providers } from './presets'
+import type { UrlController } from '../url/controller'
+import { readProviderUrl, writeProviderUrl } from './url-state'
+import { listProviders, getProvider, getModel } from './catalog'
+import { providerRow, modelRow, modelDraft } from './presentation'
 
-const paths: Record<EndpointMode, string> = {
-  chat_completions: '/chat/completions',
-  responses: '/responses',
-  messages: '/messages',
-  video: '/videos',
-  realtime: '/realtime',
-}
 export class CreateProviderController implements Controller {
-  readonly store = createCreateProviderStore({ providers, selectedProviderId: 'openai' })
-  private readonly url: UrlController
-  private readonly organization: OrganizationController
-  private unsubscribe: (() => void) | undefined
-  private unblock: (() => void) | undefined
-  private avatarObjectUrl: string | undefined
-  private applying = false
-  private permitNavigation = false
-  constructor(url: UrlController, organization: OrganizationController) {
+  readonly store = createCreateProviderStore({ templatePreview: true, protocol: 'provider_specific' })
+  private owner?: AbortController
+  private listRequest?: AbortController
+  private providerRequest?: AbortController
+  private modelRequest?: AbortController
+  private unsubscribe?: () => void
+  private query?: string
+  private provider?: string | null
+  private model?: string | null
+  private cursor?: string
+  private appendFailed = false
+  private loadedProvider?: string
+  private readonly url: Pick<UrlController, 'store' | 'update'>
+  private readonly organization: Pick<OrganizationController, 'getCurrentOrganization'>
+  constructor(
+    url: Pick<UrlController, 'store' | 'update'>,
+    organization: Pick<OrganizationController, 'getCurrentOrganization'>,
+  ) {
     this.url = url
     this.organization = organization
   }
   start = () => {
-    const apply = () => {
-      this.applying = true
-      const projection = readProviderUrl(this.url.store.getState())
-      const previous = this.store.getState()
-      projection.models = projection.models?.map((model) => {
-        const retained = previous.models.find((item) => item.id === model.id)
-        return { ...model, headers: retained?.headers, bodyDefaults: retained?.bodyDefaults, defaults: retained?.defaults }
-      })
-      if (projection.modelDraft && previous.modelDraft?.id === projection.modelDraft.id) {
-        projection.modelDraft.headers = previous.modelDraft.headers
-        projection.modelDraft.bodyDefaults = previous.modelDraft.bodyDefaults
-        projection.modelDraft.defaults = previous.modelDraft.defaults
-      }
-      if (JSON.stringify(projection.models) === JSON.stringify(previous.models)) projection.models = previous.models
-      if (
-        projection.modelDraft &&
-        previous.modelDraft &&
-        modelFingerprint(projection.modelDraft) === modelFingerprint(previous.modelDraft)
-      )
-        projection.modelDraft = previous.modelDraft
-      this.store.setState({ ...projection, navigationRequest: null, test: { status: 'idle' } })
-      this.configuredProviderId = this.store.getState().selectedProviderId
-      this.endpoint()
-      this.applying = false
-    }
-    apply()
-    this.unsubscribe = this.url.store.subscribe(apply)
-    this.unblock = this.url.block(
-      (target) => {
-        if (this.permitNavigation) return false
-        const state = this.store.getState(),
-          draft = state.modelDraft
-        if (!draft) return false
-        const original = state.models.find((model) => model.id === state.editingModelId) ?? emptyModel(draft.id, draft.protocol)
-        if (modelFingerprint(draft) === modelFingerprint(original)) return false
-        const current = new URLSearchParams(this.url.store.getState().search)
-        return (
-          target.pathname !== this.url.store.getState().pathname ||
-          target.searchParams.get('dialog') !== current.get('dialog') ||
-          target.searchParams.get('model') !== current.get('model')
-        )
-      },
-      (request) =>
-        this.store.setState({
-          navigationRequest: {
-            discard: () => {
-              this.store.setState({ navigationRequest: null })
-              request.discard()
-            },
-            keep: () => {
-              this.store.setState({ navigationRequest: null })
-              request.keep()
-            },
-          },
-        }),
-    )
-    window.addEventListener('beforeunload', this.beforeUnload)
+    this.stop()
+    this.owner = new AbortController()
+    this.query = undefined
+    this.provider = undefined
+    this.model = undefined
+    this.loadedProvider = undefined
+    this.unsubscribe = this.url.store.subscribe(this.apply)
+    this.apply()
     return this.stop
   }
   stop = () => {
+    this.owner?.abort()
+    this.listRequest?.abort()
+    this.providerRequest?.abort()
+    this.modelRequest?.abort()
     this.unsubscribe?.()
-    this.unblock?.()
-    window.removeEventListener('beforeunload', this.beforeUnload)
-    this.store.setState((state) => ({
-      apiKey: '',
-      headers: [],
-      avatarUrl: null,
-      avatarFile: null,
-      modelDraft: null,
-      editingModelId: null,
-      models: state.models.map((model) => ({ ...model, headers: [], bodyDefaults: [], defaults: undefined })),
-    }))
-    if (this.avatarObjectUrl) URL.revokeObjectURL(this.avatarObjectUrl)
+    this.unsubscribe = undefined
+    this.owner = undefined
   }
-  private beforeUnload = (event: BeforeUnloadEvent) => {
-    const state = this.store.getState()
-    if (
-      state.apiKey ||
-      state.headers.some((header) => header.key || header.value) ||
-      (state.modelDraft &&
-        modelFingerprint(state.modelDraft) !==
-          modelFingerprint(
-            state.models.find((m) => m.id === state.editingModelId) ??
-              emptyModel(state.modelDraft.id, state.modelDraft.protocol),
-          ))
-    ) {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-  }
-  private persist(replace = true, allow = false) {
-    if (this.applying) return
-    const state = this.store.getState(),
-      org = this.organization.getCurrentOrganization()
-    if (!org) return
-    const step = state.step === 'choose' ? 'choose-provider' : 'configure-provider'
-    const pathname = `/${encodeURIComponent(org.name)}/providers/new/${step}`
-    this.permitNavigation = allow
-    const accepted = this.url.update(writeProviderUrl(state), { pathname, replace })
-    if (accepted === false) {
-      this.store.setState(readProviderUrl(this.url.store.getState()))
-      this.endpoint()
-    }
-    this.permitNavigation = false
-  }
-  private configuredProviderId: string | null | undefined
-  private invalidateTest() {
-    this.store.setState({ test: { status: 'idle' } })
-  }
-  private endpoint() {
-    const state = this.store.getState()
-    const model = state.models.find((item) => item.enabled)
-    const path = model?.path ?? paths[state.mode]
+  private apply = () => {
+    const next = readProviderUrl(this.url.store.getState())
+    const provider = next.step === 'configure' ? next.provider : null
     this.store.setState({
-      endpointUrl: state.baseUrl ? `${state.baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}` : '',
+      step: next.step,
+      selectedProviderId: provider,
+      ...(this.query !== next.query ? { providerQuery: next.query } : {}),
+      modelQuery: next.modelQuery,
+    })
+    if (
+      next.step === 'choose' &&
+      (this.query !== next.query || (!this.store.getState().providers.length && !this.listRequest))
+    ) {
+      this.query = next.query
+      void this.loadProviders(false)
+    }
+    if (this.provider !== provider) {
+      this.provider = provider
+      this.loadedProvider = undefined
+      this.providerRequest?.abort()
+      this.modelRequest?.abort()
+      this.model = undefined
+      this.store.setState({
+        models: [],
+        modelDraft: null,
+        editingModelId: null,
+        name: '',
+        baseUrl: '',
+        apiKey: '',
+        avatarUrl: null,
+        avatarFile: null,
+        headers: [],
+        catalogError: null,
+        providerLoading: false,
+        modelLoading: false,
+      })
+      if (provider) void this.loadProvider(provider)
+    }
+    const model = provider ? next.model : null
+    if (this.model !== model) {
+      this.model = model
+      this.modelRequest?.abort()
+      if (!model) this.store.setState({ modelDraft: null, editingModelId: null, modelLoading: false, catalogError: null })
+      else if (this.loadedProvider === provider) void this.loadModel(model)
+    }
+  }
+  private navigate(step: 'choose' | 'configure', provider: string | null, model: string | null = null, replace = false) {
+    const org = this.organization.getCurrentOrganization()
+    if (!org) return
+    this.store.setState({ step, selectedProviderId: provider, editingModelId: model })
+    const page = step === 'choose' ? 'choose-provider' : 'configure-provider'
+    this.url.update(writeProviderUrl({ ...this.store.getState(), providerQuery: this.query ?? '' }), {
+      pathname: `/${encodeURIComponent(org.name)}/providers/new/${page}`,
+      replace,
     })
   }
   onProviderQueryChanged = (providerQuery: string) => {
     this.store.setState({ providerQuery })
-    this.persist()
+    if (!providerQuery.trim() && this.query) this.onProviderSearch()
   }
-  onSelectProvider = (selectedProviderId: string) => {
-    this.store.setState({ selectedProviderId })
-    this.configureSelectedProvider()
-    this.persist(false)
+  onProviderSearch = () => {
+    const query = this.store.getState().providerQuery.trim()
+    if (query === this.query) void this.loadProviders(false)
+    else this.url.update({ q: query || null }, { replace: true })
   }
-  private configureSelectedProvider() {
-    const state = this.store.getState()
-    const preset = state.providers.find((provider) => provider.id === state.selectedProviderId)
-    if (!preset) return
-    if (this.configuredProviderId === state.selectedProviderId) {
-      this.store.setState({ step: 'configure' })
-      return
+  onLoadMoreProviders = () => {
+    const s = this.store.getState()
+    if (s.providersHasMore && !s.providersLoading) void this.loadProviders(true)
+  }
+  private async loadProviders(append: boolean) {
+    const owner = this.owner
+    if (!owner) return
+    this.listRequest?.abort()
+    const request = new AbortController()
+    this.listRequest = request
+    const query = this.query ?? ''
+    if (!append) this.cursor = undefined
+    this.appendFailed = append
+    this.store.setState({ providersLoading: true, providersLoadError: null, ...(!append ? { providersHasMore: false } : {}) })
+    try {
+      const data = await listProviders(query, append ? this.cursor : undefined, AbortSignal.any([owner.signal, request.signal]))
+      if (owner.signal.aborted || request.signal.aborted || this.listRequest !== request) return
+      this.cursor = data.pageInfo.endCursor ?? undefined
+      this.store.setState((state) => {
+        const rows = new Map((append ? state.providers : []).map((row) => [row.id, row]))
+        for (const { node } of data.edges) {
+          if (!rows.has(node.id)) rows.set(node.id, providerRow(node))
+        }
+        return { providers: [...rows.values()], providersHasMore: data.pageInfo.hasNextPage, providersLoadError: null }
+      })
+    } catch {
+      if (!owner.signal.aborted && !request.signal.aborted && this.listRequest === request)
+        this.store.setState({ providersLoadError: 'Could not load provider templates. Try again.' })
+    } finally {
+      if (this.listRequest === request) this.store.setState({ providersLoading: false })
     }
-    this.invalidateTest()
-    this.configuredProviderId = preset.id
-    this.store.setState({
-      step: 'configure',
-      name: `${preset.name} production`,
-      baseUrl: preset.baseUrl ?? '',
-      protocol: preset.protocol,
-      apiKey: '',
-      headers: [],
-      avatarUrl: null,
-      mode: preset.protocol === 'anthropic' ? 'messages' : 'chat_completions',
-      models: [],
-      modelQuery: '',
-      error: null,
-    })
-    this.endpoint()
   }
-  onUseCustomProvider = () => {
-    this.invalidateTest()
-    this.configuredProviderId = null
-    this.store.setState({
-      step: 'configure',
-      selectedProviderId: null,
-      name: '',
-      baseUrl: '',
-      apiKey: '',
-      headers: [],
-      avatarUrl: null,
-      protocol: 'openai_compatible',
-      mode: 'chat_completions',
-      models: [],
-      modelQuery: '',
-      error: null,
-    })
-    this.endpoint()
-    this.persist(false)
-  }
-  onChooseProvider = () => {
-    this.store.setState({ step: 'choose' })
-    this.persist(false)
-  }
-  onConnectionChanged = (field: 'name' | 'baseUrl' | 'apiKey', value: string) => {
-    if (this.store.getState().submitting) return
-    this.invalidateTest()
-    this.store.setState({ [field]: value })
-    this.endpoint()
-    if (field !== 'apiKey') this.persist()
-  }
-  onProtocolChanged = (protocol: ApiProtocol) => {
-    this.invalidateTest()
-    this.store.setState({ protocol })
-    this.endpoint()
-    this.persist()
-  }
-  onModeChanged = (mode: EndpointMode) => {
-    this.invalidateTest()
-    this.store.setState((state) => ({
-      mode,
-      models: state.models.map((model) => ({ ...model, enabled: model.enabled && model.modes.includes(mode) })),
-    }))
-    this.endpoint()
-    this.persist()
+  onSelectProvider = (id: string) => this.navigate('configure', id)
+  onChooseProvider = () => this.navigate('choose', null)
+  private async loadProvider(id: string) {
+    const owner = this.owner
+    if (!owner) return
+    this.providerRequest?.abort()
+    const request = new AbortController()
+    this.providerRequest = request
+    this.store.setState({ providerLoading: true, catalogError: null })
+    try {
+      const signal = AbortSignal.any([owner.signal, request.signal])
+      const value = await getProvider(id, signal)
+      if (signal.aborted || this.providerRequest !== request || this.provider !== id) return
+      if (!value) throw new Error('missing provider')
+      const models: ProviderModel[] = []
+      await processInSlices(value.models.edges, ({ node }) => models.push(modelRow(node, id)), signal)
+      if (signal.aborted || this.providerRequest !== request || this.provider !== id) return
+      this.loadedProvider = id
+      this.store.setState({
+        name: value.name,
+        baseUrl: value.connection.baseUrl ?? '',
+        avatarUrl: value.logoUrl ?? null,
+        headers: value.headers.map((v, index) => ({ id: String(index), ...v })),
+        models,
+        catalogError: null,
+      })
+      const selected = readProviderUrl(this.url.store.getState()).model
+      if (selected) {
+        this.model = selected
+        void this.loadModel(selected)
+      }
+    } catch {
+      if (!owner.signal.aborted && !request.signal.aborted && this.providerRequest === request)
+        this.store.setState({ catalogError: 'Could not load this provider template. Try again.' })
+    } finally {
+      if (this.providerRequest === request) {
+        this.store.setState({ providerLoading: false })
+      }
+    }
   }
   onModelQueryChanged = (modelQuery: string) => {
     this.store.setState({ modelQuery })
-    this.persist()
-  }
-  onModelsChanged = (models: ProviderModel[]) => {
-    this.invalidateTest()
-    this.store.setState({ models })
-    this.endpoint()
-    this.persist()
-  }
-  onAddModel = (protocol: TextModelProtocol = 'openai_chat_completions') => {
-    this.store.setState({ editingModelId: null, modelDraft: emptyModel(crypto.randomUUID(), protocol) })
-    this.persist(false)
+    this.url.update({ model_q: modelQuery || null }, { replace: true })
   }
   onEditModel = (id: string) => {
-    const model = this.store.getState().models.find((model) => model.id === id)
-    if (!model) return
-    this.store.setState({ editingModelId: id, modelDraft: initializeModelDraft(model) })
-    this.persist(false)
+    if (this.provider) this.navigate('configure', this.provider, id)
   }
-  onModelDraftChanged = (patch: Partial<ModelDraft>) => {
-    const draft = this.store.getState().modelDraft
-    if (!draft) return
-    for (const [key, value] of Object.entries(patch))
-      if (!Object.is(draft[key as keyof ModelDraft], value)) this.store.form.set(`modelDraft.${key}`, value)
-    this.persist()
-  }
-  onCancelModel = () => {
-    this.store.setState({ modelDraft: null, editingModelId: null })
-    this.persist(true, true)
-  }
-  onSaveModel = (draft: ModelDraft): ModelDraft | false => {
-    const { models, editingModelId } = this.store.getState()
-    if (
-      !draft ||
-      !isValidModelDraft(draft) ||
-      models.some((model) => model.id !== editingModelId && model.name.trim() === draft.name.trim())
-    )
-      return false
-    this.invalidateTest()
-    const previous = models.find((model) => model.id === editingModelId)
-    const model: ProviderModel = {
-      ...draft,
-      name: draft.name.trim(),
-      modes: previous?.modes ?? [
-        draft.protocol === 'anthropic_messages'
-          ? 'messages'
-          : draft.protocol === 'openai_responses'
-            ? 'responses'
-            : 'chat_completions',
-      ],
-      enabled: previous?.enabled ?? true,
-      description: previous?.description,
+  private async loadModel(id: string) {
+    const owner = this.owner,
+      provider = this.provider
+    if (!owner || !provider) return
+    this.modelRequest?.abort()
+    const request = new AbortController()
+    this.modelRequest = request
+    const summary = this.store.getState().models.find((v) => v.id === id)
+    const pending: ModelDraft = summary ?? {
+      id,
+      name: id,
+      maxContextTokens: '',
+      thinkingLevels: [],
+      inputPrice: '',
+      outputPrice: '',
+      cachedPrice: '',
     }
     this.store.setState({
-      models: previous ? models.map((item) => (item.id === editingModelId ? model : item)) : [...models, model],
-      editingModelId: model.id,
+      modelDraft: { ...pending },
+      editingModelId: id,
+      modelLoading: true,
+      catalogError: null,
     })
-    this.endpoint()
-    this.persist(true, true)
-    return model
+    try {
+      const signal = AbortSignal.any([owner.signal, request.signal])
+      const value = await getModel(provider, id, signal)
+      if (signal.aborted || this.modelRequest !== request || this.provider !== provider || this.model !== id) return
+      if (!value) throw new Error('missing model')
+      this.store.setState({ modelDraft: modelDraft(value), catalogError: null })
+    } catch {
+      if (!owner.signal.aborted && !request.signal.aborted && this.modelRequest === request) {
+        request.abort()
+        this.store.setState({ catalogError: 'Could not load this model template. It may no longer be available. Try again.' })
+      }
+    } finally {
+      if (this.modelRequest === request) this.store.setState({ modelLoading: false })
+    }
   }
-  onHeadersChanged = (headers: HeaderEntry[]) => {
-    this.invalidateTest()
-    this.store.setState({ headers })
+  onCancelModel = () => {
+    if (this.provider) this.navigate('configure', this.provider)
   }
-  onAvatarChanged = (file: File | null) => {
-    if (this.avatarObjectUrl) URL.revokeObjectURL(this.avatarObjectUrl)
-    this.avatarObjectUrl = file ? URL.createObjectURL(file) : undefined
-    this.store.setState({ avatarUrl: this.avatarObjectUrl ?? null })
+  onRetryCatalog = () => {
+    const s = this.store.getState()
+    if (s.step === 'choose') void this.loadProviders(this.appendFailed)
+    else if (this.provider && this.loadedProvider !== this.provider) void this.loadProvider(this.provider)
+    else if (this.model) void this.loadModel(this.model)
   }
-  onModelFiltersChanged = (filters: {
-    status?: ModelStatusFilter
-    protocol?: TextModelProtocol | 'all'
-    capabilities?: ModelCapability[]
-  }) => {
+  onModelFiltersChanged: Controller['onModelFiltersChanged'] = (filters) =>
     this.store.setState({
-      ...(filters.status ? { modelStatusFilter: filters.status } : {}),
-      ...(filters.protocol ? { modelProtocolFilter: filters.protocol } : {}),
-      ...(filters.capabilities ? { modelCapabilityFilter: filters.capabilities } : {}),
+      ...(filters?.status ? { modelStatusFilter: filters.status } : {}),
+      ...(filters?.protocol ? { modelProtocolFilter: filters.protocol } : {}),
+      ...(filters?.capabilities ? { modelCapabilityFilter: filters.capabilities } : {}),
     })
-    this.persist()
-  }
-  onProviderFilterChanged = (providerProtocolFilter: TextModelProtocol | 'all') => {
-    this.store.setState({ providerProtocolFilter })
-    this.persist()
-  }
-  onClearModelFilters = () => {
+  onClearModelFilters = () =>
     this.store.setState({ modelStatusFilter: 'all', modelProtocolFilter: 'all', modelCapabilityFilter: [] })
-    this.persist()
+  onUseCustomProvider = () => {}
+  onConnectionChanged: Controller['onConnectionChanged'] = (field, value) => this.store.setState({ [field]: value })
+  onHeadersChanged: Controller['onHeadersChanged'] = (headers) => this.store.setState({ headers })
+  onProtocolChanged = () => {}
+  onModeChanged = () => {}
+  onModelsChanged: Controller['onModelsChanged'] = (models) => this.store.setState({ models })
+  onAddModel = () => {}
+  onModelDraftChanged: Controller['onModelDraftChanged'] = (patch) => {
+    const draft = this.store.getState().modelDraft
+    if (draft && this.model === draft.id) this.store.setState({ modelDraft: { ...draft, ...patch } })
   }
-  onTestConnection = () => {
-    notify.info('Connection testing is not available yet.')
+  onSaveModel: Controller['onSaveModel'] = (draft) => {
+    if (!this.model || this.model !== draft.id) return false
+    this.store.setState({ modelDraft: draft })
+    return draft
   }
-  onSaveProvider = () => {
-    notify.info('Saving provider changes is not available yet.')
-    return false as const
-  }
-  onCancelProvider = () => {
-    const saved = this.store.getState().savedProvider
-    if (!saved) return
-    this.invalidateTest()
-    this.store.setState({ ...structuredClone(saved), intent: 'edit', apiKey: '', modelDraft: null, editingModelId: null })
-    this.endpoint()
-  }
-  onCloneProvider = () => {
-    const state = this.store.getState()
-    this.invalidateTest()
-    const source = state.savedProvider ?? providerSnapshot(state)
-    this.store.setState({
-      ...structuredClone(source),
-      name: `${source.name} clone`,
-      intent: 'clone',
-      apiKey: '',
-      modelDraft: null,
-      editingModelId: null,
-      modelQuery: '',
-      error: null,
-    })
-    this.endpoint()
-    this.persist(false)
-  }
-  onCreateProvider = () => {
-    notify.info('Provider creation is not available yet. Your configuration has not been saved.')
-    return false as const
-  }
+  onTestConnection = () => {}
+  onCreateProvider = () => false as const
+  onSaveProvider = () => false as const
+  onCancelProvider = this.onChooseProvider
+  onCloneProvider = () => {}
 }

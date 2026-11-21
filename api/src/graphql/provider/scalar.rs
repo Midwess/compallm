@@ -41,3 +41,12 @@ impl ContextTokens {
         }
     }
 }
+
+impl TryFrom<u32> for ContextTokens {
+    type Error = &'static str;
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        NonZeroU32::new(value)
+            .map(Self)
+            .ok_or("Expected a positive u32 context size")
+    }
+}

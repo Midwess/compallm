@@ -1,3 +1,4 @@
+import { CatalogStatus } from './catalog-status'
 import { PermissionRequest } from '../../../components/permission'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { Popup } from '../../../components/popup'
@@ -28,9 +29,16 @@ export type {
 
 function ProviderHeader() {
   const controller = useController()
+  const templatePreview = useProvider((state) => state.templatePreview)
   const step = useProvider((state) => state.step)
   const intent = useProvider((state) => state.intent)
   const name = useProvider((state) => (state.intent === 'edit' ? state.savedProvider?.name : state.name), ['name'])
+  if (step === 'choose')
+    return (
+      <PageHeader>
+        <Title>Choose provider</Title>
+      </PageHeader>
+    )
   if (intent !== 'create')
     return (
       <PageHeader>
@@ -48,12 +56,12 @@ function ProviderHeader() {
           onClick={controller.onChooseProvider}
           className="cursor-pointer text-muted-foreground hover:text-foreground focus-visible:outline-ring"
         >
-          Create provider
+          {templatePreview ? 'Provider templates' : 'Create provider'}
         </button>
         <span aria-hidden="true" className="text-muted-foreground">
           /
         </span>
-        <span>{step === 'choose' ? 'Choose provider' : 'Configure'}</span>
+        <span>{templatePreview ? 'Configure template' : 'Configure'}</span>
       </h1>
     </PageHeader>
   )
@@ -80,22 +88,25 @@ function ProviderContent() {
 export function CreateProviderPage() {
   useProviderForm()
   const intent = useProvider((state) => state.intent)
-  const modelId = useProvider((state) => state.modelDraft?.id, ['modelDraft.id'])
+  const modelId = useProvider(
+    (state) => (state.templatePreview ? state.editingModelId : state.modelDraft?.id),
+    ['modelDraft.id'],
+  )
+  const templatePreview = useProvider((state) => state.templatePreview)
+  const loading = useProvider((state) => state.modelLoading || !!state.catalogError)
+  const content = (
+    <>
+      <div className={modelId ? 'hidden' : 'contents'} inert={!!modelId || undefined}>
+        {!modelId ? <ProviderHeader /> : null}
+        <ProviderContent />
+      </div>
+      {modelId ? templatePreview && loading ? <CatalogStatus /> : <ModelSettingsPage key={modelId} /> : null}
+    </>
+  )
+  if (templatePreview) return content
   return (
     <PermissionRequest actions={intent === 'edit' ? ['provider.read'] : ['provider.create']}>
-      {(allowed) =>
-        allowed ? (
-          <>
-            <div className={modelId ? 'hidden' : 'contents'} inert={!!modelId || undefined}>
-              {!modelId ? <ProviderHeader /> : null}
-              <ProviderContent />
-            </div>
-            {modelId ? <ModelSettingsPage key={modelId} /> : null}
-          </>
-        ) : (
-          <p role="status">You do not have access to this page.</p>
-        )
-      }
+      {(allowed) => (allowed ? content : <p role="status">You do not have access to this page.</p>)}
     </PermissionRequest>
   )
 }

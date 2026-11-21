@@ -3,9 +3,68 @@ schema {
   mutation: Mutation
 }
 
+enum AuthenticationMethod {
+  API_KEY
+  OAUTH
+  CUSTOM
+  NONE
+}
+
 enum AuthenticationPurpose {
   LOGIN
   PASSKEY_CHANGE
+}
+
+enum BillingModel {
+  METERED
+  SUBSCRIPTION
+  SUBSCRIPTION_WITH_OVERAGE
+  FREE
+  UNKNOWN
+}
+
+enum CacheBilling {
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  UNSUPPORTED
+  INCLUDED
+  NOT_APPLICABLE
+  PER_ROUTE
+  UNKNOWN
+}
+
+enum CapabilityCacheMode {
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  INCLUDED
+  UNSUPPORTED
+}
+
+enum CapabilityPriceMode {
+  FIXED
+  TIERED_TOKEN
+  SCHEDULED
+}
+
+enum CapabilityPricingKind {
+  USAGE
+  FREE
+  INCLUDED
+  MODEL_BILLING
+}
+
+enum CapabilityStatus {
+  UNKNOWN
+  UNSUPPORTED
+  SUPPORTED
+}
+
+enum ConfigurationInputKind {
+  STRING
+  URL
+  OBJECT
+  POSITIVE_INTEGER
+  PRICE
 }
 
 "How the request delivers credentials; this is never stored in signed claims."
@@ -14,6 +73,24 @@ enum CredentialDelivery {
   COOKIE
   "Return credentials explicitly without setting browser cookies."
   TOKEN
+}
+
+enum CredentialLocation {
+  HEADER
+  QUERY
+}
+
+enum CreditUsageDirection {
+  INPUT
+  OUTPUT
+  CACHE_READ
+}
+
+enum EndpointMode {
+  FIXED
+  ACCOUNT_SPECIFIC
+  DISCOVERED
+  UNKNOWN
 }
 
 enum FilterIs {
@@ -31,6 +108,30 @@ enum ImageMediaType {
   JPEG
   PNG
   WEBP
+}
+
+enum ModelBillingKind {
+  SUBSCRIPTION
+  FREE
+  REQUEST
+  CREDIT
+}
+
+enum ModelServiceKind {
+  TEXT
+  EMBEDDING
+  IMAGE
+  AUDIO
+  VIDEO
+  RERANK
+  TTS
+  STT
+}
+
+enum OAuthFlow {
+  AUTHORIZATION_CODE
+  DEVICE_CODE
+  CLIENT_CREDENTIALS
 }
 
 enum OnboardingDestination {
@@ -156,6 +257,42 @@ enum PreferenceWeekday {
   SATURDAY
 }
 
+enum PriceBillingPeriod {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+enum PriceTierBasis {
+  INPUT_TOKENS
+  TOTAL_TOKENS
+}
+
+enum PriceUnit {
+  TOKENS
+  REQUESTS
+  IMAGES
+  SECONDS
+  CHARACTERS
+  UTF8_BYTES
+  CREDITS
+  VIDEOS
+}
+
+enum PricingMode {
+  FIXED
+  TIERED
+  API
+  ACCOUNT_SPECIFIC
+  NOT_APPLICABLE
+  UNPUBLISHED
+  UNKNOWN
+  SCHEDULED
+}
+
 "Catalog connection family hint; each configured model selects its own operation."
 enum ProviderApiProtocol {
   OPENAI_COMPATIBLE
@@ -184,6 +321,24 @@ enum TextModelProtocol {
   OPENAI_CHAT_COMPLETIONS
   OPENAI_RESPONSES
   ANTHROPIC_MESSAGES
+}
+
+enum ThinkingEffortLevel {
+  LOW
+  MEDIUM
+  HIGH
+  XHIGH
+  MAX
+}
+
+enum UpstreamProtocol {
+  OPENAI
+  OPENAI_RESPONSES
+  ANTHROPIC
+  GEMINI
+  MINIMAX
+  OPENROUTER
+  XAI
 }
 
 enum UserPreferenceGroup {
@@ -319,6 +474,19 @@ input MemberOrderInput {
 input MessageCompositionPatchInput {
   convertEmoticons: Boolean
   sendShortcut: PreferenceKeyCombination
+}
+
+input ModelTemplateFilterInput {
+  id: StringFilter
+  name: StringFilter
+  displayName: StringFilter
+  or: [ModelTemplateMatchInput!]
+}
+
+input ModelTemplateMatchInput {
+  id: StringFilter
+  name: StringFilter
+  displayName: StringFilter
 }
 
 input NavigationPatchInput {
@@ -474,6 +642,22 @@ input ProviderReplaceInput {
   models: [ProviderModelWrite!]!
 }
 
+input ProviderTemplateFilterInput {
+  id: StringFilter
+  name: StringFilter
+  or: [ProviderTemplateMatchInput!]
+}
+
+input ProviderTemplateMatchInput {
+  id: StringFilter
+  name: StringFilter
+}
+
+input ProviderTemplateOrderInput {
+  name: OrderByDirection
+  id: OrderByDirection
+}
+
 "Atomic batch of new provider connections for the verified organization."
 input ProvidersCreateInput {
   providers: [ProviderCreateInput!]!
@@ -582,6 +766,40 @@ type AnalyticUserProfilePayload {
   node: AnalyticUserProfile!
 }
 
+type AudioCapabilities {
+  input: AudioSupport!
+  output: AudioSupport!
+}
+
+type AudioConfiguration {
+  formats: [String!]
+  maxDurationMs: Float
+  maxBytes: Float
+}
+
+type AudioSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: AudioConfiguration
+}
+
+type AuthenticationConfiguration {
+  method: AuthenticationMethod!
+  configuration: AuthenticationParameters!
+}
+
+type AuthenticationParameters {
+  placement: CredentialPlacement
+  flow: OAuthFlow
+  authorizationUrl: String
+  tokenUrl: String
+  deviceAuthorizationUrl: String
+  scopes: [String!]!
+  requiredInputs: [ConfigurationInput!]!
+  adapter: String
+  parameters: [ConfigurationEntry!]!
+}
+
 type AvatarUpload {
   url: String!
   fields: [UploadFormField!]!
@@ -593,12 +811,74 @@ type AvatarUploadPayload {
   node: AvatarUpload!
 }
 
+type BillingAllowance {
+  unit: PriceUnit!
+  quota: String
+  resetPeriod: PriceBillingPeriod
+}
+
+type BillingFee {
+  amount: String
+  currency: String
+  period: PriceBillingPeriod
+}
+
+"Public body default. Value is JSON text for the configuration editor."
+type BodyDefaultEntry {
+  key: String!
+  value: String!
+}
+
 type BooleanPayload {
   node: Boolean!
 }
 
 type CalendarPreferences {
   firstDay: PreferenceWeekday!
+}
+
+type CapabilityCachePrice {
+  mode: CapabilityCacheMode!
+  amount: String
+  currency: String
+  quantity: String
+}
+
+type CapabilityPricing {
+  kind: CapabilityPricingKind!
+  usage: CapabilityUsage
+}
+
+type CapabilityRate {
+  unit: PriceUnit!
+  amount: String
+  currency: String
+  quantity: String
+  credits: String
+  direction: CreditUsageDirection
+  cache: CapabilityCachePrice
+  conditions: [ConfigurationEntry!]!
+}
+
+type CapabilitySlot {
+  fromHour: Int!
+  toHour: Int!
+  pricing: CapabilityUsage!
+}
+
+type CapabilityTier {
+  fromTokens: String!
+  toTokens: String
+  rate: CapabilityRate!
+}
+
+type CapabilityUsage {
+  mode: CapabilityPriceMode!
+  rates: [CapabilityRate!]!
+  tierBasis: PriceTierBasis
+  tiers: [CapabilityTier!]!
+  timezone: String
+  slots: [CapabilitySlot!]!
 }
 
 type CodeAppearancePreferences {
@@ -611,6 +891,33 @@ type CodeFontPreferences {
   size: PreferencePixelFontSize!
 }
 
+type ConfigurationEntry {
+  key: String!
+  value: String!
+}
+
+type ConfigurationInput {
+  name: String!
+  kind: ConfigurationInputKind!
+  required: Boolean!
+  allowedValues: [String!]
+}
+
+type ConnectionConfiguration {
+  baseUrl: String
+  path: String
+  timeoutMs: Float
+  query: [ConfigurationEntry!]!
+  authentication: AuthenticationConfiguration
+  endpoint: EndpointRequirements!
+}
+
+type CredentialPlacement {
+  location: CredentialLocation!
+  name: String!
+  prefix: String
+}
+
 "Email admission succeeded; cookie delivery never exposes the OTP credential."
 type EmailChallenge {
   lifetime: TokenLifetime!
@@ -619,6 +926,21 @@ type EmailChallenge {
 
 type EmailChallengePayload {
   node: EmailChallenge!
+}
+
+type EndpointConfiguration {
+  urlTemplate: String
+  requiredInputs: [ConfigurationInput!]!
+}
+
+type EndpointRequirements {
+  mode: EndpointMode!
+  configuration: EndpointConfiguration!
+}
+
+type FeatureSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
 }
 
 type Group {
@@ -645,6 +967,17 @@ type GroupPayload {
 
 type IDPayload {
   node: ID!
+}
+
+type ImageGenerationConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type ImageGenerationSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: ImageGenerationConfiguration
 }
 
 type Invitation {
@@ -749,6 +1082,79 @@ type MemberEdge {
 type MessageCompositionPreferences {
   convertEmoticons: Boolean!
   sendShortcut: PreferenceKeyCombination!
+}
+
+type ModelBilling {
+  kind: ModelBillingKind!
+  product: String
+  plan: String
+  fee: BillingFee
+  entitlements: [BillingAllowance!]!
+  requestRate: CapabilityRate
+  amountPerCredit: String
+  currency: String
+  description: String
+}
+
+type ModelConnection {
+  protocol: UpstreamProtocol!
+  configuration: ConnectionConfiguration!
+}
+
+type ModelOperation {
+  operation: TextModelProtocol!
+  path: String!
+}
+
+type ModelTemplate {
+  id: ID!
+  providerTemplateId: ID!
+  upstreamModelId: String!
+  name: String!
+  connections: [ModelConnection!]!
+  bodyDefaults: [BodyDefaultEntry!]!
+  routeSelection: RouteSelection
+  displayName: String!
+  description: String
+  headers: [ConfigurationEntry!]!
+  operations: [ModelOperation!]!
+  capabilities: [ProviderModelCapability!]!
+  text: TextCapabilities!
+  vision: VisionSupport!
+  pdf: PdfSupport!
+  audio: AudioCapabilities!
+  video: VideoSupport!
+  imageGeneration: ImageGenerationSupport!
+  thinking: ThinkingSupport!
+  tools: ToolCapabilities!
+  structuredOutput: StructuredOutputSupport!
+  search: SearchSupport!
+  maxContextTokens: ContextTokens
+  maxInputTokens: ContextTokens
+  maxOutputTokens: ContextTokens
+  effortMapping: [ThinkingEffort!]!
+  inputPrice: String
+  outputPrice: String
+  cachedPrice: String
+  billing: ModelBilling
+  billingModel: BillingModel!
+  pricingMode: PricingMode!
+  cacheBilling: CacheBilling!
+  serviceKind: ModelServiceKind
+}
+
+type ModelTemplateConnection {
+  edges: [ModelTemplateEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ModelTemplateEdge {
+  cursor: String!
+  node: ModelTemplate!
+}
+
+type ModelTemplatePayload {
+  node: ModelTemplate!
 }
 
 type Mutation {
@@ -920,6 +1326,17 @@ type PasskeySummaryPayload {
   node: PasskeySummary!
 }
 
+type PdfConfiguration {
+  maxFiles: Float
+  maxPages: Float
+}
+
+type PdfSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: PdfConfiguration
+}
+
 type PolicyAction {
   name: String!
   displayName: String!
@@ -938,19 +1355,40 @@ type PolicyActionEdge {
   node: PolicyAction!
 }
 
-"Public catalog defaults; selecting a template creates no configured provider."
 type ProviderTemplate {
-  "Global opaque catalog identity, independent of organization resource IDs."
   id: ID!
   name: String!
-  "Family hint only; configured models select their own text operation."
-  protocol: ProviderApiProtocol!
-  "Unknown and account-specific addresses remain null."
+  description: String
+  logoUrl: String
+  connection: ConnectionConfiguration!
   baseUrl: String
-  logoPath: String!
+  headers: [ConfigurationEntry!]!
+  endpoint: EndpointRequirements!
+  authentication: [AuthenticationConfiguration!]!
+  models(filter: ModelTemplateFilterInput): ModelTemplateConnection!
+}
+
+type ProviderTemplateConnection {
+  edges: [ProviderTemplateEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ProviderTemplateEdge {
+  cursor: String!
+  node: ProviderTemplate!
+}
+
+type ProviderTemplatePayload {
+  node: ProviderTemplate!
 }
 
 type Query {
+  "Public global provider catalog; defaults to 20 providers and caps pages at 100."
+  providerTemplates(search: String, filter: ProviderTemplateFilterInput, orderBy: [ProviderTemplateOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): ProviderTemplateConnection!
+  "Public provider defaults with a complete, unpaginated collection of database-ready models."
+  providerTemplate(id: ID!): ProviderTemplatePayload
+  "Public configuration defaults for one database-ready model, identified within its provider."
+  modelTemplate(providerTemplateId: ID!, id: ID!): ModelTemplatePayload
   passkeys: PasskeySummaryConnection!
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
   onboardingContext: OnboardingContextPayload
@@ -1003,6 +1441,33 @@ type RoleEdge {
 
 type RolePayload {
   node: Role!
+}
+
+type RouteOption {
+  id: String!
+  provider: String!
+  upstreamModelId: String!
+  contextTokens: ContextTokens
+  text: TextCapabilities!
+  billing: ModelBilling
+  implicitCaching: Boolean
+}
+
+type RouteSelection {
+  options: [RouteOption!]!
+  selected: String
+  allowFallbacks: Boolean!
+  exactProviderSelection: Boolean!
+}
+
+type SearchConfiguration {
+  maxResults: Float
+}
+
+type SearchSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: SearchConfiguration
 }
 
 type Session {
@@ -1071,9 +1536,69 @@ type SidebarPreferences {
   entries: [SidebarEntry!]!
 }
 
+type StructuredOutputConfiguration {
+  jsonMode: FeatureSupport!
+  jsonSchema: FeatureSupport!
+}
+
+type StructuredOutputSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: StructuredOutputConfiguration
+}
+
+type TextCapabilities {
+  input: TextInputSupport!
+  output: TextGenerationSupport!
+}
+
+type TextGenerationConfiguration {
+  maxTokens: Float
+  thinking: ThinkingSupport!
+}
+
+type TextGenerationSupport {
+  status: CapabilityStatus!
+  configuration: TextGenerationConfiguration
+  pricing: CapabilityPricing
+}
+
+type TextInputConfiguration {
+  maxTokens: Float
+}
+
+type TextInputSupport {
+  status: CapabilityStatus!
+  configuration: TextInputConfiguration
+  pricing: CapabilityPricing
+}
+
 type ThemePreferences {
   mode: PreferenceAppearanceMode!
   palettes: PalettePreferences!
+}
+
+type ThinkingBudget {
+  minTokens: Float!
+  maxTokens: Float!
+  defaultTokens: Float
+}
+
+type ThinkingConfiguration {
+  effortMapping: [ThinkingEffort!]!
+  defaultEffort: ThinkingEffortLevel
+  budget: ThinkingBudget
+}
+
+type ThinkingEffort {
+  level: ThinkingEffortLevel!
+  value: String!
+}
+
+type ThinkingSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: ThinkingConfiguration
 }
 
 "Exact Unix-second validity and client throttle values encoded as decimal strings."
@@ -1082,6 +1607,22 @@ type TokenLifetime {
   expiresAt: String!
   expiresInSeconds: String!
   throttleSeconds: String!
+}
+
+type ToolCallingConfiguration {
+  maxTools: Float
+}
+
+type ToolCallingSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: ToolCallingConfiguration
+}
+
+type ToolCapabilities {
+  calling: ToolCallingSupport!
+  forcedChoice: FeatureSupport!
+  parallelCalls: FeatureSupport!
 }
 
 type TypographyPreferences {
@@ -1124,4 +1665,27 @@ type UserPreferences {
 
 type UserPreferencesPayload {
   node: UserPreferences!
+}
+
+type VideoConfiguration {
+  formats: [String!]
+  maxDurationMs: Float
+  maxFrames: Float
+}
+
+type VideoSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: VideoConfiguration
+}
+
+type VisionConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type VisionSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: VisionConfiguration
 }

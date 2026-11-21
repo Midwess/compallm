@@ -1,3 +1,4 @@
+import { CatalogStatus } from './catalog-status'
 import { ImageUploadInput } from '@compallm/contract/validation'
 import { DisabledTooltip } from '../../../components/feedback'
 import { PermissionRequest, usePermission } from '../../../components/permission'
@@ -43,6 +44,7 @@ function ConnectionFields() {
   const [keyVisible, setKeyVisible] = useState(false)
   const controller = useController()
   const editing = useProvider((state) => state.intent === 'edit')
+  const preview = useProvider((state) => state.templatePreview)
   const submitting = useProvider((state) => state.submitting)
   const providerId = useProvider((state) => state.savedProvider?.id)
   const edit = usePermission({
@@ -50,7 +52,8 @@ function ConnectionFields() {
     resource: { type: 'Provider', id: providerId },
     enabled: editing && !!providerId,
   })
-  const busy = submitting || (editing && !edit.allowed)
+  const loading = useProvider((s) => s.providerLoading)
+  const busy = submitting || !!loading || (editing && !edit.allowed)
   const selected = useProvider((state) => state.selectedProviderId)
   const avatarUrl = useProvider((state) => state.avatarUrl, ['avatarUrl'])
   return (
@@ -94,9 +97,9 @@ function ConnectionFields() {
               enabled={!editing || !!providerId}
             >
               {(allowed) => (
-                <DisabledTooltip disabled={!allowed} reason="You do not have permission to perform this action.">
+                <DisabledTooltip disabled={!allowed && !preview} reason="You do not have permission to perform this action.">
                   <FormField.Input
-                    disabled={!allowed}
+                    disabled={!allowed && !preview}
                     type={keyVisible ? 'text' : 'password'}
                     className="pr-9"
                     autoComplete="off"
@@ -194,11 +197,19 @@ export function ProviderConfiguration() {
     resource: { type: 'Provider', id: providerId },
     enabled: intent === 'edit' && !!providerId,
   })
-  const busy = submitting || (intent === 'edit' && !edit.allowed)
+  const loading = useProvider((s) => s.providerLoading)
+  const busy = submitting || !!loading || (intent === 'edit' && !edit.allowed)
   const error = useProvider((state) => state.error)
   const form = controller.store.form
+  const templatePreview = useProvider((state) => state.templatePreview)
   return (
     <Form.Root model={form} className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8">
+      {templatePreview ? (
+        <>
+          <p className="px-4 text-xs text-muted-foreground">Template preview · Changes stay in this page</p>
+          <CatalogStatus />
+        </>
+      ) : null}
       {intent === 'edit' && !edit.allowed ? (
         <p className="text-xs text-muted-foreground">You do not have permission to edit this provider configuration.</p>
       ) : null}
@@ -210,29 +221,33 @@ export function ProviderConfiguration() {
         </FormSection.Root>
         <FormSection.Root>
           <FormSection.Marker>2</FormSection.Marker>
-          <FormSection.Heading>Enabled models</FormSection.Heading>
+          <FormSection.Heading>{templatePreview ? 'Available models' : 'Enabled models'}</FormSection.Heading>
           <ProviderModels />
         </FormSection.Root>
-        <FormSection.Root>
-          <FormSection.Marker>3</FormSection.Marker>
-          <FormSection.Heading>Test connection</FormSection.Heading>
-          <TestConnection />
-        </FormSection.Root>
+        {!templatePreview ? (
+          <FormSection.Root>
+            <FormSection.Marker>3</FormSection.Marker>
+            <FormSection.Heading>Test connection</FormSection.Heading>
+            <TestConnection />
+          </FormSection.Root>
+        ) : null}
         {error ? (
           <div className="fixed right-6 bottom-6 z-50">
             <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
           </div>
         ) : null}
-        <div className="flex justify-end gap-2">
-          {intent !== 'create' ? (
-            <Button className="h-7 px-4 text-xs" disabled={busy} onClick={controller.onCancelProvider}>
-              Cancel
+        {!templatePreview ? (
+          <div className="flex justify-end gap-2">
+            {intent !== 'create' ? (
+              <Button className="h-7 px-4 text-xs" disabled={busy} onClick={controller.onCancelProvider}>
+                Cancel
+              </Button>
+            ) : null}
+            <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
+              {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
             </Button>
-          ) : null}
-          <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
-            {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
-          </Button>
-        </div>
+          </div>
+        ) : null}
       </fieldset>
     </Form.Root>
   )
@@ -280,6 +295,7 @@ export function useProviderForm() {
             })
         },
         parse: (values, names) => {
+          if (controller.store.getState().templatePreview) return { values }
           if (values.avatarFile) {
             const image = avatarInput(values.avatarFile)
             if (!image.success) return { issues: image.error.issues.map((issue) => ({ ...issue, path: ['avatarFile'] })) }

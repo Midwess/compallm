@@ -1,3 +1,4 @@
+use crate::provider::capability::*;
 use hero::distributed_id::{generator::DistributedIdError, try_gen_id};
 use std::sync::LazyLock;
 
@@ -10,7 +11,8 @@ use crate::authorization::{
 
 use super::ProviderApiKey;
 use super::configuration::{
-    Capability, Connection, Headers, ModelLimits, Pricing, Protocol, ServiceKind, Thinking,
+    BodyDefaults, Connection, Headers, ModelLimits, ModelTemplateReference, Protocol,
+    RouteSelection, ServiceKind,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -18,6 +20,9 @@ pub struct Provider {
     pub id: u64,
     pub organization_id: u64,
     pub name: String,
+    pub description: Option<String>,
+    pub logo_url: Option<String>,
+    pub template_id: Option<String>,
     pub connection: Connection,
     pub headers: Headers,
     pub api_key: ProviderApiKey,
@@ -30,15 +35,27 @@ pub struct ProviderModel {
     pub organization_id: u64,
     pub provider_id: u64,
     pub name: String,
+    pub display_name: Option<String>,
+    pub description: Option<String>,
+    pub template: Option<ModelTemplateReference>,
     pub enabled: bool,
     pub service_kind: ServiceKind,
     pub protocol: Protocol,
     pub connection: Connection,
     pub headers: Headers,
-    pub capabilities: Vec<Capability>,
+    pub body_defaults: BodyDefaults,
+    pub text: TextCapabilities,
+    pub vision: CapabilitySupport<VisionCapability>,
+    pub pdf: CapabilitySupport<PdfCapability>,
+    pub audio: AudioCapabilities,
+    pub video: CapabilitySupport<VideoCapability>,
+    pub image_generation: CapabilitySupport<ImageGenerationCapability>,
+    pub tools: ToolCapabilities,
+    pub structured_output: CapabilitySupport<StructuredOutputCapability>,
+    pub search: CapabilitySupport<SearchCapability>,
     pub limits: ModelLimits,
-    pub thinking: Option<Thinking>,
-    pub pricing: Pricing,
+    pub billing: Option<crate::provider::ModelBilling>,
+    pub route_selection: Option<RouteSelection>,
 }
 
 impl Provider {
@@ -55,6 +72,32 @@ impl Provider {
 }
 
 impl ProviderModel {
+    pub(crate) fn capability_fields(&self) -> CapabilityFields<'_> {
+        CapabilityFields {
+            text: &self.text,
+            vision: &self.vision,
+            pdf: &self.pdf,
+            audio: &self.audio,
+            video: &self.video,
+            image_generation: &self.image_generation,
+            tools: &self.tools,
+            structured_output: &self.structured_output,
+            search: &self.search,
+        }
+    }
+    pub fn validate_capabilities(&self) -> Result<(), validify::ValidationErrors> {
+        self.capability_fields().validate(self.billing.as_ref())
+    }
+    pub fn supported_capabilities(&self) -> Vec<Capability> {
+        self.capability_fields().supported()
+    }
+    pub fn unknown_capabilities(&self) -> Vec<Capability> {
+        self.capability_fields().unknown()
+    }
+    pub fn unsupported_capabilities(&self) -> Vec<Capability> {
+        self.capability_fields().unsupported()
+    }
+
     pub async fn initialize_id(&mut self) -> Result<(), DistributedIdError> {
         self.id = try_gen_id().await?;
         Ok(())

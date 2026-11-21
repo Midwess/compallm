@@ -3,6 +3,15 @@
   "title": "Inputs",
   "type": "object",
   "properties": {
+    "model_template_filter": {
+      "$ref": "#/$defs/ModelTemplateFilterInput"
+    },
+    "provider_template_filter": {
+      "$ref": "#/$defs/ProviderTemplateFilterInput"
+    },
+    "provider_template_order": {
+      "$ref": "#/$defs/ProviderTemplateOrderInput"
+    },
     "passkey_registration": {
       "$ref": "#/$defs/PasskeyRegistrationInput"
     },
@@ -89,6 +98,9 @@
     }
   },
   "required": [
+    "model_template_filter",
+    "provider_template_filter",
+    "provider_template_order",
     "passkey_registration",
     "passkey_finish",
     "analytic_user_profile_put",
@@ -119,6 +131,281 @@
     "provider_patch"
   ],
   "$defs": {
+    "ModelTemplateFilterInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "displayName": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "or": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/ModelTemplateMatchInput"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "StringFilter": {
+      "type": "object",
+      "properties": {
+        "eq": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gte": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "in": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "lt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lte": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "neq": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "is": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FilterIs"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "startsWith": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "like": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ilike": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "regex": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "iregex": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "FilterIs": {
+      "type": "string",
+      "enum": [
+        "NULL",
+        "NOT_NULL"
+      ]
+    },
+    "ModelTemplateMatchInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "displayName": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProviderTemplateFilterInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "or": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/ProviderTemplateMatchInput"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProviderTemplateMatchInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProviderTemplateOrderInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OrderByDirection"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OrderByDirection"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "OrderByDirection": {
+      "type": "string",
+      "enum": [
+        "AscNullsFirst",
+        "AscNullsLast",
+        "DescNullsFirst",
+        "DescNullsLast"
+      ]
+    },
     "PasskeyRegistrationInput": {
       "type": "object",
       "properties": {
@@ -1519,104 +1806,6 @@
       },
       "additionalProperties": false
     },
-    "StringFilter": {
-      "type": "object",
-      "properties": {
-        "eq": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "gt": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "gte": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "in": {
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "type": "string"
-          }
-        },
-        "lt": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "lte": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "neq": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "is": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/FilterIs"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "startsWith": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "like": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "ilike": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "regex": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "iregex": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "FilterIs": {
-      "type": "string",
-      "enum": [
-        "NULL",
-        "NOT_NULL"
-      ]
-    },
     "MemberMatchInput": {
       "type": "object",
       "properties": {
@@ -1690,15 +1879,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "OrderByDirection": {
-      "type": "string",
-      "enum": [
-        "AscNullsFirst",
-        "AscNullsLast",
-        "DescNullsFirst",
-        "DescNullsLast"
-      ]
     },
     "EmailInput": {
       "description": "Shared input for requesting either a signup or a signin email challenge.\n\nCall `validify()` before Core execution. GraphQL parsing alone does not run\nnormalization, application validation, or email ownership checks.",

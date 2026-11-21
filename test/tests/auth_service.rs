@@ -6554,3 +6554,287 @@ async fn session_activity_changes_only_on_renewal_and_expiry_blocks_access_and_r
         Err(AuthError::InvalidSession)
     ));
 }
+
+#[tokio::test]
+#[ignore = "requires COMPALLM_TEST_DATABASE_URL with catalog migrations applied"]
+async fn graphql_template_reads_are_public_and_return_complete_model_defaults() -> anyhow::Result<()>
+{
+    use sea_orm::Database;
+    let fixture = Fixture::new(Some(Fixture::user(UserStatus::Active)));
+    let challenge = test_challenge("james@midwess.com", SECRET)?;
+    let tokens = fixture
+        .signin(&Fixture::otp(&challenge), &challenge.code)
+        .await?;
+    let pool = Arc::new(Database::connect(std::env::var("COMPALLM_TEST_DATABASE_URL")?).await?);
+    let inspection = pool.clone();
+    let context = DbContext::new(Arc::new(PostgresConnection::new(pool)));
+    TestRoot::set(context.postgres().scoped());
+    let router = fixture.graphql_with_database(context);
+    let query = "{ providerTemplates(first: 2) { edges { cursor node { id name logoUrl } } pageInfo { endCursor hasNextPage } } }";
+    let response =
+        graphql_operation(&router, query, serde_json::json!({}), None, None, false).await;
+    assert!(
+        !response
+            .headers()
+            .contains_key(axum::http::header::SET_COOKIE)
+    );
+    let anonymous = graphql_body(response).await;
+    assert!(anonymous["errors"].is_null(), "{anonymous}");
+    let invalid = graphql_operation(
+        &router,
+        query,
+        serde_json::json!({}),
+        Some("invalid-token"),
+        None,
+        false,
+    )
+    .await;
+    assert!(
+        !invalid
+            .headers()
+            .contains_key(axum::http::header::SET_COOKIE)
+    );
+    let invalid = graphql_body(invalid).await;
+    assert!(invalid["errors"].is_null(), "{invalid}");
+    assert_eq!(anonymous["data"], invalid["data"]);
+    let mixed = graphql_body(
+        graphql_operation(
+            &router,
+            r#"{providerTemplate(id:"openai"){node{id}} role(id:"1"){node{id}}}"#,
+            serde_json::json!({}),
+            None,
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(mixed["data"]["providerTemplate"]["node"]["id"], "openai");
+    assert!(mixed["data"]["role"].is_null());
+    assert_eq!(mixed["errors"][0]["extensions"]["code"], "UNAUTHENTICATED");
+
+    let page = graphql_body(
+        graphql_operation(
+            &router,
+            query,
+            serde_json::json!({}),
+            Some(&tokens.access_token),
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(page["errors"].is_null(), "{page}");
+    assert_eq!(
+        page["data"]["providerTemplates"]["edges"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        page["data"]["providerTemplates"]["pageInfo"]["hasNextPage"],
+        true
+    );
+    let cursor = page["data"]["providerTemplates"]["pageInfo"]["endCursor"]
+        .as_str()
+        .unwrap();
+    let next = graphql_body(graphql_operation(&router, "query($after: String!) { providerTemplates(first: 2, after: $after) { edges { node { id } } pageInfo { hasPreviousPage } } }", serde_json::json!({"after": cursor}), None, None, false).await).await;
+    assert!(next["errors"].is_null(), "{next}");
+    assert_eq!(
+        next["data"]["providerTemplates"]["pageInfo"]["hasPreviousPage"],
+        true
+    );
+    assert_ne!(
+        next["data"]["providerTemplates"]["edges"][0]["node"]["id"],
+        page["data"]["providerTemplates"]["edges"][0]["node"]["id"]
+    );
+    let search = graphql_body(graphql_operation(&router, "{ providerTemplates(filter: {name: {ilike: \"%oPeNaI%\"}}) { edges { node { name } } } }", serde_json::json!({}), None, None, false).await).await;
+    assert!(search["errors"].is_null(), "{search}");
+    let model_search = graphql_body(graphql_operation(&router,
+        r#"{providerTemplates(search:"opus",first:100){edges{node{id}} pageInfo{hasNextPage endCursor}}}"#,
+        serde_json::json!({}),None,None,false).await).await;
+    assert!(model_search["errors"].is_null(), "{model_search}");
+    assert!(
+        model_search["data"]["providerTemplates"]["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|edge| edge["node"]["id"] == "anthropic")
+    );
+    let mixed_search = graphql_body(
+        graphql_operation(
+            &router,
+            r#"{providerTemplates(search:"AnThRoPiC oPuS",first:100){edges{node{id}}}}"#,
+            serde_json::json!({}),
+            None,
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(mixed_search["errors"].is_null(), "{mixed_search}");
+    assert!(
+        mixed_search["data"]["providerTemplates"]["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|edge| edge["node"]["id"] == "anthropic")
+    );
+    let unrelated = graphql_body(
+        graphql_operation(
+            &router,
+            r#"{providerTemplates(search:"opus gpt-4o"){edges{node{id}}}}"#,
+            serde_json::json!({}),
+            None,
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        unrelated["data"]["providerTemplates"]["edges"],
+        serde_json::json!([])
+    );
+    let changed_search = graphql_body(graphql_operation(&router,
+        r#"query($cursor:String!){providerTemplates(search:"absent",after:$cursor){edges{node{id}}}}"#,
+        serde_json::json!({"cursor":model_search["data"]["providerTemplates"]["pageInfo"]["endCursor"]}),None,None,false).await).await;
+    assert!(!changed_search["errors"].is_null());
+    let combined=graphql_body(graphql_operation(&router,"{ providerTemplates(filter:{or:[{id:{eq:\"openai\"}},{name:{ilike:\"%aNtHrOpIc%\"}}]},orderBy:[{id:AscNullsLast}]) {edges{node{id}}} }",serde_json::json!({}),None,None,false).await).await;
+    assert!(combined["errors"].is_null(), "{combined}");
+    let ids: Vec<_> = combined["data"]["providerTemplates"]["edges"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["node"]["id"].as_str().unwrap())
+        .collect();
+    assert!(ids.contains(&"openai") && ids.contains(&"anthropic"));
+
+    assert!(
+        !search["data"]["providerTemplates"]["edges"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    let mismatch = graphql_body(graphql_operation(&router, "query($after: String!) { providerTemplates(filter: {name: {ilike: \"%openai%\"}}, after: $after) { edges { node { id } } } }", serde_json::json!({"after":cursor}), None, None, false).await).await;
+    assert_eq!(
+        mismatch["errors"][0]["extensions"]["code"],
+        "BAD_USER_INPUT"
+    );
+    let detail = graphql_body(graphql_operation(&router, "{ providerTemplate(id: \"openai\") { node { id headers { key value } authentication { method } models { edges { node { id upstreamModelId operations { operation path } capabilities } } pageInfo { hasNextPage hasPreviousPage } } } } }", serde_json::json!({}), None, None, false).await).await;
+    assert!(detail["errors"].is_null(), "{detail}");
+    let models = &detail["data"]["providerTemplate"]["node"]["models"];
+    assert_eq!(models["pageInfo"]["hasNextPage"], false);
+    use sea_orm::{ColumnTrait, EntityTrait, ModelTrait, QueryFilter};
+    type Eligibility = <compallm_postgres::ProviderCatalogReadinessSchema as ModelTrait>::Entity;
+    type EligibilityColumn = <Eligibility as EntityTrait>::Column;
+    let expected = Eligibility::find()
+        .filter(EligibilityColumn::ProviderTemplateId.eq("openai"))
+        .filter(EligibilityColumn::Readiness.eq(compallm_postgres::CatalogReadinessSchema::Ready))
+        .all(inspection.as_ref())
+        .await?;
+    assert_eq!(models["edges"].as_array().unwrap().len(), expected.len());
+
+    let aliased = graphql_body(graphql_operation(&router, "{ providerTemplate(id: \"openai\") { node { models { entries: edges { item: node { id context: maxContextTokens inputPrice outputPrice } } } } } }", serde_json::json!({}), None, None, false).await).await;
+    assert!(aliased["errors"].is_null(), "{aliased}");
+    let id = models["edges"][0]["node"]["id"]
+        .as_str()
+        .expect("eligible OpenAI model");
+    let model = graphql_body(graphql_operation(&router, "query($id: ID!) { modelTemplate(providerTemplateId: \"openai\", id: $id) { node { id upstreamModelId maxContextTokens maxInputTokens maxOutputTokens effortMapping { level value } inputPrice outputPrice cachedPrice billingModel pricingMode cacheBilling } } }", serde_json::json!({"id": id}), None, None, false).await).await;
+    assert!(model["errors"].is_null(), "{model}");
+    assert_eq!(model["data"]["modelTemplate"]["node"]["id"], id);
+    let configuration=graphql_body(graphql_operation(&router,r#"query($id: ID!) {
+      providerTemplate(id:"openai") {node {id connection {baseUrl path timeoutMs query{key value} authentication{method configuration{placement{location name prefix} requiredInputs{name kind required allowedValues} parameters{key value}}} endpoint{mode configuration{urlTemplate requiredInputs{name}}}}}}
+      modelTemplate(providerTemplateId:"openai",id:$id) {node {
+        id name providerTemplateId headers{key value} bodyDefaults{key value}
+        connections{protocol configuration{baseUrl path timeoutMs query{key value} authentication{method} endpoint{mode configuration{urlTemplate}}}}
+        text{input{status configuration{maxTokens} pricing{kind usage{mode rates{amount currency quantity unit cache{mode amount currency quantity}} tierBasis tiers{fromTokens toTokens rate{amount}} slots{fromHour toHour pricing{mode}}}}} output{status configuration{maxTokens thinking{status configuration{effortMapping{level value} defaultEffort budget{minTokens maxTokens defaultTokens}}}} pricing{kind}}}
+        vision{status} pdf{status} audio{input{status} output{status}} video{status} imageGeneration{status} tools{calling{status} forcedChoice{status} parallelCalls{status}} structuredOutput{status} search{status}
+        billing{kind product plan fee{amount currency period} entitlements{unit quota resetPeriod}}
+        routeSelection{selected allowFallbacks exactProviderSelection options{id provider upstreamModelId contextTokens implicitCaching text{input{status} output{status}} billing{kind}}}
+      }}
+    }"#,serde_json::json!({"id":id}),None,None,false).await).await;
+    assert!(configuration["errors"].is_null(), "{configuration}");
+    let configured = &configuration["data"]["modelTemplate"]["node"];
+    assert_eq!(configured["id"], id);
+    assert!(!configured["connections"].as_array().unwrap().is_empty());
+    assert_eq!(configured["text"]["input"]["status"], "SUPPORTED");
+    assert!(configured["text"]["input"]["pricing"].is_object());
+    let filtered=graphql_body(graphql_operation(&router,r#"query($id:String!){ providerTemplate(id:"openai"){node{models(filter:{id:{eq:$id}}){edges{node{id}} pageInfo{hasNextPage hasPreviousPage startCursor endCursor}}}}}"#,serde_json::json!({"id":id}),None,None,false).await).await;
+    assert!(filtered["errors"].is_null(), "{filtered}");
+    let selected = &filtered["data"]["providerTemplate"]["node"]["models"];
+    assert_eq!(selected["edges"].as_array().unwrap().len(), 1);
+    assert_eq!(selected["edges"][0]["node"]["id"], id);
+    assert_eq!(selected["pageInfo"]["hasNextPage"], false);
+    assert_eq!(selected["pageInfo"]["hasPreviousPage"], false);
+    let by_name=graphql_body(graphql_operation(&router,r#"query($name:String!){providerTemplate(id:"openai"){node{models(filter:{name:{ilike:$name}}){edges{node{id name}}}}}}"#,serde_json::json!({"name":configured["name"].as_str().unwrap().to_uppercase()}),None,None,false).await).await;
+    assert!(by_name["errors"].is_null(), "{by_name}");
+    assert!(
+        by_name["data"]["providerTemplate"]["node"]["models"]["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v["node"]["id"] == id)
+    );
+    let broader = Eligibility::find()
+        .filter(EligibilityColumn::Readiness.eq(compallm_postgres::CatalogReadinessSchema::Ready))
+        .all(inspection.as_ref())
+        .await?;
+    type Templates = <compallm_postgres::ProviderModelTemplateSchema as ModelTrait>::Entity;
+    let mut counts = std::collections::BTreeMap::<String, usize>::new();
+    for row in &broader {
+        *counts.entry(row.provider_template_id.clone()).or_default() += 1;
+    }
+    let (largest, count) = counts.into_iter().max_by_key(|(_, count)| *count).unwrap();
+    assert!(count > 30);
+    let complete=graphql_body(graphql_operation(&router,r#"query($provider:ID!){providerTemplate(id:$provider){node{models{edges{node{id}} pageInfo{hasNextPage hasPreviousPage}}}}}"#,serde_json::json!({"provider":largest}),None,None,false).await).await;
+    assert!(complete["errors"].is_null(), "{complete}");
+    assert_eq!(
+        complete["data"]["providerTemplate"]["node"]["models"]["edges"]
+            .as_array()
+            .unwrap()
+            .len(),
+        count
+    );
+    assert_eq!(
+        complete["data"]["providerTemplate"]["node"]["models"]["pageInfo"]["hasNextPage"],
+        false
+    );
+    let mut conditional = None;
+    for candidate in broader {
+        let row =
+            Templates::find_by_id((candidate.provider_template_id.clone(), candidate.id.clone()))
+                .one(inspection.as_ref())
+                .await?
+                .unwrap();
+        if row.text["input"]["pricing"]["configuration"]
+            .get("tiered_token")
+            .is_some()
+        {
+            conditional = Some(candidate);
+            break;
+        }
+    }
+    let candidate = conditional.expect("ready tiered-price catalog model");
+    let tiered=graphql_body(graphql_operation(&router,r#"query($provider:ID!,$id:ID!){modelTemplate(providerTemplateId:$provider,id:$id){node{id text{input{pricing{usage{mode tiers{fromTokens toTokens rate{amount currency quantity}}}}}}}}}"#,serde_json::json!({"provider":candidate.provider_template_id,"id":candidate.id}),None,None,false).await).await;
+    assert!(tiered["errors"].is_null(), "{tiered}");
+    assert_eq!(
+        tiered["data"]["modelTemplate"]["node"]["text"]["input"]["pricing"]["usage"]["mode"],
+        "TIERED_TOKEN"
+    );
+    assert!(
+        !tiered["data"]["modelTemplate"]["node"]["text"]["input"]["pricing"]["usage"]["tiers"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+
+    let missing = graphql_body(graphql_operation(&router, "{ modelTemplate(providerTemplateId: \"absent\", id: \"absent\") { node { id } } providerTemplate(id: \"absent\") { node { id } } }", serde_json::json!({}), None, None, false).await).await;
+    assert!(missing["errors"].is_null(), "{missing}");
+    assert!(missing["data"]["modelTemplate"].is_null());
+    assert!(missing["data"]["providerTemplate"].is_null());
+    Ok(())
+}

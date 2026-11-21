@@ -2,7 +2,7 @@ import { PermissionRequest, usePermissionChecks } from '../../../components/perm
 import { Table } from '../../../components/table'
 import { SectionSurface } from '../../../components/surfaces'
 import { Searchbox } from '../../../components/fields'
-import { Checkbox } from '../../../components/selection'
+import { Switch } from '../../../components/selection'
 import { Popup } from '../../../components/popup'
 import { ProviderIcon } from '../../../components/provider-icons'
 import { CapabilityIndicator } from '../../../components/capability-icon'
@@ -16,6 +16,7 @@ function price(value: string) {
 }
 export function ProviderModels() {
   const controller = useController()
+  const templatePreview = useProvider((state) => state.templatePreview)
   const models = useProvider((state) => state.models, ['models'])
   const query = useProvider((state) => state.modelQuery)
   const status = useProvider((state) => state.modelStatusFilter)
@@ -25,14 +26,16 @@ export function ProviderModels() {
   const savedProvider = useProvider((state) => state.savedProvider)
   const providerId = savedProvider?.id
   const permissionStates = usePermissionChecks(
-    intent === 'edit'
-      ? models.map((model) => ({
-          action: 'provider.model.configuration.update',
-          resourceType: 'ProviderModel',
-          resourceId: model.id,
-        }))
-      : [{ action: 'provider.create', resourceType: 'Organization' }],
-    savedProvider?.id
+    templatePreview
+      ? []
+      : intent === 'edit'
+        ? models.map((model) => ({
+            action: 'provider.model.configuration.update',
+            resourceType: 'ProviderModel',
+            resourceId: model.id,
+          }))
+        : [{ action: 'provider.create', resourceType: 'Organization' }],
+    !templatePreview && savedProvider?.id
       ? savedProvider.models.map((model) => ({
           resourceType: 'ProviderModel',
           id: model.id,
@@ -42,14 +45,14 @@ export function ProviderModels() {
       : [],
   )
   const editable = (id: string) =>
-    permissionStates[intent === 'edit' ? models.findIndex((model) => model.id === id) : 0] === 'allowed'
+    templatePreview || permissionStates[intent === 'edit' ? models.findIndex((model) => model.id === id) : 0] === 'allowed'
   const busy = useProvider((state) => state.submitting)
   const supported = (model: (typeof models)[number]) =>
     !!model.protocol || model.modes.some((mode) => ['chat_completions', 'responses', 'messages'].includes(mode))
   const visible = models.filter(
     (model) =>
-      model.name.toLowerCase().includes(query.toLowerCase()) &&
-      (status === 'all' || (status === 'enabled') === model.enabled) &&
+      `${model.id} ${model.name} ${model.description ?? ''}`.toLowerCase().includes(query.toLowerCase()) &&
+      (templatePreview || status === 'all' || (status === 'enabled') === model.enabled) &&
       (protocol === 'all' ||
         (supported(model) &&
           (model.protocol
@@ -63,17 +66,7 @@ export function ProviderModels() {
               )))) &&
       capabilities.every((capability) => model.capabilities?.includes(capability)),
   )
-  const selectable = visible.filter((model) => supported(model) && hasValidModelPrices(model) && editable(model.id))
-  const selected = selectable.filter((model) => model.enabled).length
-  const all = selectable.length > 0 && selected === selectable.length
   const enabled = models.filter((model) => model.enabled).length
-  function toggleAll(value: boolean) {
-    const ids = new Set(selectable.map((model) => model.id))
-    controller.store.form.change(
-      'models',
-      models.map((model) => (ids.has(model.id) ? { ...model, enabled: value } : model)),
-    )
-  }
   return (
     <SectionSurface className="grid min-w-0 gap-4">
       <div className="flex items-center gap-3">
@@ -89,31 +82,21 @@ export function ProviderModels() {
       </div>
       <Table.Root tabIndex={0} role="region" aria-label="Scrollable provider model table" className="min-w-0">
         <Table.Content
-          className="w-full table-fixed text-xs"
+          className="w-full table-auto text-xs"
           aria-label="Provider models"
           columns={[
-            { id: 'enabled', className: 'w-10' },
-            { id: 'name' },
-            { id: 'capabilities', className: 'w-28', visibilityClassName: 'hidden xl:table-cell' },
+            { id: 'name', className: 'w-0' },
+            { id: 'capabilities', visibilityClassName: 'hidden xl:table-cell' },
             { id: 'context', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },
             { id: 'input', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
             { id: 'output', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
             { id: 'cached', className: 'w-20', visibilityClassName: 'hidden xl:table-cell' },
             { id: 'actions', className: 'w-12' },
+            { id: 'enabled', className: 'w-12' },
           ]}
         >
           <Table.Header className="h-8 text-muted-foreground">
             <Table.Row className="border-b border-divider">
-              <Table.Head className="p-0 text-left">
-                <Checkbox
-                  size="compact"
-                  aria-label="Enable all matching models"
-                  checked={all}
-                  indeterminate={selected > 0 && !all}
-                  disabled={busy || !selectable.length}
-                  onChange={(event) => toggleAll(event.target.checked)}
-                />
-              </Table.Head>
               {[
                 ['name', 'Model name'],
                 ['capabilities', 'Capabilities'],
@@ -129,26 +112,23 @@ export function ProviderModels() {
               <Table.Head className="p-0">
                 <span className="sr-only">Actions</span>
               </Table.Head>
+              <Table.Head column="enabled" className="p-0 text-right">
+                <span className="sr-only">Enabled</span>
+              </Table.Head>
             </Table.Row>
           </Table.Header>
           <Table.Body items={visible} getKey={(model) => model.id}>
             {(model) => (
               <Table.Row key={model.id} className="h-12 border-b border-divider last:border-b-0">
-                <Table.Cell className="p-0 text-left">
-                  <Checkbox
-                    size="compact"
-                    aria-label={`Enable ${model.name}`}
-                    name={`models[${models.indexOf(model)}].enabled`}
-                    disabled={busy || !editable(model.id) || !supported(model) || !hasValidModelPrices(model)}
-                  />
-                </Table.Cell>
                 <Table.Cell column="name" className="min-w-0 px-1 text-left">
-                  <span title={model.name} className="block max-w-44 truncate font-medium">
-                    {Array.from(model.name).length > 50 ? `${Array.from(model.name).slice(0, 50).join('')}…` : model.name}
-                  </span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {modelTypeLabels(model).join(' · ') || model.description || 'Not declared'}
-                  </span>
+                  <div className="w-max max-w-40 sm:max-w-44">
+                    <span title={model.name} className="block truncate font-medium">
+                      {model.name}
+                    </span>
+                    <span className="mt-1 block truncate text-xs text-muted-foreground">
+                      {modelTypeLabels(model).join(' · ') || model.description || 'Not declared'}
+                    </span>
+                  </div>
                 </Table.Cell>
                 <Table.Cell column="capabilities" className="px-1 py-1 text-left">
                   <div className="flex min-w-0 flex-wrap items-center gap-0.5">
@@ -172,15 +152,15 @@ export function ProviderModels() {
                       key={index}
                       className="whitespace-nowrap px-1 text-left text-muted-foreground"
                     >
-                      {price(value)}
+                      {templatePreview ? (model.catalogPriceLabels?.[index] ?? price(value)) : price(value)}
                     </Table.Cell>
                   ))}
                 <Table.Cell className="p-0 text-left">
-                  {supported(model) ? (
+                  {supported(model) || templatePreview ? (
                     <button
                       type="button"
                       aria-label={`Edit ${model.name}`}
-                      disabled={busy || !editable(model.id)}
+                      disabled={busy || (!templatePreview && !editable(model.id))}
                       className="cursor-pointer text-muted-foreground hover:text-foreground
 focus-visible:outline-muted-foreground
 disabled:opacity-50"
@@ -189,6 +169,15 @@ disabled:opacity-50"
                       Edit
                     </button>
                   ) : null}
+                </Table.Cell>
+                <Table.Cell column="enabled" className="p-0 text-right">
+                  <Switch
+                    aria-label={`Enable ${model.name}`}
+                    name={`models[${models.indexOf(model)}].enabled`}
+                    disabled={
+                      busy || (!templatePreview && (!editable(model.id) || !supported(model) || !hasValidModelPrices(model)))
+                    }
+                  />
                 </Table.Cell>
               </Table.Row>
             )}
@@ -206,34 +195,36 @@ disabled:opacity-50"
       </Table.Root>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          {enabled} {enabled === 1 ? 'model' : 'models'} enabled
+          {templatePreview ? `${models.length} models available` : `${enabled} ${enabled === 1 ? 'model' : 'models'} enabled`}
         </p>
-        <PermissionRequest
-          actions={[intent === 'edit' ? 'provider.model.create' : 'provider.create']}
-          resource={intent === 'edit' ? { type: 'Provider', id: providerId } : undefined}
-          enabled={intent !== 'edit' || !!providerId}
-        >
-          {(allowed) =>
-            allowed ? (
-              <Popup.Root>
-                <Popup.Trigger
-                  disabled={busy}
-                  className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-foreground hover:brightness-110"
-                >
-                  Add generate text model
-                </Popup.Trigger>
-                <Popup.Content aria-label="Add generate text model" className="w-3xs">
-                  {textModelOptions.map((option) => (
-                    <Popup.Item key={option.value} className="gap-2" onSelect={() => controller.onAddModel(option.value)}>
-                      <ProviderIcon provider={option.brand} />
-                      {option.label}
-                    </Popup.Item>
-                  ))}
-                </Popup.Content>
-              </Popup.Root>
-            ) : null
-          }
-        </PermissionRequest>
+        {!templatePreview ? (
+          <PermissionRequest
+            actions={[intent === 'edit' ? 'provider.model.create' : 'provider.create']}
+            resource={intent === 'edit' ? { type: 'Provider', id: providerId } : undefined}
+            enabled={intent !== 'edit' || !!providerId}
+          >
+            {(allowed) =>
+              allowed ? (
+                <Popup.Root>
+                  <Popup.Trigger
+                    disabled={busy}
+                    className="h-8 w-auto rounded-full bg-elevated px-4 text-xs text-foreground hover:brightness-110"
+                  >
+                    Add generate text model
+                  </Popup.Trigger>
+                  <Popup.Content aria-label="Add generate text model" className="w-3xs">
+                    {textModelOptions.map((option) => (
+                      <Popup.Item key={option.value} className="gap-2" onSelect={() => controller.onAddModel(option.value)}>
+                        <ProviderIcon provider={option.brand} />
+                        {option.label}
+                      </Popup.Item>
+                    ))}
+                  </Popup.Content>
+                </Popup.Root>
+              ) : null
+            }
+          </PermissionRequest>
+        ) : null}
       </div>
     </SectionSurface>
   )

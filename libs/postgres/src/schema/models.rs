@@ -22,13 +22,27 @@ pub struct Model {
     pub service_kind: String,
     pub enabled: bool,
     #[sea_orm(column_type = "JsonBinary")]
-    pub capabilities: Json,
+    pub text: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub vision: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub pdf: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub audio: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub video: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub image_generation: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub tools: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub structured_output: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub search: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub limits: Json,
-    #[sea_orm(column_type = "JsonBinary", nullable)]
-    pub thinking: Option<Json>,
     #[sea_orm(column_type = "JsonBinary")]
-    pub pricing: Json,
+    pub billing: Option<Json>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

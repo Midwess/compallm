@@ -10,51 +10,53 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,
     #[sea_orm(column_type = "Text")]
-    pub upstream_model_id: String,
+    pub name: String,
     #[sea_orm(column_type = "Text", nullable)]
     pub display_name: Option<String>,
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
+    pub service_kind: Option<String>,
     #[sea_orm(column_type = "JsonBinary")]
-    pub protocols: Json,
+    pub connections: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub paths: Json,
+    pub headers: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub capabilities: Json,
-    pub max_context_tokens: Option<i64>,
-    pub max_input_tokens: Option<i64>,
-    pub max_output_tokens: Option<i64>,
+    pub text: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub effort_mapping: Json,
-    #[sea_orm(column_type = "Decimal(None)", nullable)]
-    pub input_price: Option<Decimal>,
-    #[sea_orm(column_type = "Decimal(None)", nullable)]
-    pub output_price: Option<Decimal>,
-    #[sea_orm(column_type = "Decimal(None)", nullable)]
-    pub cached_price: Option<Decimal>,
+    pub vision: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub source_refs: Json,
+    pub pdf: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub field_metadata: Json,
+    pub audio: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub model_info_sources: Json,
-    pub service_kind: super::sea_orm_active_enums::CatalogServiceKind,
-    pub billing_model: super::sea_orm_active_enums::CatalogBillingModel,
-    pub billing_unit: Option<super::sea_orm_active_enums::CatalogBillingUnit>,
-    pub pricing_mode: super::sea_orm_active_enums::CatalogPricingMode,
-    pub cache_billing: super::sea_orm_active_enums::CatalogCacheBilling,
-    pub specification_mode: super::sea_orm_active_enums::CatalogSpecificationMode,
+    pub video: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub pricing_config: Json,
+    pub image_generation: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub resolution_plan: Json,
+    pub tools: Json,
     #[sea_orm(column_type = "JsonBinary")]
-    pub unresolved_fields: Json,
-    pub readiness: super::sea_orm_active_enums::CatalogReadiness,
+    pub structured_output: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub search: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub limits: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub billing: Option<Json>,
+    pub research_id: String,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub body_defaults: Json,
+    #[sea_orm(column_type = "JsonBinary", nullable)]
+    pub route_selection: Option<Json>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::provider_model_template_research::Entity",
+        from = "Column::ResearchId",
+        to = "super::provider_model_template_research::Column::Id"
+    )]
+    ProviderModelTemplateResearch,
     #[sea_orm(
         belongs_to = "super::provider_templates::Entity",
         from = "Column::ProviderTemplateId",
@@ -72,3 +74,9 @@ impl Related<super::provider_templates::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Related<super::provider_model_template_research::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProviderModelTemplateResearch.def()
+    }
+}

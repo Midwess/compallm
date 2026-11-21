@@ -80,16 +80,28 @@ impl CoreModelRepository for ModelRepository {
             name: Set(model.name),
             service_kind: Set(model.service_kind.into()),
             enabled: Set(model.enabled),
-            capabilities: Set(
-                serde_json::to_value(model.capabilities).context("invalid model capabilities")?
+            text: Set(serde_json::to_value(&model.text).context("invalid text configuration")?),
+            vision: Set(
+                serde_json::to_value(&model.vision).context("invalid vision configuration")?
+            ),
+            pdf: Set(serde_json::to_value(&model.pdf).context("invalid pdf configuration")?),
+            audio: Set(serde_json::to_value(&model.audio).context("invalid audio configuration")?),
+            video: Set(serde_json::to_value(&model.video).context("invalid video configuration")?),
+            image_generation: Set(serde_json::to_value(&model.image_generation)
+                .context("invalid image_generation configuration")?),
+            tools: Set(serde_json::to_value(&model.tools).context("invalid tools configuration")?),
+            structured_output: Set(serde_json::to_value(&model.structured_output)
+                .context("invalid structured_output configuration")?),
+            search: Set(
+                serde_json::to_value(&model.search).context("invalid search configuration")?
             ),
             limits: Set(serde_json::to_value(model.limits).context("invalid model limits")?),
-            thinking: Set(model
-                .thinking
+            billing: Set(model
+                .billing
+                .as_ref()
                 .map(serde_json::to_value)
                 .transpose()
-                .context("invalid model thinking")?),
-            pricing: Set(serde_json::to_value(model.pricing).context("invalid model pricing")?),
+                .context("invalid model billing")?),
         };
         Model::try_from(active_model.insert(db).await.map_err(Self::write_error)?)
     }
@@ -110,17 +122,32 @@ impl CoreModelRepository for ModelRepository {
         active_model.name = Set(model.name);
         active_model.service_kind = Set(model.service_kind.into());
         active_model.enabled = Set(model.enabled);
-        active_model.capabilities =
-            Set(serde_json::to_value(model.capabilities).context("invalid model capabilities")?);
+        active_model.text =
+            Set(serde_json::to_value(&model.text).context("invalid text configuration")?);
+        active_model.vision =
+            Set(serde_json::to_value(&model.vision).context("invalid vision configuration")?);
+        active_model.pdf =
+            Set(serde_json::to_value(&model.pdf).context("invalid pdf configuration")?);
+        active_model.audio =
+            Set(serde_json::to_value(&model.audio).context("invalid audio configuration")?);
+        active_model.video =
+            Set(serde_json::to_value(&model.video).context("invalid video configuration")?);
+        active_model.image_generation = Set(serde_json::to_value(&model.image_generation)
+            .context("invalid image_generation configuration")?);
+        active_model.tools =
+            Set(serde_json::to_value(&model.tools).context("invalid tools configuration")?);
+        active_model.structured_output = Set(serde_json::to_value(&model.structured_output)
+            .context("invalid structured_output configuration")?);
+        active_model.search =
+            Set(serde_json::to_value(&model.search).context("invalid search configuration")?);
         active_model.limits =
             Set(serde_json::to_value(model.limits).context("invalid model limits")?);
-        active_model.thinking = Set(model
-            .thinking
+        active_model.billing = Set(model
+            .billing
+            .as_ref()
             .map(serde_json::to_value)
             .transpose()
-            .context("invalid model thinking")?);
-        active_model.pricing =
-            Set(serde_json::to_value(model.pricing).context("invalid model pricing")?);
+            .context("invalid model billing")?);
         Model::try_from(active_model.update(db).await.map_err(Self::write_error)?)
     }
 

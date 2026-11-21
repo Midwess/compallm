@@ -24,6 +24,47 @@ input AnalyticUserProfilePutInput {
   value: String!
 }
 
+type AudioCapabilities {
+  input: AudioSupport!
+  output: AudioSupport!
+}
+
+type AudioConfiguration {
+  formats: [String!]
+  maxBytes: Float
+  maxDurationMs: Float
+}
+
+type AudioSupport {
+  configuration: AudioConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
+type AuthenticationConfiguration {
+  configuration: AuthenticationParameters!
+  method: AuthenticationMethod!
+}
+
+enum AuthenticationMethod {
+  API_KEY
+  CUSTOM
+  NONE
+  OAUTH
+}
+
+type AuthenticationParameters {
+  adapter: String
+  authorizationUrl: String
+  deviceAuthorizationUrl: String
+  flow: OAuthFlow
+  parameters: [ConfigurationEntry!]!
+  placement: CredentialPlacement
+  requiredInputs: [ConfigurationInput!]!
+  scopes: [String!]!
+  tokenUrl: String
+}
+
 enum AuthenticationPurpose {
   LOGIN
   PASSKEY_CHANGE
@@ -42,8 +83,46 @@ type AvatarUploadPayload {
   node: AvatarUpload!
 }
 
+type BillingAllowance {
+  quota: String
+  resetPeriod: PriceBillingPeriod
+  unit: PriceUnit!
+}
+
+type BillingFee {
+  amount: String
+  currency: String
+  period: PriceBillingPeriod
+}
+
+enum BillingModel {
+  FREE
+  METERED
+  SUBSCRIPTION
+  SUBSCRIPTION_WITH_OVERAGE
+  UNKNOWN
+}
+
+"""
+Public body default. Value is JSON text for the configuration editor.
+"""
+type BodyDefaultEntry {
+  key: String!
+  value: String!
+}
+
 type BooleanPayload {
   node: Boolean!
+}
+
+enum CacheBilling {
+  INCLUDED
+  NOT_APPLICABLE
+  PER_ROUTE
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  UNKNOWN
+  UNSUPPORTED
 }
 
 input CalendarPatchInput {
@@ -52,6 +131,76 @@ input CalendarPatchInput {
 
 type CalendarPreferences {
   firstDay: PreferenceWeekday!
+}
+
+enum CapabilityCacheMode {
+  INCLUDED
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  UNSUPPORTED
+}
+
+type CapabilityCachePrice {
+  amount: String
+  currency: String
+  mode: CapabilityCacheMode!
+  quantity: String
+}
+
+enum CapabilityPriceMode {
+  FIXED
+  SCHEDULED
+  TIERED_TOKEN
+}
+
+type CapabilityPricing {
+  kind: CapabilityPricingKind!
+  usage: CapabilityUsage
+}
+
+enum CapabilityPricingKind {
+  FREE
+  INCLUDED
+  MODEL_BILLING
+  USAGE
+}
+
+type CapabilityRate {
+  amount: String
+  cache: CapabilityCachePrice
+  conditions: [ConfigurationEntry!]!
+  credits: String
+  currency: String
+  direction: CreditUsageDirection
+  quantity: String
+  unit: PriceUnit!
+}
+
+type CapabilitySlot {
+  fromHour: Int!
+  pricing: CapabilityUsage!
+  toHour: Int!
+}
+
+enum CapabilityStatus {
+  SUPPORTED
+  UNKNOWN
+  UNSUPPORTED
+}
+
+type CapabilityTier {
+  fromTokens: String!
+  rate: CapabilityRate!
+  toTokens: String
+}
+
+type CapabilityUsage {
+  mode: CapabilityPriceMode!
+  rates: [CapabilityRate!]!
+  slots: [CapabilitySlot!]!
+  tierBasis: PriceTierBasis
+  tiers: [CapabilityTier!]!
+  timezone: String
 }
 
 input ChatCreateInput {
@@ -79,6 +228,35 @@ type CodeFontPreferences {
   size: PreferencePixelFontSize!
 }
 
+type ConfigurationEntry {
+  key: String!
+  value: String!
+}
+
+type ConfigurationInput {
+  allowedValues: [String!]
+  kind: ConfigurationInputKind!
+  name: String!
+  required: Boolean!
+}
+
+enum ConfigurationInputKind {
+  OBJECT
+  POSITIVE_INTEGER
+  PRICE
+  STRING
+  URL
+}
+
+type ConnectionConfiguration {
+  authentication: AuthenticationConfiguration
+  baseUrl: String
+  endpoint: EndpointRequirements!
+  path: String
+  query: [ConfigurationEntry!]!
+  timeoutMs: Float
+}
+
 """
 Positive u32 context size, encoded as an exact JSON number (1–4294967295).
 """
@@ -101,6 +279,23 @@ enum CredentialDelivery {
   Return credentials explicitly without setting browser cookies.
   """
   TOKEN
+}
+
+enum CredentialLocation {
+  HEADER
+  QUERY
+}
+
+type CredentialPlacement {
+  location: CredentialLocation!
+  name: String!
+  prefix: String
+}
+
+enum CreditUsageDirection {
+  CACHE_READ
+  INPUT
+  OUTPUT
 }
 
 """
@@ -152,6 +347,28 @@ input EmailInput {
   email: String!
   invitation: Boolean = false
   purpose: AuthenticationPurpose = LOGIN
+}
+
+type EndpointConfiguration {
+  requiredInputs: [ConfigurationInput!]!
+  urlTemplate: String
+}
+
+enum EndpointMode {
+  ACCOUNT_SPECIFIC
+  DISCOVERED
+  FIXED
+  UNKNOWN
+}
+
+type EndpointRequirements {
+  configuration: EndpointConfiguration!
+  mode: EndpointMode!
+}
+
+type FeatureSupport {
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
 }
 
 enum FilterIs {
@@ -208,6 +425,17 @@ input IDFilter {
 
 type IDPayload {
   node: ID!
+}
+
+type ImageGenerationConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type ImageGenerationSupport {
+  configuration: ImageGenerationConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
 }
 
 enum ImageMediaType {
@@ -371,6 +599,110 @@ type MessageCompositionPreferences {
   sendShortcut: PreferenceKeyCombination!
 }
 
+type ModelBilling {
+  amountPerCredit: String
+  currency: String
+  description: String
+  entitlements: [BillingAllowance!]!
+  fee: BillingFee
+  kind: ModelBillingKind!
+  plan: String
+  product: String
+  requestRate: CapabilityRate
+}
+
+enum ModelBillingKind {
+  CREDIT
+  FREE
+  REQUEST
+  SUBSCRIPTION
+}
+
+type ModelConnection {
+  configuration: ConnectionConfiguration!
+  protocol: UpstreamProtocol!
+}
+
+type ModelOperation {
+  operation: TextModelProtocol!
+  path: String!
+}
+
+enum ModelServiceKind {
+  AUDIO
+  EMBEDDING
+  IMAGE
+  RERANK
+  STT
+  TEXT
+  TTS
+  VIDEO
+}
+
+type ModelTemplate {
+  audio: AudioCapabilities!
+  billing: ModelBilling
+  billingModel: BillingModel!
+  bodyDefaults: [BodyDefaultEntry!]!
+  cacheBilling: CacheBilling!
+  cachedPrice: String
+  capabilities: [ProviderModelCapability!]!
+  connections: [ModelConnection!]!
+  description: String
+  displayName: String!
+  effortMapping: [ThinkingEffort!]!
+  headers: [ConfigurationEntry!]!
+  id: ID!
+  imageGeneration: ImageGenerationSupport!
+  inputPrice: String
+  maxContextTokens: ContextTokens
+  maxInputTokens: ContextTokens
+  maxOutputTokens: ContextTokens
+  name: String!
+  operations: [ModelOperation!]!
+  outputPrice: String
+  pdf: PdfSupport!
+  pricingMode: PricingMode!
+  providerTemplateId: ID!
+  routeSelection: RouteSelection
+  search: SearchSupport!
+  serviceKind: ModelServiceKind
+  structuredOutput: StructuredOutputSupport!
+  text: TextCapabilities!
+  thinking: ThinkingSupport!
+  tools: ToolCapabilities!
+  upstreamModelId: String!
+  video: VideoSupport!
+  vision: VisionSupport!
+}
+
+type ModelTemplateConnection {
+  edges: [ModelTemplateEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ModelTemplateEdge {
+  cursor: String!
+  node: ModelTemplate!
+}
+
+input ModelTemplateFilterInput {
+  displayName: StringFilter
+  id: StringFilter
+  name: StringFilter
+  or: [ModelTemplateMatchInput!]
+}
+
+input ModelTemplateMatchInput {
+  displayName: StringFilter
+  id: StringFilter
+  name: StringFilter
+}
+
+type ModelTemplatePayload {
+  node: ModelTemplate!
+}
+
 type Mutation {
   analyticUserProfilePut(
     input: AnalyticUserProfilePutInput!
@@ -491,6 +823,12 @@ input NavigationPatchInput {
 
 type NavigationPreferences {
   home: PreferenceDestination!
+}
+
+enum OAuthFlow {
+  AUTHORIZATION_CODE
+  CLIENT_CREDENTIALS
+  DEVICE_CODE
 }
 
 type OnboardingContext {
@@ -685,6 +1023,17 @@ type PasskeySummaryPayload {
   node: PasskeySummary!
 }
 
+type PdfConfiguration {
+  maxFiles: Float
+  maxPages: Float
+}
+
+type PdfSupport {
+  configuration: PdfConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
 type PolicyAction {
   description: String!
   displayName: String!
@@ -796,6 +1145,42 @@ enum PreferenceWeekday {
   THURSDAY
   TUESDAY
   WEDNESDAY
+}
+
+enum PriceBillingPeriod {
+  DAY
+  HOUR
+  MINUTE
+  MONTH
+  WEEK
+  YEAR
+}
+
+enum PriceTierBasis {
+  INPUT_TOKENS
+  TOTAL_TOKENS
+}
+
+enum PriceUnit {
+  CHARACTERS
+  CREDITS
+  IMAGES
+  REQUESTS
+  SECONDS
+  TOKENS
+  UTF8_BYTES
+  VIDEOS
+}
+
+enum PricingMode {
+  ACCOUNT_SPECIFIC
+  API
+  FIXED
+  NOT_APPLICABLE
+  SCHEDULED
+  TIERED
+  UNKNOWN
+  UNPUBLISHED
 }
 
 input ProfileUpdateInput {
@@ -954,26 +1339,47 @@ input ProviderReplaceInput {
   name: String!
 }
 
-"""
-Public catalog defaults; selecting a template creates no configured provider.
-"""
 type ProviderTemplate {
-  """
-  Unknown and account-specific addresses remain null.
-  """
+  authentication: [AuthenticationConfiguration!]!
   baseUrl: String
-
-  """
-  Global opaque catalog identity, independent of organization resource IDs.
-  """
+  connection: ConnectionConfiguration!
+  description: String
+  endpoint: EndpointRequirements!
+  headers: [ConfigurationEntry!]!
   id: ID!
-  logoPath: String!
+  logoUrl: String
+  models(filter: ModelTemplateFilterInput): ModelTemplateConnection!
   name: String!
+}
 
-  """
-  Family hint only; configured models select their own text operation.
-  """
-  protocol: ProviderApiProtocol!
+type ProviderTemplateConnection {
+  edges: [ProviderTemplateEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ProviderTemplateEdge {
+  cursor: String!
+  node: ProviderTemplate!
+}
+
+input ProviderTemplateFilterInput {
+  id: StringFilter
+  name: StringFilter
+  or: [ProviderTemplateMatchInput!]
+}
+
+input ProviderTemplateMatchInput {
+  id: StringFilter
+  name: StringFilter
+}
+
+input ProviderTemplateOrderInput {
+  id: OrderByDirection
+  name: OrderByDirection
+}
+
+type ProviderTemplatePayload {
+  node: ProviderTemplate!
 }
 
 """
@@ -1008,6 +1414,11 @@ type Query {
     offset: Int
     orderBy: [MemberOrderInput!]
   ): MemberConnection!
+
+  """
+  Public configuration defaults for one database-ready model, identified within its provider.
+  """
+  modelTemplate(id: ID!, providerTemplateId: ID!): ModelTemplatePayload
   onboardingContext: OnboardingContextPayload
 
   """
@@ -1022,6 +1433,25 @@ type Query {
   organizationPolicyActions: PolicyActionConnection!
   organizationProfile(id: ID!): OrganizationPayload
   passkeys: PasskeySummaryConnection!
+
+  """
+  Public provider defaults with a complete, unpaginated collection of database-ready models.
+  """
+  providerTemplate(id: ID!): ProviderTemplatePayload
+
+  """
+  Public global provider catalog; defaults to 20 providers and caps pages at 100.
+  """
+  providerTemplates(
+    after: String
+    before: String
+    filter: ProviderTemplateFilterInput
+    first: Int
+    last: Int
+    offset: Int
+    orderBy: [ProviderTemplateOrderInput!]
+    search: String
+  ): ProviderTemplateConnection!
 
   """
   Find visible role metadata in the active organization.
@@ -1096,6 +1526,33 @@ input RoleUpdateInput {
   cedarSource: String
   description: String
   name: String
+}
+
+type RouteOption {
+  billing: ModelBilling
+  contextTokens: ContextTokens
+  id: String!
+  implicitCaching: Boolean
+  provider: String!
+  text: TextCapabilities!
+  upstreamModelId: String!
+}
+
+type RouteSelection {
+  allowFallbacks: Boolean!
+  exactProviderSelection: Boolean!
+  options: [RouteOption!]!
+  selected: String
+}
+
+type SearchConfiguration {
+  maxResults: Float
+}
+
+type SearchSupport {
+  configuration: SearchConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
 }
 
 type Session {
@@ -1226,6 +1683,43 @@ input StringFilter {
   startsWith: String
 }
 
+type StructuredOutputConfiguration {
+  jsonMode: FeatureSupport!
+  jsonSchema: FeatureSupport!
+}
+
+type StructuredOutputSupport {
+  configuration: StructuredOutputConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
+type TextCapabilities {
+  input: TextInputSupport!
+  output: TextGenerationSupport!
+}
+
+type TextGenerationConfiguration {
+  maxTokens: Float
+  thinking: ThinkingSupport!
+}
+
+type TextGenerationSupport {
+  configuration: TextGenerationConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
+type TextInputConfiguration {
+  maxTokens: Float
+}
+
+type TextInputSupport {
+  configuration: TextInputConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
 """
 Text operation determining the upstream request and response format.
 """
@@ -1245,6 +1739,37 @@ type ThemePreferences {
   palettes: PalettePreferences!
 }
 
+type ThinkingBudget {
+  defaultTokens: Float
+  maxTokens: Float!
+  minTokens: Float!
+}
+
+type ThinkingConfiguration {
+  budget: ThinkingBudget
+  defaultEffort: ThinkingEffortLevel
+  effortMapping: [ThinkingEffort!]!
+}
+
+type ThinkingEffort {
+  level: ThinkingEffortLevel!
+  value: String!
+}
+
+enum ThinkingEffortLevel {
+  HIGH
+  LOW
+  MAX
+  MEDIUM
+  XHIGH
+}
+
+type ThinkingSupport {
+  configuration: ThinkingConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
 """
 Exact Unix-second validity and client throttle values encoded as decimal strings.
 """
@@ -1253,6 +1778,22 @@ type TokenLifetime {
   expiresInSeconds: String!
   issuedAt: String!
   throttleSeconds: String!
+}
+
+type ToolCallingConfiguration {
+  maxTools: Float
+}
+
+type ToolCallingSupport {
+  configuration: ToolCallingConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
+type ToolCapabilities {
+  calling: ToolCallingSupport!
+  forcedChoice: FeatureSupport!
+  parallelCalls: FeatureSupport!
 }
 
 input TypographyPatchInput {
@@ -1268,6 +1809,16 @@ type TypographyPreferences {
 type UploadFormField {
   name: String!
   value: String!
+}
+
+enum UpstreamProtocol {
+  ANTHROPIC
+  GEMINI
+  MINIMAX
+  OPENAI
+  OPENAI_RESPONSES
+  OPENROUTER
+  XAI
 }
 
 type User {
@@ -1345,4 +1896,27 @@ input UserProfileUpdateInput {
   avatarUploaded: Boolean = false
   displayName: String
   username: String
+}
+
+type VideoConfiguration {
+  formats: [String!]
+  maxDurationMs: Float
+  maxFrames: Float
+}
+
+type VideoSupport {
+  configuration: VideoConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
+}
+
+type VisionConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type VisionSupport {
+  configuration: VisionConfiguration
+  pricing: CapabilityPricing
+  status: CapabilityStatus!
 }

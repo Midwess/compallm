@@ -46,6 +46,9 @@ impl TryFrom<Provider> for ProviderInsert {
                 organization_id: Set(crate::to_bigint(provider.organization_id)
                     .context("organization ID exceeds BIGINT")?),
                 name: Set(provider.name),
+                description: Set(provider.description),
+                logo_url: Set(provider.logo_url),
+                template_id: Set(provider.template_id),
                 connection: Set(serde_json::to_value(provider.connection)
                     .context("invalid provider connection")?),
                 headers: Set(
@@ -72,6 +75,23 @@ impl TryFrom<&ProviderModel> for ProviderModelActiveModel {
             ),
             name: Set(model.name.clone()),
             enabled: Set(model.enabled),
+            display_name: Set(model.display_name.clone()),
+            description: Set(model.description.clone()),
+            template: Set(model
+                .template
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()
+                .context("invalid provider model configuration")?),
+            body_defaults: Set(
+                serde_json::to_value(&model.body_defaults).context("invalid body defaults")?
+            ),
+            route_selection: Set(model
+                .route_selection
+                .as_ref()
+                .map(serde_json::to_value)
+                .transpose()
+                .context("invalid provider model configuration")?),
             service_kind: Set(model.service_kind.into()),
             protocol: Set(serde_json::to_value(model.protocol)
                 .context("invalid provider model protocol")?
@@ -82,17 +102,28 @@ impl TryFrom<&ProviderModel> for ProviderModelActiveModel {
                 serde_json::to_value(&model.connection).context("invalid model connection")?
             ),
             headers: Set(serde_json::to_value(&model.headers).context("invalid model headers")?),
-            capabilities: Set(
-                serde_json::to_value(&model.capabilities).context("invalid model capabilities")?
+            text: Set(serde_json::to_value(&model.text).context("invalid text configuration")?),
+            vision: Set(
+                serde_json::to_value(&model.vision).context("invalid vision configuration")?
+            ),
+            pdf: Set(serde_json::to_value(&model.pdf).context("invalid pdf configuration")?),
+            audio: Set(serde_json::to_value(&model.audio).context("invalid audio configuration")?),
+            video: Set(serde_json::to_value(&model.video).context("invalid video configuration")?),
+            image_generation: Set(serde_json::to_value(&model.image_generation)
+                .context("invalid image_generation configuration")?),
+            tools: Set(serde_json::to_value(&model.tools).context("invalid tools configuration")?),
+            structured_output: Set(serde_json::to_value(&model.structured_output)
+                .context("invalid structured_output configuration")?),
+            search: Set(
+                serde_json::to_value(&model.search).context("invalid search configuration")?
             ),
             limits: Set(serde_json::to_value(&model.limits).context("invalid model limits")?),
-            thinking: Set(model
-                .thinking
+            billing: Set(model
+                .billing
                 .as_ref()
                 .map(serde_json::to_value)
                 .transpose()
-                .context("invalid model thinking")?),
-            pricing: Set(serde_json::to_value(&model.pricing).context("invalid model pricing")?),
+                .context("invalid model billing")?),
         })
     }
 }
@@ -106,17 +137,34 @@ impl TryFrom<ProviderModelSchema> for ProviderModel {
             .context("invalid provider model organization ID in database")?;
         let provider_id = crate::from_bigint(model.provider_id)
             .context("invalid provider model provider ID in database")?;
-        let pricing: compallm_core::provider::Pricing = serde_json::from_value(model.pricing)
-            .context("invalid provider model pricing in database")?;
-        pricing
-            .validate()
-            .context("invalid provider model prices in database")?;
+        let billing: Option<compallm_core::provider::ModelBilling> = model
+            .billing
+            .map(serde_json::from_value)
+            .transpose()
+            .context("invalid stored model billing")?;
+        if let Some(value) = &billing {
+            value.validate().context("invalid stored billing")?;
+        }
 
-        Ok(Self {
+        let result = Self {
             id,
             organization_id,
             provider_id,
             name: model.name,
+            display_name: model.display_name,
+            description: model.description,
+            template: model
+                .template
+                .map(serde_json::from_value)
+                .transpose()
+                .context("invalid stored provider model configuration")?,
+            body_defaults: serde_json::from_value(model.body_defaults)
+                .context("invalid stored body defaults")?,
+            route_selection: model
+                .route_selection
+                .map(serde_json::from_value)
+                .transpose()
+                .context("invalid stored provider model configuration")?,
             enabled: model.enabled,
             service_kind: serde_json::from_value(model.service_kind.into())
                 .context("invalid provider model service kind in database")?,
@@ -126,17 +174,31 @@ impl TryFrom<ProviderModelSchema> for ProviderModel {
                 .context("invalid provider model connection in database")?,
             headers: serde_json::from_value(model.headers)
                 .context("invalid provider model headers in database")?,
-            capabilities: serde_json::from_value(model.capabilities)
-                .context("invalid provider model capabilities in database")?,
+            text: serde_json::from_value(model.text)
+                .context("invalid stored text configuration")?,
+            vision: serde_json::from_value(model.vision)
+                .context("invalid stored vision configuration")?,
+            pdf: serde_json::from_value(model.pdf).context("invalid stored pdf configuration")?,
+            audio: serde_json::from_value(model.audio)
+                .context("invalid stored audio configuration")?,
+            video: serde_json::from_value(model.video)
+                .context("invalid stored video configuration")?,
+            image_generation: serde_json::from_value(model.image_generation)
+                .context("invalid stored image_generation configuration")?,
+            tools: serde_json::from_value(model.tools)
+                .context("invalid stored tools configuration")?,
+            structured_output: serde_json::from_value(model.structured_output)
+                .context("invalid stored structured_output configuration")?,
+            search: serde_json::from_value(model.search)
+                .context("invalid stored search configuration")?,
             limits: serde_json::from_value(model.limits)
                 .context("invalid provider model limits in database")?,
-            thinking: model
-                .thinking
-                .map(serde_json::from_value)
-                .transpose()
-                .context("invalid provider model thinking in database")?,
-            pricing,
-        })
+            billing,
+        };
+        result
+            .validate_capabilities()
+            .context("invalid stored capability pricing")?;
+        Ok(result)
     }
 }
 
@@ -157,6 +219,9 @@ impl TryFrom<ProviderSchema> for Provider {
             id,
             organization_id,
             name: model.name,
+            description: model.description,
+            logo_url: model.logo_url,
+            template_id: model.template_id,
             connection: serde_json::from_value(model.connection)
                 .context("invalid provider connection in database")?,
             api_key: ProviderApiKey::try_from(model.credentials)

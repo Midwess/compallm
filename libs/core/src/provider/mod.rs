@@ -1,7 +1,7 @@
 //! Organization-owned LLM provider connections.
 
 pub mod capability;
-#[path="capability-pricing.rs"]
+#[path = "capability-pricing.rs"]
 mod capability_pricing;
 pub use capability_pricing::*;
 pub mod configuration;

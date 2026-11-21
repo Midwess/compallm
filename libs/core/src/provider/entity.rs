@@ -10,7 +10,8 @@ use crate::authorization::{
 
 use super::ProviderApiKey;
 use super::configuration::{
-    Capability, Connection, Headers, ModelLimits, Pricing, Protocol, ServiceKind, Thinking,
+    BodyDefaults, Capability, Connection, Headers, ModelLimits, ModelTemplateReference, Pricing,
+    Protocol, RouteSelection, ServiceKind, Thinking,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -18,6 +19,9 @@ pub struct Provider {
     pub id: u64,
     pub organization_id: u64,
     pub name: String,
+    pub description: Option<String>,
+    pub logo_url: Option<String>,
+    pub template_id: Option<String>,
     pub connection: Connection,
     pub headers: Headers,
     pub api_key: ProviderApiKey,
@@ -30,15 +34,20 @@ pub struct ProviderModel {
     pub organization_id: u64,
     pub provider_id: u64,
     pub name: String,
+    pub display_name: Option<String>,
+    pub description: Option<String>,
+    pub template: Option<ModelTemplateReference>,
     pub enabled: bool,
     pub service_kind: ServiceKind,
     pub protocol: Protocol,
     pub connection: Connection,
     pub headers: Headers,
+    pub body_defaults: BodyDefaults,
     pub capabilities: Vec<Capability>,
     pub limits: ModelLimits,
     pub thinking: Option<Thinking>,
     pub pricing: Pricing,
+    pub route_selection: Option<RouteSelection>,
 }
 
 impl Provider {
@@ -55,6 +64,14 @@ impl Provider {
 }
 
 impl ProviderModel {
+    pub fn unsupported_capabilities(&self) -> Vec<Capability> {
+        super::ALL_CAPABILITIES
+            .iter()
+            .copied()
+            .filter(|capability| !self.capabilities.contains(capability))
+            .collect()
+    }
+
     pub async fn initialize_id(&mut self) -> Result<(), DistributedIdError> {
         self.id = try_gen_id().await?;
         Ok(())

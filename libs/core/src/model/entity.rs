@@ -25,6 +25,14 @@ pub struct Model {
 }
 
 impl Model {
+    pub fn unsupported_capabilities(&self) -> Vec<Capability> {
+        crate::provider::ALL_CAPABILITIES
+            .iter()
+            .copied()
+            .filter(|capability| !self.capabilities.contains(capability))
+            .collect()
+    }
+
     pub async fn initialize_id(&mut self) -> Result<(), DistributedIdError> {
         self.id = try_gen_id().await?;
         Ok(())

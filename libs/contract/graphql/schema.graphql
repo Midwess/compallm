@@ -41,6 +41,30 @@ type AudioSupport {
   status: CapabilityStatus!
 }
 
+type AuthenticationConfiguration {
+  configuration: AuthenticationParameters!
+  method: AuthenticationMethod!
+}
+
+enum AuthenticationMethod {
+  API_KEY
+  CUSTOM
+  NONE
+  OAUTH
+}
+
+type AuthenticationParameters {
+  adapter: String
+  authorizationUrl: String
+  deviceAuthorizationUrl: String
+  flow: OAuthFlow
+  parameters: [ConfigurationEntry!]!
+  placement: CredentialPlacement
+  requiredInputs: [ConfigurationInput!]!
+  scopes: [String!]!
+  tokenUrl: String
+}
+
 enum AuthenticationPurpose {
   LOGIN
   PASSKEY_CHANGE
@@ -71,8 +95,34 @@ type BillingFee {
   period: PriceBillingPeriod
 }
 
+enum BillingModel {
+  FREE
+  METERED
+  SUBSCRIPTION
+  SUBSCRIPTION_WITH_OVERAGE
+  UNKNOWN
+}
+
+"""
+Public body default. Value is JSON text for the configuration editor.
+"""
+type BodyDefaultEntry {
+  key: String!
+  value: String!
+}
+
 type BooleanPayload {
   node: Boolean!
+}
+
+enum CacheBilling {
+  INCLUDED
+  NOT_APPLICABLE
+  PER_ROUTE
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  UNKNOWN
+  UNSUPPORTED
 }
 
 input CalendarPatchInput {
@@ -118,7 +168,7 @@ enum CapabilityPricingKind {
 type CapabilityRate {
   amount: String
   cache: CapabilityCachePrice
-  conditions: [TemplateHeader!]!
+  conditions: [ConfigurationEntry!]!
   credits: String
   currency: String
   direction: CreditUsageDirection
@@ -153,13 +203,6 @@ type CapabilityUsage {
   timezone: String
 }
 
-type CatalogRequiredInput {
-  allowedValues: [String!]
-  kind: TemplateInputKind!
-  name: String!
-  required: Boolean!
-}
-
 input ChatCreateInput {
   message: String!
   modelId: String!
@@ -185,6 +228,35 @@ type CodeFontPreferences {
   size: PreferencePixelFontSize!
 }
 
+type ConfigurationEntry {
+  key: String!
+  value: String!
+}
+
+type ConfigurationInput {
+  allowedValues: [String!]
+  kind: ConfigurationInputKind!
+  name: String!
+  required: Boolean!
+}
+
+enum ConfigurationInputKind {
+  OBJECT
+  POSITIVE_INTEGER
+  PRICE
+  STRING
+  URL
+}
+
+type ConnectionConfiguration {
+  authentication: AuthenticationConfiguration
+  baseUrl: String
+  endpoint: EndpointRequirements!
+  path: String
+  query: [ConfigurationEntry!]!
+  timeoutMs: Float
+}
+
 """
 Positive u32 context size, encoded as an exact JSON number (1–4294967295).
 """
@@ -207,6 +279,17 @@ enum CredentialDelivery {
   Return credentials explicitly without setting browser cookies.
   """
   TOKEN
+}
+
+enum CredentialLocation {
+  HEADER
+  QUERY
+}
+
+type CredentialPlacement {
+  location: CredentialLocation!
+  name: String!
+  prefix: String
 }
 
 enum CreditUsageDirection {
@@ -264,6 +347,23 @@ input EmailInput {
   email: String!
   invitation: Boolean = false
   purpose: AuthenticationPurpose = LOGIN
+}
+
+type EndpointConfiguration {
+  requiredInputs: [ConfigurationInput!]!
+  urlTemplate: String
+}
+
+enum EndpointMode {
+  ACCOUNT_SPECIFIC
+  DISCOVERED
+  FIXED
+  UNKNOWN
+}
+
+type EndpointRequirements {
+  configuration: EndpointConfiguration!
+  mode: EndpointMode!
 }
 
 type FeatureSupport {
@@ -518,19 +618,40 @@ enum ModelBillingKind {
   SUBSCRIPTION
 }
 
+type ModelConnection {
+  configuration: ConnectionConfiguration!
+  protocol: UpstreamProtocol!
+}
+
+type ModelOperation {
+  operation: TextModelProtocol!
+  path: String!
+}
+
+enum ModelServiceKind {
+  AUDIO
+  EMBEDDING
+  IMAGE
+  RERANK
+  STT
+  TEXT
+  TTS
+  VIDEO
+}
+
 type ModelTemplate {
   audio: AudioCapabilities!
   billing: ModelBilling
-  billingModel: TemplateBillingModel!
-  bodyDefaults: [TemplateBodyDefault!]!
-  cacheBilling: TemplateCacheBilling!
+  billingModel: BillingModel!
+  bodyDefaults: [BodyDefaultEntry!]!
+  cacheBilling: CacheBilling!
   cachedPrice: String
   capabilities: [ProviderModelCapability!]!
-  connections: [TemplateModelConnection!]!
+  connections: [ModelConnection!]!
   description: String
   displayName: String!
-  effortMapping: [TemplateEffort!]!
-  headers: [TemplateHeader!]!
+  effortMapping: [ThinkingEffort!]!
+  headers: [ConfigurationEntry!]!
   id: ID!
   imageGeneration: ImageGenerationSupport!
   inputPrice: String
@@ -538,14 +659,14 @@ type ModelTemplate {
   maxInputTokens: ContextTokens
   maxOutputTokens: ContextTokens
   name: String!
-  operations: [TemplateOperation!]!
+  operations: [ModelOperation!]!
   outputPrice: String
   pdf: PdfSupport!
-  pricingMode: TemplatePricingMode!
+  pricingMode: PricingMode!
   providerTemplateId: ID!
-  routeSelection: TemplateRouteSelection
+  routeSelection: RouteSelection
   search: SearchSupport!
-  serviceKind: TemplateServiceKind
+  serviceKind: ModelServiceKind
   structuredOutput: StructuredOutputSupport!
   text: TextCapabilities!
   thinking: ThinkingSupport!
@@ -702,6 +823,12 @@ input NavigationPatchInput {
 
 type NavigationPreferences {
   home: PreferenceDestination!
+}
+
+enum OAuthFlow {
+  AUTHORIZATION_CODE
+  CLIENT_CREDENTIALS
+  DEVICE_CODE
 }
 
 type OnboardingContext {
@@ -1045,6 +1172,17 @@ enum PriceUnit {
   VIDEOS
 }
 
+enum PricingMode {
+  ACCOUNT_SPECIFIC
+  API
+  FIXED
+  NOT_APPLICABLE
+  SCHEDULED
+  TIERED
+  UNKNOWN
+  UNPUBLISHED
+}
+
 input ProfileUpdateInput {
   name: String
   username: String
@@ -1202,12 +1340,12 @@ input ProviderReplaceInput {
 }
 
 type ProviderTemplate {
-  authentication: [TemplateAuthentication!]!
+  authentication: [AuthenticationConfiguration!]!
   baseUrl: String
-  connection: TemplateConnection!
+  connection: ConnectionConfiguration!
   description: String
-  endpoint: TemplateEndpoint!
-  headers: [TemplateHeader!]!
+  endpoint: EndpointRequirements!
+  headers: [ConfigurationEntry!]!
   id: ID!
   logoUrl: String
   models(filter: ModelTemplateFilterInput): ModelTemplateConnection!
@@ -1390,6 +1528,23 @@ input RoleUpdateInput {
   name: String
 }
 
+type RouteOption {
+  billing: ModelBilling
+  contextTokens: ContextTokens
+  id: String!
+  implicitCaching: Boolean
+  provider: String!
+  text: TextCapabilities!
+  upstreamModelId: String!
+}
+
+type RouteSelection {
+  allowFallbacks: Boolean!
+  exactProviderSelection: Boolean!
+  options: [RouteOption!]!
+  selected: String
+}
+
 type SearchConfiguration {
   maxResults: Float
 }
@@ -1539,184 +1694,6 @@ type StructuredOutputSupport {
   status: CapabilityStatus!
 }
 
-type TemplateAuthConfig {
-  adapter: String
-  authorizationUrl: String
-  deviceAuthorizationUrl: String
-  flow: TemplateOAuthFlow
-  parameters: [TemplateHeader!]!
-  placement: TemplateCredentialPlacement
-  requiredInputs: [CatalogRequiredInput!]!
-  scopes: [String!]!
-  tokenUrl: String
-}
-
-type TemplateAuthentication {
-  configuration: TemplateAuthConfig!
-  method: TemplateAuthenticationMethod!
-}
-
-enum TemplateAuthenticationMethod {
-  API_KEY
-  CUSTOM
-  NONE
-  OAUTH
-}
-
-enum TemplateBillingModel {
-  FREE
-  METERED
-  SUBSCRIPTION
-  SUBSCRIPTION_WITH_OVERAGE
-  UNKNOWN
-}
-
-"""
-Public body default. Value is JSON text for the configuration editor.
-"""
-type TemplateBodyDefault {
-  key: String!
-  value: String!
-}
-
-enum TemplateCacheBilling {
-  INCLUDED
-  NOT_APPLICABLE
-  PER_ROUTE
-  SEPARATE_RATE
-  STANDARD_INPUT_RATE
-  UNKNOWN
-  UNSUPPORTED
-}
-
-type TemplateConnection {
-  authentication: TemplateAuthentication
-  baseUrl: String
-  endpoint: TemplateEndpoint!
-  path: String
-  query: [TemplateHeader!]!
-  timeoutMs: Float
-}
-
-enum TemplateCredentialLocation {
-  HEADER
-  QUERY
-}
-
-type TemplateCredentialPlacement {
-  location: TemplateCredentialLocation!
-  name: String!
-  prefix: String
-}
-
-type TemplateEffort {
-  level: TemplateEffortLevel!
-  value: String!
-}
-
-enum TemplateEffortLevel {
-  HIGH
-  LOW
-  MAX
-  MEDIUM
-  XHIGH
-}
-
-type TemplateEndpoint {
-  configuration: TemplateEndpointConfig!
-  mode: TemplateEndpointMode!
-}
-
-type TemplateEndpointConfig {
-  requiredInputs: [CatalogRequiredInput!]!
-  urlTemplate: String
-}
-
-enum TemplateEndpointMode {
-  ACCOUNT_SPECIFIC
-  DISCOVERED
-  FIXED
-  UNKNOWN
-}
-
-type TemplateHeader {
-  key: String!
-  value: String!
-}
-
-enum TemplateInputKind {
-  OBJECT
-  POSITIVE_INTEGER
-  PRICE
-  STRING
-  URL
-}
-
-type TemplateModelConnection {
-  configuration: TemplateConnection!
-  protocol: TemplateProtocol!
-}
-
-enum TemplateOAuthFlow {
-  AUTHORIZATION_CODE
-  CLIENT_CREDENTIALS
-  DEVICE_CODE
-}
-
-type TemplateOperation {
-  operation: TextModelProtocol!
-  path: String!
-}
-
-enum TemplatePricingMode {
-  ACCOUNT_SPECIFIC
-  API
-  FIXED
-  NOT_APPLICABLE
-  SCHEDULED
-  TIERED
-  UNKNOWN
-  UNPUBLISHED
-}
-
-enum TemplateProtocol {
-  ANTHROPIC
-  GEMINI
-  MINIMAX
-  OPENAI
-  OPENAI_RESPONSES
-  OPENROUTER
-  XAI
-}
-
-type TemplateRouteOption {
-  billing: ModelBilling
-  contextTokens: ContextTokens
-  id: String!
-  implicitCaching: Boolean
-  provider: String!
-  text: TextCapabilities!
-  upstreamModelId: String!
-}
-
-type TemplateRouteSelection {
-  allowFallbacks: Boolean!
-  exactProviderSelection: Boolean!
-  options: [TemplateRouteOption!]!
-  selected: String
-}
-
-enum TemplateServiceKind {
-  AUDIO
-  EMBEDDING
-  IMAGE
-  RERANK
-  STT
-  TEXT
-  TTS
-  VIDEO
-}
-
 type TextCapabilities {
   input: TextInputSupport!
   output: TextGenerationSupport!
@@ -1770,8 +1747,21 @@ type ThinkingBudget {
 
 type ThinkingConfiguration {
   budget: ThinkingBudget
-  defaultEffort: TemplateEffortLevel
-  effortMapping: [TemplateEffort!]!
+  defaultEffort: ThinkingEffortLevel
+  effortMapping: [ThinkingEffort!]!
+}
+
+type ThinkingEffort {
+  level: ThinkingEffortLevel!
+  value: String!
+}
+
+enum ThinkingEffortLevel {
+  HIGH
+  LOW
+  MAX
+  MEDIUM
+  XHIGH
 }
 
 type ThinkingSupport {
@@ -1819,6 +1809,16 @@ type TypographyPreferences {
 type UploadFormField {
   name: String!
   value: String!
+}
+
+enum UpstreamProtocol {
+  ANTHROPIC
+  GEMINI
+  MINIMAX
+  OPENAI
+  OPENAI_RESPONSES
+  OPENROUTER
+  XAI
 }
 
 type User {

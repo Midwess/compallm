@@ -1,7 +1,7 @@
 import type {
   QueryGenqlSelection,
   ModelTemplateGenqlSelection,
-  TemplateConnectionGenqlSelection,
+  ConnectionConfigurationGenqlSelection,
 } from '@compallm/contract/graphql'
 import { graphql } from '../graphql-client'
 
@@ -29,7 +29,7 @@ const connection = {
   query: entry,
   authentication,
   endpoint,
-} as const satisfies TemplateConnectionGenqlSelection
+} as const satisfies ConnectionConfigurationGenqlSelection
 const modelDetail = {
   id: true,
   providerTemplateId: true,

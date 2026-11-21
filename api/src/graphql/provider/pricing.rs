@@ -101,7 +101,7 @@ pub struct CapabilityRate {
     pub credits: Option<String>,
     pub direction: Option<CreditUsageDirection>,
     pub cache: Option<CapabilityCachePrice>,
-    pub conditions: Vec<super::r#type::TemplateHeader>,
+    pub conditions: Vec<super::configuration::ConfigurationEntry>,
 }
 #[derive(GraphQLObject)]
 pub struct CapabilityCachePrice {
@@ -159,7 +159,7 @@ impl From<&domain::CapabilityTokenRate> for CapabilityRate {
     }
 }
 struct Conditions<'a>(&'a domain::RateConditions);
-impl From<Conditions<'_>> for Vec<super::r#type::TemplateHeader> {
+impl From<Conditions<'_>> for Vec<super::configuration::ConfigurationEntry> {
     fn from(Conditions(v): Conditions<'_>) -> Self {
         let mut fields = v.parameters.clone();
         for (k, value) in [
@@ -174,7 +174,7 @@ impl From<Conditions<'_>> for Vec<super::r#type::TemplateHeader> {
         }
         fields
             .into_iter()
-            .map(|(key, value)| super::r#type::TemplateHeader { key, value })
+            .map(|(key, value)| super::configuration::ConfigurationEntry { key, value })
             .collect()
     }
 }
@@ -406,4 +406,80 @@ impl From<domain::UsageDirection> for CreditUsageDirection {
             domain::UsageDirection::CacheRead => Self::CacheRead,
         }
     }
+}
+
+#[derive(Default)]
+pub(super) struct TokenDefaults {
+    pub input: Option<String>,
+    pub output: Option<String>,
+    pub cached: Option<String>,
+}
+impl From<&domain::TextCapabilities> for TokenDefaults {
+    fn from(value: &domain::TextCapabilities) -> Self {
+        fn rate(value: Option<&domain::CapabilityPricing>) -> Option<&domain::CapabilityTokenRate> {
+            match value {
+                Some(domain::CapabilityPricing::Usage(domain::CapabilityUsagePricing::Fixed(
+                    domain::CapabilityRates::Token(v),
+                ))) => Some(v),
+                _ => None,
+            }
+        }
+        fn amount(rate: &domain::Rate) -> Option<String> {
+            if rate.currency.as_deref() == Some("USD") && rate.quantity == Some(1000000) {
+                rate.amount.map(|v| v.to_string())
+            } else {
+                None
+            }
+        }
+        fn scalar(value: Option<&domain::CapabilityPricing>) -> Option<String> {
+            match value {
+                Some(domain::CapabilityPricing::Free | domain::CapabilityPricing::Included) => {
+                    Some("0".into())
+                }
+                _ => rate(value).and_then(|v| amount(&v.rate)),
+            }
+        }
+        let input = scalar(value.input.pricing());
+        let cached = rate(value.input.pricing()).and_then(|v| match &v.cache {
+            Some(domain::CachePricing::SeparateRate(v)) => amount(&v.rate),
+            Some(domain::CachePricing::StandardInputRate) => input.clone(),
+            Some(domain::CachePricing::Included) => Some("0".into()),
+            _ => None,
+        });
+        Self {
+            input,
+            output: scalar(value.output.pricing()),
+            cached,
+        }
+    }
+}
+
+#[derive(GraphQLEnum)]
+pub enum BillingModel {
+    Metered,
+    Subscription,
+    SubscriptionWithOverage,
+    Free,
+    Unknown,
+}
+#[derive(GraphQLEnum)]
+pub enum PricingMode {
+    Fixed,
+    Tiered,
+    Api,
+    AccountSpecific,
+    NotApplicable,
+    Unpublished,
+    Unknown,
+    Scheduled,
+}
+#[derive(GraphQLEnum)]
+pub enum CacheBilling {
+    SeparateRate,
+    StandardInputRate,
+    Unsupported,
+    Included,
+    NotApplicable,
+    PerRoute,
+    Unknown,
 }

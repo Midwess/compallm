@@ -239,8 +239,8 @@ pub struct ThinkingSupport {
 }
 #[derive(GraphQLObject)]
 pub struct ThinkingConfiguration {
-    pub effort_mapping: Vec<super::r#type::TemplateEffort>,
-    pub default_effort: Option<super::r#type::TemplateEffortLevel>,
+    pub effort_mapping: Vec<super::configuration::ThinkingEffort>,
+    pub default_effort: Option<super::configuration::ThinkingEffortLevel>,
     pub budget: Option<ThinkingBudget>,
 }
 impl From<&domain::CapabilitySupport<domain::Thinking>> for ThinkingSupport {
@@ -252,7 +252,7 @@ impl From<&domain::CapabilitySupport<domain::Thinking>> for ThinkingSupport {
                 effort_mapping: value
                     .effort_mapping
                     .iter()
-                    .map(|(level, value)| super::r#type::TemplateEffort {
+                    .map(|(level, value)| super::configuration::ThinkingEffort {
                         level: (*level).into(),
                         value: value.clone(),
                     })

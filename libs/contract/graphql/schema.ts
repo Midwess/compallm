@@ -50,6 +50,27 @@ export interface AudioSupport {
   __typename: 'AudioSupport'
 }
 
+export interface AuthenticationConfiguration {
+  configuration: AuthenticationParameters
+  method: AuthenticationMethod
+  __typename: 'AuthenticationConfiguration'
+}
+
+export type AuthenticationMethod = 'API_KEY' | 'CUSTOM' | 'NONE' | 'OAUTH'
+
+export interface AuthenticationParameters {
+  adapter: Scalars['String'] | null
+  authorizationUrl: Scalars['String'] | null
+  deviceAuthorizationUrl: Scalars['String'] | null
+  flow: OAuthFlow | null
+  parameters: ConfigurationEntry[]
+  placement: CredentialPlacement | null
+  requiredInputs: ConfigurationInput[]
+  scopes: Scalars['String'][]
+  tokenUrl: Scalars['String'] | null
+  __typename: 'AuthenticationParameters'
+}
+
 export type AuthenticationPurpose = 'LOGIN' | 'PASSKEY_CHANGE'
 
 export interface AvatarUpload {
@@ -79,10 +100,22 @@ export interface BillingFee {
   __typename: 'BillingFee'
 }
 
+export type BillingModel = 'FREE' | 'METERED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_WITH_OVERAGE' | 'UNKNOWN'
+
+/** Public body default. Value is JSON text for the configuration editor. */
+export interface BodyDefaultEntry {
+  key: Scalars['String']
+  value: Scalars['String']
+  __typename: 'BodyDefaultEntry'
+}
+
 export interface BooleanPayload {
   node: Scalars['Boolean']
   __typename: 'BooleanPayload'
 }
+
+export type CacheBilling =
+  'INCLUDED' | 'NOT_APPLICABLE' | 'PER_ROUTE' | 'SEPARATE_RATE' | 'STANDARD_INPUT_RATE' | 'UNKNOWN' | 'UNSUPPORTED'
 
 export interface CalendarPreferences {
   firstDay: PreferenceWeekday
@@ -112,7 +145,7 @@ export type CapabilityPricingKind = 'FREE' | 'INCLUDED' | 'MODEL_BILLING' | 'USA
 export interface CapabilityRate {
   amount: Scalars['String'] | null
   cache: CapabilityCachePrice | null
-  conditions: TemplateHeader[]
+  conditions: ConfigurationEntry[]
   credits: Scalars['String'] | null
   currency: Scalars['String'] | null
   direction: CreditUsageDirection | null
@@ -147,14 +180,6 @@ export interface CapabilityUsage {
   __typename: 'CapabilityUsage'
 }
 
-export interface CatalogRequiredInput {
-  allowedValues: Scalars['String'][] | null
-  kind: TemplateInputKind
-  name: Scalars['String']
-  required: Scalars['Boolean']
-  __typename: 'CatalogRequiredInput'
-}
-
 export interface CodeAppearancePreferences {
   font: CodeFontPreferences
   theme: PreferenceCodeTheme
@@ -167,8 +192,43 @@ export interface CodeFontPreferences {
   __typename: 'CodeFontPreferences'
 }
 
+export interface ConfigurationEntry {
+  key: Scalars['String']
+  value: Scalars['String']
+  __typename: 'ConfigurationEntry'
+}
+
+export interface ConfigurationInput {
+  allowedValues: Scalars['String'][] | null
+  kind: ConfigurationInputKind
+  name: Scalars['String']
+  required: Scalars['Boolean']
+  __typename: 'ConfigurationInput'
+}
+
+export type ConfigurationInputKind = 'OBJECT' | 'POSITIVE_INTEGER' | 'PRICE' | 'STRING' | 'URL'
+
+export interface ConnectionConfiguration {
+  authentication: AuthenticationConfiguration | null
+  baseUrl: Scalars['String'] | null
+  endpoint: EndpointRequirements
+  path: Scalars['String'] | null
+  query: ConfigurationEntry[]
+  timeoutMs: Scalars['Float'] | null
+  __typename: 'ConnectionConfiguration'
+}
+
 /** How the request delivers credentials; this is never stored in signed claims. */
 export type CredentialDelivery = 'COOKIE' | 'TOKEN'
+
+export type CredentialLocation = 'HEADER' | 'QUERY'
+
+export interface CredentialPlacement {
+  location: CredentialLocation
+  name: Scalars['String']
+  prefix: Scalars['String'] | null
+  __typename: 'CredentialPlacement'
+}
 
 export type CreditUsageDirection = 'CACHE_READ' | 'INPUT' | 'OUTPUT'
 
@@ -182,6 +242,20 @@ export interface EmailChallenge {
 export interface EmailChallengePayload {
   node: EmailChallenge
   __typename: 'EmailChallengePayload'
+}
+
+export interface EndpointConfiguration {
+  requiredInputs: ConfigurationInput[]
+  urlTemplate: Scalars['String'] | null
+  __typename: 'EndpointConfiguration'
+}
+
+export type EndpointMode = 'ACCOUNT_SPECIFIC' | 'DISCOVERED' | 'FIXED' | 'UNKNOWN'
+
+export interface EndpointRequirements {
+  configuration: EndpointConfiguration
+  mode: EndpointMode
+  __typename: 'EndpointRequirements'
 }
 
 export interface FeatureSupport {
@@ -376,19 +450,33 @@ export interface ModelBilling {
 
 export type ModelBillingKind = 'CREDIT' | 'FREE' | 'REQUEST' | 'SUBSCRIPTION'
 
+export interface ModelConnection {
+  configuration: ConnectionConfiguration
+  protocol: UpstreamProtocol
+  __typename: 'ModelConnection'
+}
+
+export interface ModelOperation {
+  operation: TextModelProtocol
+  path: Scalars['String']
+  __typename: 'ModelOperation'
+}
+
+export type ModelServiceKind = 'AUDIO' | 'EMBEDDING' | 'IMAGE' | 'RERANK' | 'STT' | 'TEXT' | 'TTS' | 'VIDEO'
+
 export interface ModelTemplate {
   audio: AudioCapabilities
   billing: ModelBilling | null
-  billingModel: TemplateBillingModel
-  bodyDefaults: TemplateBodyDefault[]
-  cacheBilling: TemplateCacheBilling
+  billingModel: BillingModel
+  bodyDefaults: BodyDefaultEntry[]
+  cacheBilling: CacheBilling
   cachedPrice: Scalars['String'] | null
   capabilities: ProviderModelCapability[]
-  connections: TemplateModelConnection[]
+  connections: ModelConnection[]
   description: Scalars['String'] | null
   displayName: Scalars['String']
-  effortMapping: TemplateEffort[]
-  headers: TemplateHeader[]
+  effortMapping: ThinkingEffort[]
+  headers: ConfigurationEntry[]
   id: Scalars['ID']
   imageGeneration: ImageGenerationSupport
   inputPrice: Scalars['String'] | null
@@ -396,14 +484,14 @@ export interface ModelTemplate {
   maxInputTokens: Scalars['ContextTokens'] | null
   maxOutputTokens: Scalars['ContextTokens'] | null
   name: Scalars['String']
-  operations: TemplateOperation[]
+  operations: ModelOperation[]
   outputPrice: Scalars['String'] | null
   pdf: PdfSupport
-  pricingMode: TemplatePricingMode
+  pricingMode: PricingMode
   providerTemplateId: Scalars['ID']
-  routeSelection: TemplateRouteSelection | null
+  routeSelection: RouteSelection | null
   search: SearchSupport
-  serviceKind: TemplateServiceKind | null
+  serviceKind: ModelServiceKind | null
   structuredOutput: StructuredOutputSupport
   text: TextCapabilities
   thinking: ThinkingSupport
@@ -488,6 +576,8 @@ export interface NavigationPreferences {
   home: PreferenceDestination
   __typename: 'NavigationPreferences'
 }
+
+export type OAuthFlow = 'AUTHORIZATION_CODE' | 'CLIENT_CREDENTIALS' | 'DEVICE_CODE'
 
 export interface OnboardingContext {
   flow: OnboardingFlow
@@ -698,6 +788,9 @@ export type PriceTierBasis = 'INPUT_TOKENS' | 'TOTAL_TOKENS'
 export type PriceUnit =
   'CHARACTERS' | 'CREDITS' | 'IMAGES' | 'REQUESTS' | 'SECONDS' | 'TOKENS' | 'UTF8_BYTES' | 'VIDEOS'
 
+export type PricingMode =
+  'ACCOUNT_SPECIFIC' | 'API' | 'FIXED' | 'NOT_APPLICABLE' | 'SCHEDULED' | 'TIERED' | 'UNKNOWN' | 'UNPUBLISHED'
+
 /** Catalog connection family hint; each configured model selects its own operation. */
 export type ProviderApiProtocol = 'ANTHROPIC' | 'OPENAI_COMPATIBLE' | 'PROVIDER_SPECIFIC'
 
@@ -717,12 +810,12 @@ export type ProviderModelCapability =
   | 'VISION'
 
 export interface ProviderTemplate {
-  authentication: TemplateAuthentication[]
+  authentication: AuthenticationConfiguration[]
   baseUrl: Scalars['String'] | null
-  connection: TemplateConnection
+  connection: ConnectionConfiguration
   description: Scalars['String'] | null
-  endpoint: TemplateEndpoint
-  headers: TemplateHeader[]
+  endpoint: EndpointRequirements
+  headers: ConfigurationEntry[]
   id: Scalars['ID']
   logoUrl: Scalars['String'] | null
   models: ModelTemplateConnection
@@ -811,6 +904,25 @@ export interface RoleEdge {
 export interface RolePayload {
   node: Role
   __typename: 'RolePayload'
+}
+
+export interface RouteOption {
+  billing: ModelBilling | null
+  contextTokens: Scalars['ContextTokens'] | null
+  id: Scalars['String']
+  implicitCaching: Scalars['Boolean'] | null
+  provider: Scalars['String']
+  text: TextCapabilities
+  upstreamModelId: Scalars['String']
+  __typename: 'RouteOption'
+}
+
+export interface RouteSelection {
+  allowFallbacks: Scalars['Boolean']
+  exactProviderSelection: Scalars['Boolean']
+  options: RouteOption[]
+  selected: Scalars['String'] | null
+  __typename: 'RouteSelection'
 }
 
 export interface SearchConfiguration {
@@ -913,128 +1025,6 @@ export interface StructuredOutputSupport {
   __typename: 'StructuredOutputSupport'
 }
 
-export interface TemplateAuthConfig {
-  adapter: Scalars['String'] | null
-  authorizationUrl: Scalars['String'] | null
-  deviceAuthorizationUrl: Scalars['String'] | null
-  flow: TemplateOAuthFlow | null
-  parameters: TemplateHeader[]
-  placement: TemplateCredentialPlacement | null
-  requiredInputs: CatalogRequiredInput[]
-  scopes: Scalars['String'][]
-  tokenUrl: Scalars['String'] | null
-  __typename: 'TemplateAuthConfig'
-}
-
-export interface TemplateAuthentication {
-  configuration: TemplateAuthConfig
-  method: TemplateAuthenticationMethod
-  __typename: 'TemplateAuthentication'
-}
-
-export type TemplateAuthenticationMethod = 'API_KEY' | 'CUSTOM' | 'NONE' | 'OAUTH'
-
-export type TemplateBillingModel = 'FREE' | 'METERED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_WITH_OVERAGE' | 'UNKNOWN'
-
-/** Public body default. Value is JSON text for the configuration editor. */
-export interface TemplateBodyDefault {
-  key: Scalars['String']
-  value: Scalars['String']
-  __typename: 'TemplateBodyDefault'
-}
-
-export type TemplateCacheBilling =
-  'INCLUDED' | 'NOT_APPLICABLE' | 'PER_ROUTE' | 'SEPARATE_RATE' | 'STANDARD_INPUT_RATE' | 'UNKNOWN' | 'UNSUPPORTED'
-
-export interface TemplateConnection {
-  authentication: TemplateAuthentication | null
-  baseUrl: Scalars['String'] | null
-  endpoint: TemplateEndpoint
-  path: Scalars['String'] | null
-  query: TemplateHeader[]
-  timeoutMs: Scalars['Float'] | null
-  __typename: 'TemplateConnection'
-}
-
-export type TemplateCredentialLocation = 'HEADER' | 'QUERY'
-
-export interface TemplateCredentialPlacement {
-  location: TemplateCredentialLocation
-  name: Scalars['String']
-  prefix: Scalars['String'] | null
-  __typename: 'TemplateCredentialPlacement'
-}
-
-export interface TemplateEffort {
-  level: TemplateEffortLevel
-  value: Scalars['String']
-  __typename: 'TemplateEffort'
-}
-
-export type TemplateEffortLevel = 'HIGH' | 'LOW' | 'MAX' | 'MEDIUM' | 'XHIGH'
-
-export interface TemplateEndpoint {
-  configuration: TemplateEndpointConfig
-  mode: TemplateEndpointMode
-  __typename: 'TemplateEndpoint'
-}
-
-export interface TemplateEndpointConfig {
-  requiredInputs: CatalogRequiredInput[]
-  urlTemplate: Scalars['String'] | null
-  __typename: 'TemplateEndpointConfig'
-}
-
-export type TemplateEndpointMode = 'ACCOUNT_SPECIFIC' | 'DISCOVERED' | 'FIXED' | 'UNKNOWN'
-
-export interface TemplateHeader {
-  key: Scalars['String']
-  value: Scalars['String']
-  __typename: 'TemplateHeader'
-}
-
-export type TemplateInputKind = 'OBJECT' | 'POSITIVE_INTEGER' | 'PRICE' | 'STRING' | 'URL'
-
-export interface TemplateModelConnection {
-  configuration: TemplateConnection
-  protocol: TemplateProtocol
-  __typename: 'TemplateModelConnection'
-}
-
-export type TemplateOAuthFlow = 'AUTHORIZATION_CODE' | 'CLIENT_CREDENTIALS' | 'DEVICE_CODE'
-
-export interface TemplateOperation {
-  operation: TextModelProtocol
-  path: Scalars['String']
-  __typename: 'TemplateOperation'
-}
-
-export type TemplatePricingMode =
-  'ACCOUNT_SPECIFIC' | 'API' | 'FIXED' | 'NOT_APPLICABLE' | 'SCHEDULED' | 'TIERED' | 'UNKNOWN' | 'UNPUBLISHED'
-
-export type TemplateProtocol = 'ANTHROPIC' | 'GEMINI' | 'MINIMAX' | 'OPENAI' | 'OPENAI_RESPONSES' | 'OPENROUTER' | 'XAI'
-
-export interface TemplateRouteOption {
-  billing: ModelBilling | null
-  contextTokens: Scalars['ContextTokens'] | null
-  id: Scalars['String']
-  implicitCaching: Scalars['Boolean'] | null
-  provider: Scalars['String']
-  text: TextCapabilities
-  upstreamModelId: Scalars['String']
-  __typename: 'TemplateRouteOption'
-}
-
-export interface TemplateRouteSelection {
-  allowFallbacks: Scalars['Boolean']
-  exactProviderSelection: Scalars['Boolean']
-  options: TemplateRouteOption[]
-  selected: Scalars['String'] | null
-  __typename: 'TemplateRouteSelection'
-}
-
-export type TemplateServiceKind = 'AUDIO' | 'EMBEDDING' | 'IMAGE' | 'RERANK' | 'STT' | 'TEXT' | 'TTS' | 'VIDEO'
-
 export interface TextCapabilities {
   input: TextInputSupport
   output: TextGenerationSupport
@@ -1084,10 +1074,18 @@ export interface ThinkingBudget {
 
 export interface ThinkingConfiguration {
   budget: ThinkingBudget | null
-  defaultEffort: TemplateEffortLevel | null
-  effortMapping: TemplateEffort[]
+  defaultEffort: ThinkingEffortLevel | null
+  effortMapping: ThinkingEffort[]
   __typename: 'ThinkingConfiguration'
 }
+
+export interface ThinkingEffort {
+  level: ThinkingEffortLevel
+  value: Scalars['String']
+  __typename: 'ThinkingEffort'
+}
+
+export type ThinkingEffortLevel = 'HIGH' | 'LOW' | 'MAX' | 'MEDIUM' | 'XHIGH'
 
 export interface ThinkingSupport {
   configuration: ThinkingConfiguration | null
@@ -1135,6 +1133,8 @@ export interface UploadFormField {
   value: Scalars['String']
   __typename: 'UploadFormField'
 }
+
+export type UpstreamProtocol = 'ANTHROPIC' | 'GEMINI' | 'MINIMAX' | 'OPENAI' | 'OPENAI_RESPONSES' | 'OPENROUTER' | 'XAI'
 
 export interface User {
   /** Public avatar URL; the object may not exist yet and clients must show a fallback. */
@@ -1266,6 +1266,27 @@ export interface AudioSupportGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface AuthenticationConfigurationGenqlSelection {
+  configuration?: AuthenticationParametersGenqlSelection
+  method?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface AuthenticationParametersGenqlSelection {
+  adapter?: boolean | number
+  authorizationUrl?: boolean | number
+  deviceAuthorizationUrl?: boolean | number
+  flow?: boolean | number
+  parameters?: ConfigurationEntryGenqlSelection
+  placement?: CredentialPlacementGenqlSelection
+  requiredInputs?: ConfigurationInputGenqlSelection
+  scopes?: boolean | number
+  tokenUrl?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface AvatarUploadGenqlSelection {
   /** Expiration as Unix seconds, encoded as a string. */
   expiresAt?: boolean | number
@@ -1293,6 +1314,14 @@ export interface BillingFeeGenqlSelection {
   amount?: boolean | number
   currency?: boolean | number
   period?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+/** Public body default. Value is JSON text for the configuration editor. */
+export interface BodyDefaultEntryGenqlSelection {
+  key?: boolean | number
+  value?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -1332,7 +1361,7 @@ export interface CapabilityPricingGenqlSelection {
 export interface CapabilityRateGenqlSelection {
   amount?: boolean | number
   cache?: CapabilityCachePriceGenqlSelection
-  conditions?: TemplateHeaderGenqlSelection
+  conditions?: ConfigurationEntryGenqlSelection
   credits?: boolean | number
   currency?: boolean | number
   direction?: boolean | number
@@ -1369,15 +1398,6 @@ export interface CapabilityUsageGenqlSelection {
   __scalar?: boolean | number
 }
 
-export interface CatalogRequiredInputGenqlSelection {
-  allowedValues?: boolean | number
-  kind?: boolean | number
-  name?: boolean | number
-  required?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
 export interface ChatCreateInput {
   message: Scalars['String']
   modelId: Scalars['String']
@@ -1407,8 +1427,43 @@ export interface CodeFontPreferencesGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface ConfigurationEntryGenqlSelection {
+  key?: boolean | number
+  value?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ConfigurationInputGenqlSelection {
+  allowedValues?: boolean | number
+  kind?: boolean | number
+  name?: boolean | number
+  required?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ConnectionConfigurationGenqlSelection {
+  authentication?: AuthenticationConfigurationGenqlSelection
+  baseUrl?: boolean | number
+  endpoint?: EndpointRequirementsGenqlSelection
+  path?: boolean | number
+  query?: ConfigurationEntryGenqlSelection
+  timeoutMs?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface CredentialCreateInput {
   name: Scalars['String']
+}
+
+export interface CredentialPlacementGenqlSelection {
+  location?: boolean | number
+  name?: boolean | number
+  prefix?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 /** Email admission succeeded; cookie delivery never exposes the OTP credential. */
@@ -1452,6 +1507,20 @@ export interface EmailInput {
   email: Scalars['String']
   invitation?: Scalars['Boolean'] | null
   purpose?: AuthenticationPurpose | null
+}
+
+export interface EndpointConfigurationGenqlSelection {
+  requiredInputs?: ConfigurationInputGenqlSelection
+  urlTemplate?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface EndpointRequirementsGenqlSelection {
+  configuration?: EndpointConfigurationGenqlSelection
+  mode?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 export interface FeatureSupportGenqlSelection {
@@ -1723,19 +1792,33 @@ export interface ModelBillingGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface ModelConnectionGenqlSelection {
+  configuration?: ConnectionConfigurationGenqlSelection
+  protocol?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ModelOperationGenqlSelection {
+  operation?: boolean | number
+  path?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface ModelTemplateGenqlSelection {
   audio?: AudioCapabilitiesGenqlSelection
   billing?: ModelBillingGenqlSelection
   billingModel?: boolean | number
-  bodyDefaults?: TemplateBodyDefaultGenqlSelection
+  bodyDefaults?: BodyDefaultEntryGenqlSelection
   cacheBilling?: boolean | number
   cachedPrice?: boolean | number
   capabilities?: boolean | number
-  connections?: TemplateModelConnectionGenqlSelection
+  connections?: ModelConnectionGenqlSelection
   description?: boolean | number
   displayName?: boolean | number
-  effortMapping?: TemplateEffortGenqlSelection
-  headers?: TemplateHeaderGenqlSelection
+  effortMapping?: ThinkingEffortGenqlSelection
+  headers?: ConfigurationEntryGenqlSelection
   id?: boolean | number
   imageGeneration?: ImageGenerationSupportGenqlSelection
   inputPrice?: boolean | number
@@ -1743,12 +1826,12 @@ export interface ModelTemplateGenqlSelection {
   maxInputTokens?: boolean | number
   maxOutputTokens?: boolean | number
   name?: boolean | number
-  operations?: TemplateOperationGenqlSelection
+  operations?: ModelOperationGenqlSelection
   outputPrice?: boolean | number
   pdf?: PdfSupportGenqlSelection
   pricingMode?: boolean | number
   providerTemplateId?: boolean | number
-  routeSelection?: TemplateRouteSelectionGenqlSelection
+  routeSelection?: RouteSelectionGenqlSelection
   search?: SearchSupportGenqlSelection
   serviceKind?: boolean | number
   structuredOutput?: StructuredOutputSupportGenqlSelection
@@ -2203,12 +2286,12 @@ export interface ProviderReplaceInput {
 }
 
 export interface ProviderTemplateGenqlSelection {
-  authentication?: TemplateAuthenticationGenqlSelection
+  authentication?: AuthenticationConfigurationGenqlSelection
   baseUrl?: boolean | number
-  connection?: TemplateConnectionGenqlSelection
+  connection?: ConnectionConfigurationGenqlSelection
   description?: boolean | number
-  endpoint?: TemplateEndpointGenqlSelection
-  headers?: TemplateHeaderGenqlSelection
+  endpoint?: EndpointRequirementsGenqlSelection
+  headers?: ConfigurationEntryGenqlSelection
   id?: boolean | number
   logoUrl?: boolean | number
   models?: ModelTemplateConnectionGenqlSelection & { __args?: { filter?: ModelTemplateFilterInput | null } }
@@ -2375,6 +2458,27 @@ export interface RoleUpdateInput {
   name?: Scalars['String'] | null
 }
 
+export interface RouteOptionGenqlSelection {
+  billing?: ModelBillingGenqlSelection
+  contextTokens?: boolean | number
+  id?: boolean | number
+  implicitCaching?: boolean | number
+  provider?: boolean | number
+  text?: TextCapabilitiesGenqlSelection
+  upstreamModelId?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface RouteSelectionGenqlSelection {
+  allowFallbacks?: boolean | number
+  exactProviderSelection?: boolean | number
+  options?: RouteOptionGenqlSelection
+  selected?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface SearchConfigurationGenqlSelection {
   maxResults?: boolean | number
   __typename?: boolean | number
@@ -2526,117 +2630,6 @@ export interface StructuredOutputSupportGenqlSelection {
   __scalar?: boolean | number
 }
 
-export interface TemplateAuthConfigGenqlSelection {
-  adapter?: boolean | number
-  authorizationUrl?: boolean | number
-  deviceAuthorizationUrl?: boolean | number
-  flow?: boolean | number
-  parameters?: TemplateHeaderGenqlSelection
-  placement?: TemplateCredentialPlacementGenqlSelection
-  requiredInputs?: CatalogRequiredInputGenqlSelection
-  scopes?: boolean | number
-  tokenUrl?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateAuthenticationGenqlSelection {
-  configuration?: TemplateAuthConfigGenqlSelection
-  method?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-/** Public body default. Value is JSON text for the configuration editor. */
-export interface TemplateBodyDefaultGenqlSelection {
-  key?: boolean | number
-  value?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateConnectionGenqlSelection {
-  authentication?: TemplateAuthenticationGenqlSelection
-  baseUrl?: boolean | number
-  endpoint?: TemplateEndpointGenqlSelection
-  path?: boolean | number
-  query?: TemplateHeaderGenqlSelection
-  timeoutMs?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateCredentialPlacementGenqlSelection {
-  location?: boolean | number
-  name?: boolean | number
-  prefix?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateEffortGenqlSelection {
-  level?: boolean | number
-  value?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateEndpointGenqlSelection {
-  configuration?: TemplateEndpointConfigGenqlSelection
-  mode?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateEndpointConfigGenqlSelection {
-  requiredInputs?: CatalogRequiredInputGenqlSelection
-  urlTemplate?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateHeaderGenqlSelection {
-  key?: boolean | number
-  value?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateModelConnectionGenqlSelection {
-  configuration?: TemplateConnectionGenqlSelection
-  protocol?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateOperationGenqlSelection {
-  operation?: boolean | number
-  path?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateRouteOptionGenqlSelection {
-  billing?: ModelBillingGenqlSelection
-  contextTokens?: boolean | number
-  id?: boolean | number
-  implicitCaching?: boolean | number
-  provider?: boolean | number
-  text?: TextCapabilitiesGenqlSelection
-  upstreamModelId?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
-export interface TemplateRouteSelectionGenqlSelection {
-  allowFallbacks?: boolean | number
-  exactProviderSelection?: boolean | number
-  options?: TemplateRouteOptionGenqlSelection
-  selected?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
 export interface TextCapabilitiesGenqlSelection {
   input?: TextInputSupportGenqlSelection
   output?: TextGenerationSupportGenqlSelection
@@ -2696,7 +2689,14 @@ export interface ThinkingBudgetGenqlSelection {
 export interface ThinkingConfigurationGenqlSelection {
   budget?: ThinkingBudgetGenqlSelection
   defaultEffort?: boolean | number
-  effortMapping?: TemplateEffortGenqlSelection
+  effortMapping?: ThinkingEffortGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ThinkingEffortGenqlSelection {
+  level?: boolean | number
+  value?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -2886,6 +2886,20 @@ export const isAudioSupport = (obj?: { __typename?: any } | null): obj is AudioS
   return AudioSupport_possibleTypes.includes(obj.__typename)
 }
 
+const AuthenticationConfiguration_possibleTypes: string[] = ['AuthenticationConfiguration']
+export const isAuthenticationConfiguration = (
+  obj?: { __typename?: any } | null,
+): obj is AuthenticationConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAuthenticationConfiguration"')
+  return AuthenticationConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const AuthenticationParameters_possibleTypes: string[] = ['AuthenticationParameters']
+export const isAuthenticationParameters = (obj?: { __typename?: any } | null): obj is AuthenticationParameters => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isAuthenticationParameters"')
+  return AuthenticationParameters_possibleTypes.includes(obj.__typename)
+}
+
 const AvatarUpload_possibleTypes: string[] = ['AvatarUpload']
 export const isAvatarUpload = (obj?: { __typename?: any } | null): obj is AvatarUpload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isAvatarUpload"')
@@ -2908,6 +2922,12 @@ const BillingFee_possibleTypes: string[] = ['BillingFee']
 export const isBillingFee = (obj?: { __typename?: any } | null): obj is BillingFee => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isBillingFee"')
   return BillingFee_possibleTypes.includes(obj.__typename)
+}
+
+const BodyDefaultEntry_possibleTypes: string[] = ['BodyDefaultEntry']
+export const isBodyDefaultEntry = (obj?: { __typename?: any } | null): obj is BodyDefaultEntry => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isBodyDefaultEntry"')
+  return BodyDefaultEntry_possibleTypes.includes(obj.__typename)
 }
 
 const BooleanPayload_possibleTypes: string[] = ['BooleanPayload']
@@ -2958,12 +2978,6 @@ export const isCapabilityUsage = (obj?: { __typename?: any } | null): obj is Cap
   return CapabilityUsage_possibleTypes.includes(obj.__typename)
 }
 
-const CatalogRequiredInput_possibleTypes: string[] = ['CatalogRequiredInput']
-export const isCatalogRequiredInput = (obj?: { __typename?: any } | null): obj is CatalogRequiredInput => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isCatalogRequiredInput"')
-  return CatalogRequiredInput_possibleTypes.includes(obj.__typename)
-}
-
 const CodeAppearancePreferences_possibleTypes: string[] = ['CodeAppearancePreferences']
 export const isCodeAppearancePreferences = (obj?: { __typename?: any } | null): obj is CodeAppearancePreferences => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isCodeAppearancePreferences"')
@@ -2976,6 +2990,30 @@ export const isCodeFontPreferences = (obj?: { __typename?: any } | null): obj is
   return CodeFontPreferences_possibleTypes.includes(obj.__typename)
 }
 
+const ConfigurationEntry_possibleTypes: string[] = ['ConfigurationEntry']
+export const isConfigurationEntry = (obj?: { __typename?: any } | null): obj is ConfigurationEntry => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isConfigurationEntry"')
+  return ConfigurationEntry_possibleTypes.includes(obj.__typename)
+}
+
+const ConfigurationInput_possibleTypes: string[] = ['ConfigurationInput']
+export const isConfigurationInput = (obj?: { __typename?: any } | null): obj is ConfigurationInput => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isConfigurationInput"')
+  return ConfigurationInput_possibleTypes.includes(obj.__typename)
+}
+
+const ConnectionConfiguration_possibleTypes: string[] = ['ConnectionConfiguration']
+export const isConnectionConfiguration = (obj?: { __typename?: any } | null): obj is ConnectionConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isConnectionConfiguration"')
+  return ConnectionConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const CredentialPlacement_possibleTypes: string[] = ['CredentialPlacement']
+export const isCredentialPlacement = (obj?: { __typename?: any } | null): obj is CredentialPlacement => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isCredentialPlacement"')
+  return CredentialPlacement_possibleTypes.includes(obj.__typename)
+}
+
 const EmailChallenge_possibleTypes: string[] = ['EmailChallenge']
 export const isEmailChallenge = (obj?: { __typename?: any } | null): obj is EmailChallenge => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isEmailChallenge"')
@@ -2986,6 +3024,18 @@ const EmailChallengePayload_possibleTypes: string[] = ['EmailChallengePayload']
 export const isEmailChallengePayload = (obj?: { __typename?: any } | null): obj is EmailChallengePayload => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isEmailChallengePayload"')
   return EmailChallengePayload_possibleTypes.includes(obj.__typename)
+}
+
+const EndpointConfiguration_possibleTypes: string[] = ['EndpointConfiguration']
+export const isEndpointConfiguration = (obj?: { __typename?: any } | null): obj is EndpointConfiguration => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isEndpointConfiguration"')
+  return EndpointConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const EndpointRequirements_possibleTypes: string[] = ['EndpointRequirements']
+export const isEndpointRequirements = (obj?: { __typename?: any } | null): obj is EndpointRequirements => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isEndpointRequirements"')
+  return EndpointRequirements_possibleTypes.includes(obj.__typename)
 }
 
 const FeatureSupport_possibleTypes: string[] = ['FeatureSupport']
@@ -3146,6 +3196,18 @@ const ModelBilling_possibleTypes: string[] = ['ModelBilling']
 export const isModelBilling = (obj?: { __typename?: any } | null): obj is ModelBilling => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isModelBilling"')
   return ModelBilling_possibleTypes.includes(obj.__typename)
+}
+
+const ModelConnection_possibleTypes: string[] = ['ModelConnection']
+export const isModelConnection = (obj?: { __typename?: any } | null): obj is ModelConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isModelConnection"')
+  return ModelConnection_possibleTypes.includes(obj.__typename)
+}
+
+const ModelOperation_possibleTypes: string[] = ['ModelOperation']
+export const isModelOperation = (obj?: { __typename?: any } | null): obj is ModelOperation => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isModelOperation"')
+  return ModelOperation_possibleTypes.includes(obj.__typename)
 }
 
 const ModelTemplate_possibleTypes: string[] = ['ModelTemplate']
@@ -3380,6 +3442,18 @@ export const isRolePayload = (obj?: { __typename?: any } | null): obj is RolePay
   return RolePayload_possibleTypes.includes(obj.__typename)
 }
 
+const RouteOption_possibleTypes: string[] = ['RouteOption']
+export const isRouteOption = (obj?: { __typename?: any } | null): obj is RouteOption => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isRouteOption"')
+  return RouteOption_possibleTypes.includes(obj.__typename)
+}
+
+const RouteSelection_possibleTypes: string[] = ['RouteSelection']
+export const isRouteSelection = (obj?: { __typename?: any } | null): obj is RouteSelection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isRouteSelection"')
+  return RouteSelection_possibleTypes.includes(obj.__typename)
+}
+
 const SearchConfiguration_possibleTypes: string[] = ['SearchConfiguration']
 export const isSearchConfiguration = (obj?: { __typename?: any } | null): obj is SearchConfiguration => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isSearchConfiguration"')
@@ -3460,86 +3534,6 @@ export const isStructuredOutputSupport = (obj?: { __typename?: any } | null): ob
   return StructuredOutputSupport_possibleTypes.includes(obj.__typename)
 }
 
-const TemplateAuthConfig_possibleTypes: string[] = ['TemplateAuthConfig']
-export const isTemplateAuthConfig = (obj?: { __typename?: any } | null): obj is TemplateAuthConfig => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateAuthConfig"')
-  return TemplateAuthConfig_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateAuthentication_possibleTypes: string[] = ['TemplateAuthentication']
-export const isTemplateAuthentication = (obj?: { __typename?: any } | null): obj is TemplateAuthentication => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateAuthentication"')
-  return TemplateAuthentication_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateBodyDefault_possibleTypes: string[] = ['TemplateBodyDefault']
-export const isTemplateBodyDefault = (obj?: { __typename?: any } | null): obj is TemplateBodyDefault => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateBodyDefault"')
-  return TemplateBodyDefault_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateConnection_possibleTypes: string[] = ['TemplateConnection']
-export const isTemplateConnection = (obj?: { __typename?: any } | null): obj is TemplateConnection => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateConnection"')
-  return TemplateConnection_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateCredentialPlacement_possibleTypes: string[] = ['TemplateCredentialPlacement']
-export const isTemplateCredentialPlacement = (
-  obj?: { __typename?: any } | null,
-): obj is TemplateCredentialPlacement => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateCredentialPlacement"')
-  return TemplateCredentialPlacement_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateEffort_possibleTypes: string[] = ['TemplateEffort']
-export const isTemplateEffort = (obj?: { __typename?: any } | null): obj is TemplateEffort => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateEffort"')
-  return TemplateEffort_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateEndpoint_possibleTypes: string[] = ['TemplateEndpoint']
-export const isTemplateEndpoint = (obj?: { __typename?: any } | null): obj is TemplateEndpoint => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateEndpoint"')
-  return TemplateEndpoint_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateEndpointConfig_possibleTypes: string[] = ['TemplateEndpointConfig']
-export const isTemplateEndpointConfig = (obj?: { __typename?: any } | null): obj is TemplateEndpointConfig => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateEndpointConfig"')
-  return TemplateEndpointConfig_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateHeader_possibleTypes: string[] = ['TemplateHeader']
-export const isTemplateHeader = (obj?: { __typename?: any } | null): obj is TemplateHeader => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateHeader"')
-  return TemplateHeader_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateModelConnection_possibleTypes: string[] = ['TemplateModelConnection']
-export const isTemplateModelConnection = (obj?: { __typename?: any } | null): obj is TemplateModelConnection => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateModelConnection"')
-  return TemplateModelConnection_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateOperation_possibleTypes: string[] = ['TemplateOperation']
-export const isTemplateOperation = (obj?: { __typename?: any } | null): obj is TemplateOperation => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateOperation"')
-  return TemplateOperation_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateRouteOption_possibleTypes: string[] = ['TemplateRouteOption']
-export const isTemplateRouteOption = (obj?: { __typename?: any } | null): obj is TemplateRouteOption => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateRouteOption"')
-  return TemplateRouteOption_possibleTypes.includes(obj.__typename)
-}
-
-const TemplateRouteSelection_possibleTypes: string[] = ['TemplateRouteSelection']
-export const isTemplateRouteSelection = (obj?: { __typename?: any } | null): obj is TemplateRouteSelection => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateRouteSelection"')
-  return TemplateRouteSelection_possibleTypes.includes(obj.__typename)
-}
-
 const TextCapabilities_possibleTypes: string[] = ['TextCapabilities']
 export const isTextCapabilities = (obj?: { __typename?: any } | null): obj is TextCapabilities => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isTextCapabilities"')
@@ -3588,6 +3582,12 @@ const ThinkingConfiguration_possibleTypes: string[] = ['ThinkingConfiguration']
 export const isThinkingConfiguration = (obj?: { __typename?: any } | null): obj is ThinkingConfiguration => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isThinkingConfiguration"')
   return ThinkingConfiguration_possibleTypes.includes(obj.__typename)
+}
+
+const ThinkingEffort_possibleTypes: string[] = ['ThinkingEffort']
+export const isThinkingEffort = (obj?: { __typename?: any } | null): obj is ThinkingEffort => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isThinkingEffort"')
+  return ThinkingEffort_possibleTypes.includes(obj.__typename)
 }
 
 const ThinkingSupport_possibleTypes: string[] = ['ThinkingSupport']
@@ -3680,9 +3680,34 @@ export const isVisionSupport = (obj?: { __typename?: any } | null): obj is Visio
   return VisionSupport_possibleTypes.includes(obj.__typename)
 }
 
+export const enumAuthenticationMethod = {
+  API_KEY: 'API_KEY' as const,
+  CUSTOM: 'CUSTOM' as const,
+  NONE: 'NONE' as const,
+  OAUTH: 'OAUTH' as const,
+}
+
 export const enumAuthenticationPurpose = {
   LOGIN: 'LOGIN' as const,
   PASSKEY_CHANGE: 'PASSKEY_CHANGE' as const,
+}
+
+export const enumBillingModel = {
+  FREE: 'FREE' as const,
+  METERED: 'METERED' as const,
+  SUBSCRIPTION: 'SUBSCRIPTION' as const,
+  SUBSCRIPTION_WITH_OVERAGE: 'SUBSCRIPTION_WITH_OVERAGE' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+}
+
+export const enumCacheBilling = {
+  INCLUDED: 'INCLUDED' as const,
+  NOT_APPLICABLE: 'NOT_APPLICABLE' as const,
+  PER_ROUTE: 'PER_ROUTE' as const,
+  SEPARATE_RATE: 'SEPARATE_RATE' as const,
+  STANDARD_INPUT_RATE: 'STANDARD_INPUT_RATE' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+  UNSUPPORTED: 'UNSUPPORTED' as const,
 }
 
 export const enumCapabilityCacheMode = {
@@ -3711,15 +3736,35 @@ export const enumCapabilityStatus = {
   UNSUPPORTED: 'UNSUPPORTED' as const,
 }
 
+export const enumConfigurationInputKind = {
+  OBJECT: 'OBJECT' as const,
+  POSITIVE_INTEGER: 'POSITIVE_INTEGER' as const,
+  PRICE: 'PRICE' as const,
+  STRING: 'STRING' as const,
+  URL: 'URL' as const,
+}
+
 export const enumCredentialDelivery = {
   COOKIE: 'COOKIE' as const,
   TOKEN: 'TOKEN' as const,
+}
+
+export const enumCredentialLocation = {
+  HEADER: 'HEADER' as const,
+  QUERY: 'QUERY' as const,
 }
 
 export const enumCreditUsageDirection = {
   CACHE_READ: 'CACHE_READ' as const,
   INPUT: 'INPUT' as const,
   OUTPUT: 'OUTPUT' as const,
+}
+
+export const enumEndpointMode = {
+  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
+  DISCOVERED: 'DISCOVERED' as const,
+  FIXED: 'FIXED' as const,
+  UNKNOWN: 'UNKNOWN' as const,
 }
 
 export const enumFilterIs = {
@@ -3744,6 +3789,23 @@ export const enumModelBillingKind = {
   FREE: 'FREE' as const,
   REQUEST: 'REQUEST' as const,
   SUBSCRIPTION: 'SUBSCRIPTION' as const,
+}
+
+export const enumModelServiceKind = {
+  AUDIO: 'AUDIO' as const,
+  EMBEDDING: 'EMBEDDING' as const,
+  IMAGE: 'IMAGE' as const,
+  RERANK: 'RERANK' as const,
+  STT: 'STT' as const,
+  TEXT: 'TEXT' as const,
+  TTS: 'TTS' as const,
+  VIDEO: 'VIDEO' as const,
+}
+
+export const enumOAuthFlow = {
+  AUTHORIZATION_CODE: 'AUTHORIZATION_CODE' as const,
+  CLIENT_CREDENTIALS: 'CLIENT_CREDENTIALS' as const,
+  DEVICE_CODE: 'DEVICE_CODE' as const,
 }
 
 export const enumOnboardingDestination = {
@@ -3894,6 +3956,17 @@ export const enumPriceUnit = {
   VIDEOS: 'VIDEOS' as const,
 }
 
+export const enumPricingMode = {
+  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
+  API: 'API' as const,
+  FIXED: 'FIXED' as const,
+  NOT_APPLICABLE: 'NOT_APPLICABLE' as const,
+  SCHEDULED: 'SCHEDULED' as const,
+  TIERED: 'TIERED' as const,
+  UNKNOWN: 'UNKNOWN' as const,
+  UNPUBLISHED: 'UNPUBLISHED' as const,
+}
+
 export const enumProviderApiProtocol = {
   ANTHROPIC: 'ANTHROPIC' as const,
   OPENAI_COMPATIBLE: 'OPENAI_COMPATIBLE' as const,
@@ -3915,37 +3988,13 @@ export const enumProviderModelCapability = {
   VISION: 'VISION' as const,
 }
 
-export const enumTemplateAuthenticationMethod = {
-  API_KEY: 'API_KEY' as const,
-  CUSTOM: 'CUSTOM' as const,
-  NONE: 'NONE' as const,
-  OAUTH: 'OAUTH' as const,
+export const enumTextModelProtocol = {
+  ANTHROPIC_MESSAGES: 'ANTHROPIC_MESSAGES' as const,
+  OPENAI_CHAT_COMPLETIONS: 'OPENAI_CHAT_COMPLETIONS' as const,
+  OPENAI_RESPONSES: 'OPENAI_RESPONSES' as const,
 }
 
-export const enumTemplateBillingModel = {
-  FREE: 'FREE' as const,
-  METERED: 'METERED' as const,
-  SUBSCRIPTION: 'SUBSCRIPTION' as const,
-  SUBSCRIPTION_WITH_OVERAGE: 'SUBSCRIPTION_WITH_OVERAGE' as const,
-  UNKNOWN: 'UNKNOWN' as const,
-}
-
-export const enumTemplateCacheBilling = {
-  INCLUDED: 'INCLUDED' as const,
-  NOT_APPLICABLE: 'NOT_APPLICABLE' as const,
-  PER_ROUTE: 'PER_ROUTE' as const,
-  SEPARATE_RATE: 'SEPARATE_RATE' as const,
-  STANDARD_INPUT_RATE: 'STANDARD_INPUT_RATE' as const,
-  UNKNOWN: 'UNKNOWN' as const,
-  UNSUPPORTED: 'UNSUPPORTED' as const,
-}
-
-export const enumTemplateCredentialLocation = {
-  HEADER: 'HEADER' as const,
-  QUERY: 'QUERY' as const,
-}
-
-export const enumTemplateEffortLevel = {
+export const enumThinkingEffortLevel = {
   HIGH: 'HIGH' as const,
   LOW: 'LOW' as const,
   MAX: 'MAX' as const,
@@ -3953,39 +4002,7 @@ export const enumTemplateEffortLevel = {
   XHIGH: 'XHIGH' as const,
 }
 
-export const enumTemplateEndpointMode = {
-  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
-  DISCOVERED: 'DISCOVERED' as const,
-  FIXED: 'FIXED' as const,
-  UNKNOWN: 'UNKNOWN' as const,
-}
-
-export const enumTemplateInputKind = {
-  OBJECT: 'OBJECT' as const,
-  POSITIVE_INTEGER: 'POSITIVE_INTEGER' as const,
-  PRICE: 'PRICE' as const,
-  STRING: 'STRING' as const,
-  URL: 'URL' as const,
-}
-
-export const enumTemplateOAuthFlow = {
-  AUTHORIZATION_CODE: 'AUTHORIZATION_CODE' as const,
-  CLIENT_CREDENTIALS: 'CLIENT_CREDENTIALS' as const,
-  DEVICE_CODE: 'DEVICE_CODE' as const,
-}
-
-export const enumTemplatePricingMode = {
-  ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
-  API: 'API' as const,
-  FIXED: 'FIXED' as const,
-  NOT_APPLICABLE: 'NOT_APPLICABLE' as const,
-  SCHEDULED: 'SCHEDULED' as const,
-  TIERED: 'TIERED' as const,
-  UNKNOWN: 'UNKNOWN' as const,
-  UNPUBLISHED: 'UNPUBLISHED' as const,
-}
-
-export const enumTemplateProtocol = {
+export const enumUpstreamProtocol = {
   ANTHROPIC: 'ANTHROPIC' as const,
   GEMINI: 'GEMINI' as const,
   MINIMAX: 'MINIMAX' as const,
@@ -3993,23 +4010,6 @@ export const enumTemplateProtocol = {
   OPENAI_RESPONSES: 'OPENAI_RESPONSES' as const,
   OPENROUTER: 'OPENROUTER' as const,
   XAI: 'XAI' as const,
-}
-
-export const enumTemplateServiceKind = {
-  AUDIO: 'AUDIO' as const,
-  EMBEDDING: 'EMBEDDING' as const,
-  IMAGE: 'IMAGE' as const,
-  RERANK: 'RERANK' as const,
-  STT: 'STT' as const,
-  TEXT: 'TEXT' as const,
-  TTS: 'TTS' as const,
-  VIDEO: 'VIDEO' as const,
-}
-
-export const enumTextModelProtocol = {
-  ANTHROPIC_MESSAGES: 'ANTHROPIC_MESSAGES' as const,
-  OPENAI_CHAT_COMPLETIONS: 'OPENAI_CHAT_COMPLETIONS' as const,
-  OPENAI_RESPONSES: 'OPENAI_RESPONSES' as const,
 }
 
 export const enumUserPreferenceGroup = {

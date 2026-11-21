@@ -3,9 +3,34 @@ schema {
   mutation: Mutation
 }
 
+enum AuthenticationMethod {
+  API_KEY
+  OAUTH
+  CUSTOM
+  NONE
+}
+
 enum AuthenticationPurpose {
   LOGIN
   PASSKEY_CHANGE
+}
+
+enum BillingModel {
+  METERED
+  SUBSCRIPTION
+  SUBSCRIPTION_WITH_OVERAGE
+  FREE
+  UNKNOWN
+}
+
+enum CacheBilling {
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  UNSUPPORTED
+  INCLUDED
+  NOT_APPLICABLE
+  PER_ROUTE
+  UNKNOWN
 }
 
 enum CapabilityCacheMode {
@@ -34,6 +59,14 @@ enum CapabilityStatus {
   SUPPORTED
 }
 
+enum ConfigurationInputKind {
+  STRING
+  URL
+  OBJECT
+  POSITIVE_INTEGER
+  PRICE
+}
+
 "How the request delivers credentials; this is never stored in signed claims."
 enum CredentialDelivery {
   "Set HttpOnly cookies and return metadata without credential values."
@@ -42,10 +75,22 @@ enum CredentialDelivery {
   TOKEN
 }
 
+enum CredentialLocation {
+  HEADER
+  QUERY
+}
+
 enum CreditUsageDirection {
   INPUT
   OUTPUT
   CACHE_READ
+}
+
+enum EndpointMode {
+  FIXED
+  ACCOUNT_SPECIFIC
+  DISCOVERED
+  UNKNOWN
 }
 
 enum FilterIs {
@@ -70,6 +115,23 @@ enum ModelBillingKind {
   FREE
   REQUEST
   CREDIT
+}
+
+enum ModelServiceKind {
+  TEXT
+  EMBEDDING
+  IMAGE
+  AUDIO
+  VIDEO
+  RERANK
+  TTS
+  STT
+}
+
+enum OAuthFlow {
+  AUTHORIZATION_CODE
+  DEVICE_CODE
+  CLIENT_CREDENTIALS
 }
 
 enum OnboardingDestination {
@@ -220,6 +282,17 @@ enum PriceUnit {
   VIDEOS
 }
 
+enum PricingMode {
+  FIXED
+  TIERED
+  API
+  ACCOUNT_SPECIFIC
+  NOT_APPLICABLE
+  UNPUBLISHED
+  UNKNOWN
+  SCHEDULED
+}
+
 "Catalog connection family hint; each configured model selects its own operation."
 enum ProviderApiProtocol {
   OPENAI_COMPATIBLE
@@ -243,37 +316,14 @@ enum ProviderModelCapability {
   STRUCTURED_OUTPUT
 }
 
-enum TemplateAuthenticationMethod {
-  API_KEY
-  OAUTH
-  CUSTOM
-  NONE
+"Text operation determining the upstream request and response format."
+enum TextModelProtocol {
+  OPENAI_CHAT_COMPLETIONS
+  OPENAI_RESPONSES
+  ANTHROPIC_MESSAGES
 }
 
-enum TemplateBillingModel {
-  METERED
-  SUBSCRIPTION
-  SUBSCRIPTION_WITH_OVERAGE
-  FREE
-  UNKNOWN
-}
-
-enum TemplateCacheBilling {
-  SEPARATE_RATE
-  STANDARD_INPUT_RATE
-  UNSUPPORTED
-  INCLUDED
-  NOT_APPLICABLE
-  PER_ROUTE
-  UNKNOWN
-}
-
-enum TemplateCredentialLocation {
-  HEADER
-  QUERY
-}
-
-enum TemplateEffortLevel {
+enum ThinkingEffortLevel {
   LOW
   MEDIUM
   HIGH
@@ -281,39 +331,7 @@ enum TemplateEffortLevel {
   MAX
 }
 
-enum TemplateEndpointMode {
-  FIXED
-  ACCOUNT_SPECIFIC
-  DISCOVERED
-  UNKNOWN
-}
-
-enum TemplateInputKind {
-  STRING
-  URL
-  OBJECT
-  POSITIVE_INTEGER
-  PRICE
-}
-
-enum TemplateOAuthFlow {
-  AUTHORIZATION_CODE
-  DEVICE_CODE
-  CLIENT_CREDENTIALS
-}
-
-enum TemplatePricingMode {
-  FIXED
-  TIERED
-  API
-  ACCOUNT_SPECIFIC
-  NOT_APPLICABLE
-  UNPUBLISHED
-  UNKNOWN
-  SCHEDULED
-}
-
-enum TemplateProtocol {
+enum UpstreamProtocol {
   OPENAI
   OPENAI_RESPONSES
   ANTHROPIC
@@ -321,24 +339,6 @@ enum TemplateProtocol {
   MINIMAX
   OPENROUTER
   XAI
-}
-
-enum TemplateServiceKind {
-  TEXT
-  EMBEDDING
-  IMAGE
-  AUDIO
-  VIDEO
-  RERANK
-  TTS
-  STT
-}
-
-"Text operation determining the upstream request and response format."
-enum TextModelProtocol {
-  OPENAI_CHAT_COMPLETIONS
-  OPENAI_RESPONSES
-  ANTHROPIC_MESSAGES
 }
 
 enum UserPreferenceGroup {
@@ -783,6 +783,23 @@ type AudioSupport {
   configuration: AudioConfiguration
 }
 
+type AuthenticationConfiguration {
+  method: AuthenticationMethod!
+  configuration: AuthenticationParameters!
+}
+
+type AuthenticationParameters {
+  placement: CredentialPlacement
+  flow: OAuthFlow
+  authorizationUrl: String
+  tokenUrl: String
+  deviceAuthorizationUrl: String
+  scopes: [String!]!
+  requiredInputs: [ConfigurationInput!]!
+  adapter: String
+  parameters: [ConfigurationEntry!]!
+}
+
 type AvatarUpload {
   url: String!
   fields: [UploadFormField!]!
@@ -804,6 +821,12 @@ type BillingFee {
   amount: String
   currency: String
   period: PriceBillingPeriod
+}
+
+"Public body default. Value is JSON text for the configuration editor."
+type BodyDefaultEntry {
+  key: String!
+  value: String!
 }
 
 type BooleanPayload {
@@ -834,7 +857,7 @@ type CapabilityRate {
   credits: String
   direction: CreditUsageDirection
   cache: CapabilityCachePrice
-  conditions: [TemplateHeader!]!
+  conditions: [ConfigurationEntry!]!
 }
 
 type CapabilitySlot {
@@ -858,13 +881,6 @@ type CapabilityUsage {
   slots: [CapabilitySlot!]!
 }
 
-type CatalogRequiredInput {
-  name: String!
-  kind: TemplateInputKind!
-  required: Boolean!
-  allowedValues: [String!]
-}
-
 type CodeAppearancePreferences {
   theme: PreferenceCodeTheme!
   font: CodeFontPreferences!
@@ -875,6 +891,33 @@ type CodeFontPreferences {
   size: PreferencePixelFontSize!
 }
 
+type ConfigurationEntry {
+  key: String!
+  value: String!
+}
+
+type ConfigurationInput {
+  name: String!
+  kind: ConfigurationInputKind!
+  required: Boolean!
+  allowedValues: [String!]
+}
+
+type ConnectionConfiguration {
+  baseUrl: String
+  path: String
+  timeoutMs: Float
+  query: [ConfigurationEntry!]!
+  authentication: AuthenticationConfiguration
+  endpoint: EndpointRequirements!
+}
+
+type CredentialPlacement {
+  location: CredentialLocation!
+  name: String!
+  prefix: String
+}
+
 "Email admission succeeded; cookie delivery never exposes the OTP credential."
 type EmailChallenge {
   lifetime: TokenLifetime!
@@ -883,6 +926,16 @@ type EmailChallenge {
 
 type EmailChallengePayload {
   node: EmailChallenge!
+}
+
+type EndpointConfiguration {
+  urlTemplate: String
+  requiredInputs: [ConfigurationInput!]!
+}
+
+type EndpointRequirements {
+  mode: EndpointMode!
+  configuration: EndpointConfiguration!
 }
 
 type FeatureSupport {
@@ -1043,18 +1096,28 @@ type ModelBilling {
   description: String
 }
 
+type ModelConnection {
+  protocol: UpstreamProtocol!
+  configuration: ConnectionConfiguration!
+}
+
+type ModelOperation {
+  operation: TextModelProtocol!
+  path: String!
+}
+
 type ModelTemplate {
   id: ID!
   providerTemplateId: ID!
   upstreamModelId: String!
   name: String!
-  connections: [TemplateModelConnection!]!
-  bodyDefaults: [TemplateBodyDefault!]!
-  routeSelection: TemplateRouteSelection
+  connections: [ModelConnection!]!
+  bodyDefaults: [BodyDefaultEntry!]!
+  routeSelection: RouteSelection
   displayName: String!
   description: String
-  headers: [TemplateHeader!]!
-  operations: [TemplateOperation!]!
+  headers: [ConfigurationEntry!]!
+  operations: [ModelOperation!]!
   capabilities: [ProviderModelCapability!]!
   text: TextCapabilities!
   vision: VisionSupport!
@@ -1069,15 +1132,15 @@ type ModelTemplate {
   maxContextTokens: ContextTokens
   maxInputTokens: ContextTokens
   maxOutputTokens: ContextTokens
-  effortMapping: [TemplateEffort!]!
+  effortMapping: [ThinkingEffort!]!
   inputPrice: String
   outputPrice: String
   cachedPrice: String
   billing: ModelBilling
-  billingModel: TemplateBillingModel!
-  pricingMode: TemplatePricingMode!
-  cacheBilling: TemplateCacheBilling!
-  serviceKind: TemplateServiceKind
+  billingModel: BillingModel!
+  pricingMode: PricingMode!
+  cacheBilling: CacheBilling!
+  serviceKind: ModelServiceKind
 }
 
 type ModelTemplateConnection {
@@ -1297,11 +1360,11 @@ type ProviderTemplate {
   name: String!
   description: String
   logoUrl: String
-  connection: TemplateConnection!
+  connection: ConnectionConfiguration!
   baseUrl: String
-  headers: [TemplateHeader!]!
-  endpoint: TemplateEndpoint!
-  authentication: [TemplateAuthentication!]!
+  headers: [ConfigurationEntry!]!
+  endpoint: EndpointRequirements!
+  authentication: [AuthenticationConfiguration!]!
   models(filter: ModelTemplateFilterInput): ModelTemplateConnection!
 }
 
@@ -1378,6 +1441,23 @@ type RoleEdge {
 
 type RolePayload {
   node: Role!
+}
+
+type RouteOption {
+  id: String!
+  provider: String!
+  upstreamModelId: String!
+  contextTokens: ContextTokens
+  text: TextCapabilities!
+  billing: ModelBilling
+  implicitCaching: Boolean
+}
+
+type RouteSelection {
+  options: [RouteOption!]!
+  selected: String
+  allowFallbacks: Boolean!
+  exactProviderSelection: Boolean!
 }
 
 type SearchConfiguration {
@@ -1467,91 +1547,6 @@ type StructuredOutputSupport {
   configuration: StructuredOutputConfiguration
 }
 
-type TemplateAuthConfig {
-  placement: TemplateCredentialPlacement
-  flow: TemplateOAuthFlow
-  authorizationUrl: String
-  tokenUrl: String
-  deviceAuthorizationUrl: String
-  scopes: [String!]!
-  requiredInputs: [CatalogRequiredInput!]!
-  adapter: String
-  parameters: [TemplateHeader!]!
-}
-
-type TemplateAuthentication {
-  method: TemplateAuthenticationMethod!
-  configuration: TemplateAuthConfig!
-}
-
-"Public body default. Value is JSON text for the configuration editor."
-type TemplateBodyDefault {
-  key: String!
-  value: String!
-}
-
-type TemplateConnection {
-  baseUrl: String
-  path: String
-  timeoutMs: Float
-  query: [TemplateHeader!]!
-  authentication: TemplateAuthentication
-  endpoint: TemplateEndpoint!
-}
-
-type TemplateCredentialPlacement {
-  location: TemplateCredentialLocation!
-  name: String!
-  prefix: String
-}
-
-type TemplateEffort {
-  level: TemplateEffortLevel!
-  value: String!
-}
-
-type TemplateEndpoint {
-  mode: TemplateEndpointMode!
-  configuration: TemplateEndpointConfig!
-}
-
-type TemplateEndpointConfig {
-  urlTemplate: String
-  requiredInputs: [CatalogRequiredInput!]!
-}
-
-type TemplateHeader {
-  key: String!
-  value: String!
-}
-
-type TemplateModelConnection {
-  protocol: TemplateProtocol!
-  configuration: TemplateConnection!
-}
-
-type TemplateOperation {
-  operation: TextModelProtocol!
-  path: String!
-}
-
-type TemplateRouteOption {
-  id: String!
-  provider: String!
-  upstreamModelId: String!
-  contextTokens: ContextTokens
-  text: TextCapabilities!
-  billing: ModelBilling
-  implicitCaching: Boolean
-}
-
-type TemplateRouteSelection {
-  options: [TemplateRouteOption!]!
-  selected: String
-  allowFallbacks: Boolean!
-  exactProviderSelection: Boolean!
-}
-
 type TextCapabilities {
   input: TextInputSupport!
   output: TextGenerationSupport!
@@ -1590,9 +1585,14 @@ type ThinkingBudget {
 }
 
 type ThinkingConfiguration {
-  effortMapping: [TemplateEffort!]!
-  defaultEffort: TemplateEffortLevel
+  effortMapping: [ThinkingEffort!]!
+  defaultEffort: ThinkingEffortLevel
   budget: ThinkingBudget
+}
+
+type ThinkingEffort {
+  level: ThinkingEffortLevel!
+  value: String!
 }
 
 type ThinkingSupport {

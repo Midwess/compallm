@@ -1,4 +1,5 @@
-import { useId, type ReactNode } from 'react'
+import { Skeleton } from '../../../components/loading'
+import { Children, isValidElement, useId, type ReactNode } from 'react'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { Popup } from '../../../components/popup'
@@ -50,7 +51,7 @@ export function ModelSection({
         {action}
       </div>
       {description ? <p className="px-4 text-xs text-muted-foreground">{description}</p> : null}
-      {children}
+      {Children.map(children, (child) => (isValidElement(child) ? <Skeleton>{child}</Skeleton> : child))}
     </section>
   )
 }

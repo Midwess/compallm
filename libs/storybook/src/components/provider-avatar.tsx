@@ -1,3 +1,4 @@
+import { Skeleton } from './loading'
 import { useFormField } from './form'
 import { animated } from './motion'
 import { useRef } from 'react'
@@ -40,20 +41,22 @@ export function ProviderAvatar({
         }}
       />
       <Popup.Root>
-        <Popup.Trigger
-          data-form-field={name}
-          data-ui="avatar-input"
-          aria-label="Change provider avatar"
-          title="Change provider avatar"
-          disabled={disabled || !change}
-          className={cx(
-            `size-8 shrink-0 overflow-hidden rounded-lg bg-elevated text-muted-foreground
+        <Skeleton>
+          <Popup.Trigger
+            data-form-field={name}
+            data-ui="avatar-input"
+            aria-label="Change provider avatar"
+            title="Change provider avatar"
+            disabled={disabled || !change}
+            className={cx(
+              `size-8 shrink-0 overflow-hidden rounded-lg bg-elevated text-muted-foreground
 disabled:cursor-not-allowed disabled:opacity-50`,
-            className,
-          )}
-        >
-          <ProviderIcon provider={provider} logoPath={src ?? undefined} className="size-5" />
-        </Popup.Trigger>
+              className,
+            )}
+          >
+            <ProviderIcon provider={provider} logoPath={src ?? undefined} className="size-5" />
+          </Popup.Trigger>
+        </Skeleton>
         <Popup.Content aria-label="Change provider avatar">
           <Popup.Item onSelect={() => input.current?.click()}>Upload image</Popup.Item>
           <Popup.Item onSelect={() => change?.(null)}>Use provider logo</Popup.Item>

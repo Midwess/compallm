@@ -144,6 +144,12 @@ conventions:
       Reconcile successful mutations from confirmed results without reloading an entire directory when a targeted update suffices;
       preserve unchanged record identities, loaded cursors, drafts, and scroll position.
 
+      Keep data-backed page shells and section geometry mounted during initial loading. Use the shared Radix-backed
+      LoadingRegion/Skeleton pattern in libs/storybook and follow its AGENTS.md. Initial reads show inert placeholders;
+      refreshes retain confirmed data, drafts, focus, and scroll. Never initialize validation/autosave from placeholders,
+      infer loading from empty values, or show an empty state before a successful response. The app loading controller
+      provides isolated page/section scopes; only startup operations use its global overlay.
+
       Use the shared data-driven Table/List collection primitives for growing collections, and follow libs/storybook/AGENTS.md
       and https://github.com/Midwess/compallm/wiki/Portal-rendering. Keep the existing page scroll owner, table layout, keyboard
       behavior, and focused/open editors.

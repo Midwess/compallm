@@ -63,6 +63,8 @@ const modelRow = {
   serviceKind: true,
   capabilities: true,
   maxContextTokens: true,
+  maxInputTokens: true,
+  maxOutputTokens: true,
   inputPrice: true,
   outputPrice: true,
   cachedPrice: true,

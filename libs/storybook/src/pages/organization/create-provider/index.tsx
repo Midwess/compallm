@@ -1,4 +1,3 @@
-import { CatalogStatus } from './catalog-status'
 import { PermissionRequest } from '../../../components/permission'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { Popup } from '../../../components/popup'
@@ -92,14 +91,13 @@ export function CreateProviderPage() {
     ['modelDraft.id'],
   )
   const templatePreview = useProvider((state) => state.templatePreview)
-  const loading = useProvider((state) => state.modelLoading || !!state.catalogError)
   const content = (
     <>
       <div className={modelId ? 'hidden' : 'contents'} inert={!!modelId || undefined}>
         {!modelId ? <ProviderHeader /> : null}
         <ProviderContent />
       </div>
-      {modelId ? templatePreview && loading ? <CatalogStatus /> : <ModelSettingsPage key={modelId} /> : null}
+      {modelId ? <ModelSettingsPage key={modelId} /> : null}
     </>
   )
   if (templatePreview) return content

@@ -1,3 +1,4 @@
+import { Skeleton, useInitialLoading } from './loading'
 import { CollectionContext, CollectionRowContext } from '../context'
 import { CollectionContent, CollectionRecord, useCollectionOwner, useCollectionRows, useCollectionLoadMore } from './collection'
 import type { CollectionPaging } from './collection-types'
@@ -23,6 +24,7 @@ export interface TableColumn {
   id: string
   className?: string
   visibilityClassName?: string
+  loadingWidthClassName?: string
 }
 const emptyColumns: TableColumn[] = []
 const columnDisplays: Record<string, string> = {
@@ -159,20 +161,43 @@ export interface TableItemsProps<T> {
   getKey(item: T): string
   paging?: CollectionPaging
   children(item: T): ReactNode
+  loadingRowClassName?: string
 }
 function Body<T>(
   props: ComponentPropsWithRef<'tbody'> | (Omit<ComponentPropsWithRef<'tbody'>, 'children'> & TableItemsProps<T>),
 ) {
+  const initial = useInitialLoading()
+  if (initial) return <SkeletonBody rowClassName={'loadingRowClassName' in props ? props.loadingRowClassName : undefined} />
   if ('items' in props) return <DataBody {...props} />
   return <tbody data-slot="table-body" {...props} />
+}
+function SkeletonBody({ rowClassName = 'h-12' }: { rowClassName?: string }) {
+  const { columns } = useContext(ColumnsContext)
+  return (
+    <tbody data-slot="table-body" aria-hidden="true">
+      {Array.from({ length: 8 }, (_, index) => (
+        <Row key={index} className={rowClassName}>
+          {(columns.length ? columns : [{ id: 'content' }]).map((column) => (
+            <Cell key={column.id} column={column.id}>
+              <Skeleton loading>
+                <span className={cx('block h-4 w-3/4 rounded-md', column.loadingWidthClassName)} />
+              </Skeleton>
+            </Cell>
+          ))}
+        </Row>
+      ))}
+    </tbody>
+  )
 }
 function DataBody<T>({
   items,
   getKey,
   paging,
   children,
+  loadingRowClassName: _loadingRowClassName,
   ...props
 }: Omit<ComponentPropsWithRef<'tbody'>, 'children'> & TableItemsProps<T>) {
+  void _loadingRowClassName
   const rows = useCollectionRows(items, getKey)
   return (
     <tbody {...props} data-slot="table-body" aria-busy={paging?.loading}>

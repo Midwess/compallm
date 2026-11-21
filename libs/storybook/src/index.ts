@@ -80,7 +80,7 @@ export * from './components/form'
 
 export * from './components/app-loading-overlay'
 export { ScrollMotion } from './components/scroll'
-export type { AppController, AppState, AppLoadingTask } from './app'
+export type { AppController, AppState, AppLoadingTask, LoadingController } from './app'
 
 export type { CompositionProps, OpenStateProps } from './components/composition'
 export type { DialogRootProps } from './components/dialog'
@@ -105,3 +105,5 @@ export * from './pages/passkey'
 export { PasskeyControllerContext } from './context'
 
 export { AuthVerificationHost } from './pages/auth/access-panel'
+
+export { LoadingRegion, Skeleton, useInitialLoading } from './components/loading'

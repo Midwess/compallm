@@ -9,6 +9,8 @@ import type { SettingsController } from './pages/settings/types'
 import type { FormScope } from './components/form-model'
 import type { AppController } from './app'
 
+export const LoadingRegionContext = createContext(false)
+
 export const AppControllerContext = createContext<AppController | null>(null)
 
 export const FormContext = createContext<FormScope | null>(null)

@@ -6568,7 +6568,7 @@ async fn graphql_template_reads_require_membership_and_return_complete_model_def
     let pool = Arc::new(Database::connect(std::env::var("COMPALLM_TEST_DATABASE_URL")?).await?);
     let context = DbContext::new(Arc::new(PostgresConnection::new(pool)));
     let router = fixture.graphql_with_database(context);
-    let query = "{ providerTemplates(first: 2) { edges { cursor node { id name logoPath } } pageInfo { endCursor hasNextPage } } }";
+    let query = "{ providerTemplates(first: 2) { edges { cursor node { id name logoUrl } } pageInfo { endCursor hasNextPage } } }";
     let denied = graphql_body(
         graphql_operation(&router, query, serde_json::json!({}), None, None, false).await,
     )

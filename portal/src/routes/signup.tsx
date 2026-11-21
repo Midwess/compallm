@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
-import { SignupPage } from '@compallm/storybook/pages/signup'
+import { useLayoutEffect } from 'react'
+import { AccessPanel } from '@compallm/storybook/pages/signin'
 import { useAuthController } from '../auth/use-auth-controller'
 
 export function Component() {
   const controller = useAuthController()
-  useEffect(() => controller.start('signup'), [controller])
-  return <SignupPage />
+  useLayoutEffect(() => controller.start('signup'), [controller])
+  return <AccessPanel intent="signup" />
 }

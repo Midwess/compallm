@@ -26,6 +26,7 @@ pub struct Query;
 impl Query {
     /// Public global provider catalog; defaults to 20 providers and caps pages at 100.
     async fn provider_templates(
+        search: Option<String>,
         filter: Option<super::provider::catalog::input::ProviderTemplateFilterInput>,
         order_by: Option<Vec<super::provider::catalog::input::ProviderTemplateOrderInput>>,
         first: Option<i32>,
@@ -36,6 +37,7 @@ impl Query {
         #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
     ) -> Result<Collection<super::provider::catalog::ProviderTemplate>, Error> {
         super::provider::catalog::query::list(
+            search,
             filter,
             compallm_query::Pagination {
                 first: if first.is_none() && last.is_none() {

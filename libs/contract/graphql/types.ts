@@ -1100,6 +1100,7 @@ export default {
           last: [58],
           offset: [58],
           orderBy: [163, '[ProviderTemplateOrderInput!]'],
+          search: [189],
         },
       ],
       role: [

@@ -72,10 +72,9 @@ const modelRow = {
   operations: { operation: true, path: true },
 } as const satisfies ModelTemplateGenqlSelection
 export async function listProviders(query: string, after: string | undefined, signal: AbortSignal) {
-  const filter = query ? { or: [{ name: { ilike: `%${query}%` } }, { id: { ilike: `%${query}%` } }] } : undefined
   const selection = {
     providerTemplates: {
-      __args: { first: 20, after, filter },
+      __args: { first: 20, after, search: query || undefined },
       edges: { node: providerRow },
       pageInfo: { endCursor: true, hasNextPage: true },
     },

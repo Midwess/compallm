@@ -6652,6 +6652,57 @@ async fn graphql_template_reads_are_public_and_return_complete_model_defaults() 
     );
     let search = graphql_body(graphql_operation(&router, "{ providerTemplates(filter: {name: {ilike: \"%oPeNaI%\"}}) { edges { node { name } } } }", serde_json::json!({}), None, None, false).await).await;
     assert!(search["errors"].is_null(), "{search}");
+    let model_search = graphql_body(graphql_operation(&router,
+        r#"{providerTemplates(search:"opus",first:100){edges{node{id}} pageInfo{hasNextPage endCursor}}}"#,
+        serde_json::json!({}),None,None,false).await).await;
+    assert!(model_search["errors"].is_null(), "{model_search}");
+    assert!(
+        model_search["data"]["providerTemplates"]["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|edge| edge["node"]["id"] == "anthropic")
+    );
+    let mixed_search = graphql_body(
+        graphql_operation(
+            &router,
+            r#"{providerTemplates(search:"AnThRoPiC oPuS",first:100){edges{node{id}}}}"#,
+            serde_json::json!({}),
+            None,
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert!(mixed_search["errors"].is_null(), "{mixed_search}");
+    assert!(
+        mixed_search["data"]["providerTemplates"]["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|edge| edge["node"]["id"] == "anthropic")
+    );
+    let unrelated = graphql_body(
+        graphql_operation(
+            &router,
+            r#"{providerTemplates(search:"opus gpt-4o"){edges{node{id}}}}"#,
+            serde_json::json!({}),
+            None,
+            None,
+            false,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        unrelated["data"]["providerTemplates"]["edges"],
+        serde_json::json!([])
+    );
+    let changed_search = graphql_body(graphql_operation(&router,
+        r#"query($cursor:String!){providerTemplates(search:"absent",after:$cursor){edges{node{id}}}}"#,
+        serde_json::json!({"cursor":model_search["data"]["providerTemplates"]["pageInfo"]["endCursor"]}),None,None,false).await).await;
+    assert!(!changed_search["errors"].is_null());
     let combined=graphql_body(graphql_operation(&router,"{ providerTemplates(filter:{or:[{id:{eq:\"openai\"}},{name:{ilike:\"%aNtHrOpIc%\"}}]},orderBy:[{id:AscNullsLast}]) {edges{node{id}}} }",serde_json::json!({}),None,None,false).await).await;
     assert!(combined["errors"].is_null(), "{combined}");
     let ids: Vec<_> = combined["data"]["providerTemplates"]["edges"]

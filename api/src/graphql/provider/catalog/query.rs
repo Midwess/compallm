@@ -9,11 +9,18 @@ use juniper::ID;
 
 #[db_context::root]
 pub async fn list(
+    search: Option<String>,
     filter: Option<ProviderTemplateFilterInput>,
     pagination: compallm_query::Pagination,
     order_by: Option<Vec<ProviderTemplateOrderInput>>,
     repository: &CatalogRepository,
 ) -> Result<Collection<ProviderTemplate>, Error> {
+    if search
+        .as_ref()
+        .is_some_and(|value| value.chars().count() > 256 || value.split_whitespace().count() > 8)
+    {
+        return Err(Error::invalid_input());
+    }
     let ordering = match order_by {
         Some(order) => order
             .into_iter()
@@ -32,6 +39,7 @@ pub async fn list(
             pagination,
             ordering,
             scope,
+            search.as_deref(),
         )
         .await
         .map_err(|error| match error {

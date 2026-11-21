@@ -5,12 +5,15 @@ use crate::{
 use compallm_core::{model::ModelTemplate, persistent::DbContext, provider::ProviderTemplate};
 use compallm_query::{IntoQuery, OrderBy, Pagination};
 use sea_orm::{
-    ColumnTrait, DbErr, EntityTrait, ModelTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
+    ColumnTrait, Condition, DbErr, EntityTrait, ExprTrait, ModelTrait, QueryFilter, QueryOrder,
+    QuerySelect, QueryTrait,
+    sea_query::{Alias, Expr, Func, LikeExpr},
 };
 
 type Providers = <ProviderTemplateSchema as ModelTrait>::Entity;
 type Models = <ProviderModelTemplateSchema as ModelTrait>::Entity;
 type Readiness = <ProviderCatalogReadinessSchema as ModelTrait>::Entity;
+type P = <Providers as EntityTrait>::Column;
 type M = <Models as EntityTrait>::Column;
 type R = <Readiness as EntityTrait>::Column;
 
@@ -24,13 +27,117 @@ impl CatalogRepository {
         pagination: Pagination,
         ordering: Vec<OrderBy>,
         scope: &str,
+        search: Option<&str>,
     ) -> Result<compallm_query::Connection<ProviderTemplate>, crate::query::QueryCompileError> {
         let context = DbContext::current()
             .map_err(|_| DbErr::Custom("catalog context unavailable".into()))?;
         let db = PostgresConnection::from_context(&context)
             .map_err(|_| DbErr::Custom("catalog connection unavailable".into()))?;
+        let mut terms: Vec<_> = search
+            .unwrap_or_default()
+            .split_whitespace()
+            .map(str::to_lowercase)
+            .collect();
+        terms.sort_unstable();
+        terms.dedup();
+        let mut select = Providers::find();
+        if !terms.is_empty() {
+            let mut provider_match = Condition::all();
+            let mut model_match = Condition::all();
+            for term in &terms {
+                let escaped = term
+                    .replace('!', "!!")
+                    .replace('%', "!%")
+                    .replace('_', "!_");
+                let pattern = format!("%{escaped}%");
+                let provider_term = Condition::any()
+                    .add(
+                        Expr::expr(Func::lower(Expr::col((
+                            Alias::new("provider_templates"),
+                            P::Id,
+                        ))))
+                        .like(LikeExpr::new(&pattern).escape('!')),
+                    )
+                    .add(
+                        Expr::expr(Func::lower(Expr::col((
+                            Alias::new("provider_templates"),
+                            P::Name,
+                        ))))
+                        .like(LikeExpr::new(&pattern).escape('!')),
+                    );
+                provider_match = provider_match.add(provider_term.clone());
+                model_match = model_match.add(
+                    Condition::any()
+                        .add(provider_term)
+                        .add(
+                            Expr::expr(Func::lower(Expr::col((
+                                Alias::new("provider_model_templates"),
+                                M::Id,
+                            ))))
+                            .like(LikeExpr::new(&pattern).escape('!')),
+                        )
+                        .add(
+                            Expr::expr(Func::lower(Expr::col((
+                                Alias::new("provider_model_templates"),
+                                M::Name,
+                            ))))
+                            .like(LikeExpr::new(&pattern).escape('!')),
+                        )
+                        .add(
+                            Expr::expr(Func::lower(Expr::col((
+                                Alias::new("provider_model_templates"),
+                                M::DisplayName,
+                            ))))
+                            .like(LikeExpr::new(&pattern).escape('!')),
+                        ),
+                );
+            }
+            let ready = Readiness::find()
+                .select_only()
+                .expr(Expr::val(1))
+                .filter(
+                    Expr::col((
+                        Alias::new("provider_catalog_readiness"),
+                        R::ProviderTemplateId,
+                    ))
+                    .eq(Expr::col((
+                        Alias::new("provider_model_templates"),
+                        M::ProviderTemplateId,
+                    ))),
+                )
+                .filter(
+                    Expr::col((Alias::new("provider_catalog_readiness"), R::Id))
+                        .eq(Expr::col((Alias::new("provider_model_templates"), M::Id))),
+                )
+                .filter(R::Readiness.eq(crate::CatalogReadinessSchema::Ready))
+                .into_query();
+            // Evaluate readiness only after a name match; the readiness view inspects configuration JSON.
+            let models = Models::find()
+                .select_only()
+                .expr(Expr::val(1))
+                .filter(
+                    Expr::col((
+                        Alias::new("provider_model_templates"),
+                        M::ProviderTemplateId,
+                    ))
+                    .eq(Expr::col((Alias::new("provider_templates"), P::Id))),
+                )
+                .filter(Expr::Case(Box::new(
+                    Expr::case(model_match, Expr::exists(ready)).finally(false),
+                )))
+                .into_query();
+            select = select.filter(
+                Condition::any()
+                    .add(provider_match)
+                    .add(Expr::exists(models)),
+            );
+        }
+        let scope = format!(
+            "{scope}:search:{}",
+            serde_json::to_string(&terms).expect("search terms serialize")
+        );
         let result = query
-            .plan_page(Providers::find(), pagination, ordering, 100, scope)?
+            .plan_page(select, pagination, ordering, 100, &scope)?
             .fetch(db)
             .await?;
         let mut edges = Vec::with_capacity(result.edges.len());

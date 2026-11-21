@@ -2305,6 +2305,7 @@ export interface QueryGenqlSelection {
       last?: Scalars['Int'] | null
       offset?: Scalars['Int'] | null
       orderBy?: ProviderTemplateOrderInput[] | null
+      search?: Scalars['String'] | null
     }
   }
   /** Find visible role metadata in the active organization. */

@@ -1321,7 +1321,7 @@ type ProviderTemplatePayload {
 
 type Query {
   "Public global provider catalog; defaults to 20 providers and caps pages at 100."
-  providerTemplates(filter: ProviderTemplateFilterInput, orderBy: [ProviderTemplateOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): ProviderTemplateConnection!
+  providerTemplates(search: String, filter: ProviderTemplateFilterInput, orderBy: [ProviderTemplateOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): ProviderTemplateConnection!
   "Public provider defaults with a complete, unpaginated collection of database-ready models."
   providerTemplate(id: ID!): ProviderTemplatePayload
   "Public configuration defaults for one database-ready model, identified within its provider."

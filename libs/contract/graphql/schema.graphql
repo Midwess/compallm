@@ -1312,6 +1312,7 @@ type Query {
     last: Int
     offset: Int
     orderBy: [ProviderTemplateOrderInput!]
+    search: String
   ): ProviderTemplateConnection!
 
   """

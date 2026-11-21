@@ -167,7 +167,7 @@ test('provider search and paging use the API, ignore stale results and retain ro
   await tick()
   assert.equal(obsolete.signal.aborted, true)
   const latest = requests.at(-1)
-  assert.ok(JSON.stringify(latest.body.variables).includes('%latest%'))
+  assert.ok(JSON.stringify(latest.body.variables).includes('latest'))
   latest.resolve(list(['latest']))
   await tick()
   obsolete.resolve(list(['old']))
@@ -175,6 +175,16 @@ test('provider search and paging use the API, ignore stale results and retain ro
   assert.deepEqual(
     c.store.getState().providers.map((v) => v.id),
     ['latest'],
+  )
+  c.onProviderQueryChanged('   ')
+  await tick()
+  const cleared = requests.at(-1)
+  assert.ok(!JSON.stringify(cleared.body.variables).includes('latest'))
+  cleared.resolve(list(['a', 'b']))
+  await tick()
+  assert.deepEqual(
+    c.store.getState().providers.map((v) => v.id),
+    ['a', 'b'],
   )
   assert.ok(requests.every((r) => !r.body.query.includes('mutation')))
 })

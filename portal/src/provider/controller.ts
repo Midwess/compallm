@@ -109,7 +109,10 @@ export class CreateProviderController implements Controller {
       replace,
     })
   }
-  onProviderQueryChanged = (providerQuery: string) => this.store.setState({ providerQuery })
+  onProviderQueryChanged = (providerQuery: string) => {
+    this.store.setState({ providerQuery })
+    if (!providerQuery.trim() && this.query) this.onProviderSearch()
+  }
   onProviderSearch = () => {
     const query = this.store.getState().providerQuery.trim()
     if (query === this.query) void this.loadProviders(false)

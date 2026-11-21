@@ -24,6 +24,7 @@ pub struct Query;
 
 #[graphql_object(name = "Query", context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Query {
+    /// Public global provider catalog; defaults to 20 providers and caps pages at 100.
     async fn provider_templates(
         filter: Option<super::provider::catalog::input::ProviderTemplateFilterInput>,
         order_by: Option<Vec<super::provider::catalog::input::ProviderTemplateOrderInput>>,
@@ -33,7 +34,6 @@ impl Query {
         after: Option<String>,
         offset: Option<i32>,
         #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Collection<super::provider::catalog::ProviderTemplate>, Error> {
         super::provider::catalog::query::list(
             filter,
@@ -50,25 +50,23 @@ impl Query {
             },
             order_by,
             repository,
-            authority,
         )
         .await
     }
+    /// Public provider defaults with a complete, unpaginated collection of database-ready models.
     async fn provider_template(
         id: ID,
         #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Option<Payload<super::provider::catalog::ProviderTemplate>>, Error> {
-        super::provider::catalog::query::get(id, repository, authority).await
+        super::provider::catalog::query::get(id, repository).await
     }
+    /// Public configuration defaults for one database-ready model, identified within its provider.
     async fn model_template(
         provider_template_id: ID,
         id: ID,
         #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
     ) -> Result<Option<Payload<super::provider::catalog::ModelTemplate>>, Error> {
-        super::provider::catalog::query::model(provider_template_id, id, repository, authority)
-            .await
+        super::provider::catalog::query::model(provider_template_id, id, repository).await
     }
 
     async fn passkeys(
@@ -701,6 +699,7 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    model_template_filter: super::provider::catalog::input::ModelTemplateFilterInput,
     provider_template_filter: super::provider::catalog::input::ProviderTemplateFilterInput,
     provider_template_order: super::provider::catalog::input::ProviderTemplateOrderInput,
     passkey_registration: authentication::passkey::input::PasskeyRegistrationInput,

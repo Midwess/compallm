@@ -1,22 +1,19 @@
 use super::{ModelTemplate, ProviderTemplate, input::*};
-use crate::{
-    graphql::{
-        base_type::{Collection, Payload},
-        error::Error,
-    },
-    http::authorization::AuthorizationContext,
+use crate::graphql::{
+    base_type::{Collection, Payload},
+    error::Error,
 };
+use compallm_core::persistent::db_context;
 use compallm_postgres::catalog::repository::CatalogRepository;
 use juniper::ID;
 
+#[db_context::root]
 pub async fn list(
     filter: Option<ProviderTemplateFilterInput>,
     pagination: compallm_query::Pagination,
     order_by: Option<Vec<ProviderTemplateOrderInput>>,
     repository: &CatalogRepository,
-    authority: &AuthorizationContext,
 ) -> Result<Collection<ProviderTemplate>, Error> {
-    let member = authority.member_permission().await?;
     let ordering = match order_by {
         Some(order) => order
             .into_iter()
@@ -28,17 +25,13 @@ pub async fn list(
             direction: compallm_query::OrderByDirection::AscNullsLast,
         }],
     };
-    let scope = format!(
-        "provider-templates:{}:{}",
-        member.organization_id(),
-        member.user_id()
-    );
+    let scope = "provider-templates";
     let result = repository
         .list(
             Box::new(filter.unwrap_or_default()),
             pagination,
             ordering,
-            &scope,
+            scope,
         )
         .await
         .map_err(|error| match error {
@@ -47,29 +40,26 @@ pub async fn list(
         })?;
     Ok(result.into())
 }
+#[db_context::root]
 pub async fn get(
     id: ID,
     repository: &CatalogRepository,
-    authority: &AuthorizationContext,
 ) -> Result<Option<Payload<ProviderTemplate>>, Error> {
-    authority.member_permission().await?;
     Ok(repository
         .provider(&id)
         .await
         .map_err(|_| Error::internal())?
         .map(|node| Payload::from(ProviderTemplate::from(node))))
 }
+#[db_context::root]
 pub async fn model(
     provider_template_id: ID,
     id: ID,
     repository: &CatalogRepository,
-    authority: &AuthorizationContext,
 ) -> Result<Option<Payload<ModelTemplate>>, Error> {
-    authority.member_permission().await?;
     Ok(repository
         .model(&provider_template_id, &id)
         .await
         .map_err(|_| Error::internal())?
-        .filter(ModelTemplate::compatible)
         .map(|node| Payload::from(ModelTemplate::from(node))))
 }

@@ -3,6 +3,9 @@
   "title": "Inputs",
   "type": "object",
   "properties": {
+    "model_template_filter": {
+      "$ref": "#/$defs/ModelTemplateFilterInput"
+    },
     "provider_template_filter": {
       "$ref": "#/$defs/ProviderTemplateFilterInput"
     },
@@ -95,6 +98,7 @@
     }
   },
   "required": [
+    "model_template_filter",
     "provider_template_filter",
     "provider_template_order",
     "passkey_registration",
@@ -127,9 +131,19 @@
     "provider_patch"
   ],
   "$defs": {
-    "ProviderTemplateFilterInput": {
+    "ModelTemplateFilterInput": {
       "type": "object",
       "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "name": {
           "anyOf": [
             {
@@ -139,6 +153,25 @@
               "type": "null"
             }
           ]
+        },
+        "displayName": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "or": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/ModelTemplateMatchInput"
+          }
         }
       },
       "additionalProperties": false
@@ -240,6 +273,103 @@
         "NULL",
         "NOT_NULL"
       ]
+    },
+    "ModelTemplateMatchInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "displayName": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProviderTemplateFilterInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "or": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/ProviderTemplateMatchInput"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProviderTemplateMatchInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StringFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "ProviderTemplateOrderInput": {
       "type": "object",

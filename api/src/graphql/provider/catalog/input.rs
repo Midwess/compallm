@@ -1,7 +1,9 @@
 #[derive(Default, schemars::JsonSchema, juniper::GraphQLInputObject, compallm_query::IntoQuery)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProviderTemplateFilterInput {
+    pub id: Option<compallm_query::filter::StringFilter>,
     pub name: Option<compallm_query::filter::StringFilter>,
+    pub or: Option<Vec<ProviderTemplateMatchInput>>,
 }
 #[derive(schemars::JsonSchema, juniper::GraphQLInputObject)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -26,4 +28,27 @@ impl TryFrom<ProviderTemplateOrderInput> for compallm_query::OrderBy {
         }
         Ok(result)
     }
+}
+
+#[derive(Default, schemars::JsonSchema, juniper::GraphQLInputObject, compallm_query::IntoQuery)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ModelTemplateFilterInput {
+    pub id: Option<compallm_query::filter::StringFilter>,
+    pub name: Option<compallm_query::filter::StringFilter>,
+    pub display_name: Option<compallm_query::filter::StringFilter>,
+    pub or: Option<Vec<ModelTemplateMatchInput>>,
+}
+
+#[derive(schemars::JsonSchema, juniper::GraphQLInputObject, compallm_query::IntoQuery)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProviderTemplateMatchInput {
+    pub id: Option<compallm_query::filter::StringFilter>,
+    pub name: Option<compallm_query::filter::StringFilter>,
+}
+#[derive(schemars::JsonSchema, juniper::GraphQLInputObject, compallm_query::IntoQuery)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ModelTemplateMatchInput {
+    pub id: Option<compallm_query::filter::StringFilter>,
+    pub name: Option<compallm_query::filter::StringFilter>,
+    pub display_name: Option<compallm_query::filter::StringFilter>,
 }

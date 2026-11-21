@@ -1,5 +1,5 @@
 use crate::{
-    ProviderCatalogAuthReadinessSchema, ProviderModelTemplateSchema, ProviderTemplateSchema,
+    ProviderCatalogReadinessSchema, ProviderModelTemplateSchema, ProviderTemplateSchema,
     postgres_connection::PostgresConnection, query::IntoSeaQuery,
 };
 use compallm_core::{model::ModelTemplate, persistent::DbContext, provider::ProviderTemplate};
@@ -10,7 +10,7 @@ use sea_orm::{
 
 type Providers = <ProviderTemplateSchema as ModelTrait>::Entity;
 type Models = <ProviderModelTemplateSchema as ModelTrait>::Entity;
-type Readiness = <ProviderCatalogAuthReadinessSchema as ModelTrait>::Entity;
+type Readiness = <ProviderCatalogReadinessSchema as ModelTrait>::Entity;
 type M = <Models as EntityTrait>::Column;
 type R = <Readiness as EntityTrait>::Column;
 
@@ -56,7 +56,11 @@ impl CatalogRepository {
             .map(TryInto::try_into)
             .transpose()
     }
-    pub async fn models(&self, provider: &str) -> Result<Vec<ModelTemplate>, DbErr> {
+    pub async fn models(
+        &self,
+        provider: &str,
+        query: Box<dyn IntoQuery>,
+    ) -> Result<Vec<ModelTemplate>, crate::query::QueryCompileError> {
         let context = DbContext::current()
             .map_err(|_| DbErr::Custom("catalog context unavailable".into()))?;
         let db = PostgresConnection::from_context(&context)
@@ -65,19 +69,27 @@ impl CatalogRepository {
             .select_only()
             .column(R::Id)
             .filter(R::ProviderTemplateId.eq(provider))
-            .filter(R::AuthMethod.eq("api_key"))
             .filter(R::Readiness.eq(crate::CatalogReadinessSchema::Ready))
             .into_query();
-        Models::find()
+        let select = Models::find()
             .filter(M::ProviderTemplateId.eq(provider))
             .filter(M::Id.in_subquery(eligible))
             .order_by_asc(M::Name)
-            .order_by_asc(M::Id)
+            .order_by_asc(M::Id);
+        query
+            .apply_to_sea_query(
+                select,
+                Pagination::default(),
+                vec![],
+                Pagination::DEFAULT_MAX_ROWS,
+            )?
+            .limit(None)
             .all(db)
             .await?
             .into_iter()
             .map(TryInto::try_into)
-            .collect()
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(Into::into)
     }
     pub async fn model(&self, provider: &str, id: &str) -> Result<Option<ModelTemplate>, DbErr> {
         let context = DbContext::current()
@@ -91,7 +103,6 @@ impl CatalogRepository {
                         .select_only()
                         .column(R::Id)
                         .filter(R::ProviderTemplateId.eq(provider))
-                        .filter(R::AuthMethod.eq("api_key"))
                         .filter(R::Readiness.eq(crate::CatalogReadinessSchema::Ready))
                         .into_query(),
                 ),

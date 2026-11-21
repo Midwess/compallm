@@ -1,8 +1,6 @@
 use super::super::input::{ProviderModelCapability, TextModelProtocol};
-use crate::{
-    graphql::{base_type::Collection, error::Error},
-    http::authorization::AuthorizationContext,
-};
+use crate::graphql::{base_type::Collection, error::Error};
+use compallm_core::persistent::db_context;
 use compallm_core::{model::ModelTemplate as DomainModelTemplate, provider as domain};
 use compallm_postgres::catalog::repository::CatalogRepository;
 use juniper::{GraphQLEnum, GraphQLObject, ID, graphql_object};
@@ -67,80 +65,6 @@ impl From<domain::EffortLevel> for TemplateEffortLevel {
         }
     }
 }
-impl ModelTemplate {
-    pub fn compatible(value: &DomainModelTemplate) -> bool {
-        value.service_kind == Some(domain::ServiceKind::Llm)
-            && value.connections.iter().any(|(protocol, connection)| {
-                let protocol = match protocol {
-                    domain::Protocol::Openai => TextModelProtocol::OpenaiChatCompletions,
-                    domain::Protocol::OpenaiResponses => TextModelProtocol::OpenaiResponses,
-                    domain::Protocol::Anthropic => TextModelProtocol::AnthropicMessages,
-                    _ => return false,
-                };
-                let Some(path) = &connection.path else {
-                    return false;
-                };
-                let Some(context) = value
-                    .limits
-                    .context_tokens
-                    .and_then(|v| super::super::scalar::ContextTokens::try_from(v).ok())
-                else {
-                    return false;
-                };
-                let prices = super::output::TokenDefaults::from(&value.text);
-                let (Some(input), Some(output), Some(cached)) =
-                    (prices.input, prices.output, prices.cached)
-                else {
-                    return false;
-                };
-                let efforts = value
-                    .text
-                    .output
-                    .configuration()
-                    .and_then(|v| v.thinking.configuration())
-                    .map(|v| &v.effort_mapping);
-                let effort = |level| efforts.and_then(|v| v.get(&level)).cloned();
-                let input = super::super::input::ProviderModelConfiguration {
-                    name: value.name.clone(),
-                    protocol,
-                    path: path.clone(),
-                    max_context_tokens: context,
-                    context_limit_enabled: true,
-                    max_input_tokens: value
-                        .text
-                        .input
-                        .configuration()
-                        .and_then(|v| v.max_tokens)
-                        .and_then(|v| super::super::scalar::ContextTokens::try_from(v).ok()),
-                    max_output_tokens: value
-                        .text
-                        .output
-                        .configuration()
-                        .and_then(|v| v.max_tokens)
-                        .and_then(|v| super::super::scalar::ContextTokens::try_from(v).ok()),
-                    headers: vec![],
-                    body_defaults: vec![],
-                    enabled: true,
-                    effort_mapping: Some(super::super::input::ProviderEffortMapping {
-                        low: effort(domain::EffortLevel::Low),
-                        medium: effort(domain::EffortLevel::Medium),
-                        high: effort(domain::EffortLevel::High),
-                        xhigh: effort(domain::EffortLevel::Xhigh),
-                        max: effort(domain::EffortLevel::Max),
-                    }),
-                    capabilities: vec![],
-                    catalog_ref: None,
-                    input_price: input,
-                    output_price: output,
-                    cached_price: cached,
-                    input_price_enabled: true,
-                    output_price_enabled: true,
-                    cached_price_enabled: true,
-                };
-                validify::Validate::validate(&input).is_ok()
-            })
-    }
-}
 
 #[graphql_object(context=crate::graphql::context::GraphqlContext, scalar=juniper::DefaultScalarValue)]
 impl ProviderTemplate {
@@ -155,6 +79,9 @@ impl ProviderTemplate {
     }
     fn logo_url(&self) -> Option<&str> {
         self.0.logo_url.as_deref()
+    }
+    fn connection(&self) -> super::output::TemplateConnection {
+        (&self.0.connection).into()
     }
     fn base_url(&self) -> Option<&str> {
         self.0.connection.base_url.as_deref()
@@ -187,28 +114,22 @@ impl ProviderTemplate {
             .collect())
     }
 
+    #[db_context::root]
     async fn models(
         &self,
         #[graphql(context)] repository: &CatalogRepository,
-        #[graphql(context)] authority: &AuthorizationContext,
+        filter: Option<super::input::ModelTemplateFilterInput>,
     ) -> Result<Collection<ModelTemplate>, Error> {
-        let member = authority.member_permission().await?;
         let nodes: Vec<ModelTemplate> = repository
-            .models(&self.0.id)
+            .models(&self.0.id, Box::new(filter.unwrap_or_default()))
             .await
             .map_err(|_| Error::internal())?
             .into_iter()
-            .filter(ModelTemplate::compatible)
             .map(Into::into)
             .collect();
         Collection::complete(
             nodes,
-            &format!(
-                "template-models:{}:{}:{}",
-                member.organization_id(),
-                member.user_id(),
-                self.0.id
-            ),
+            &format!("template-models:{}", self.0.id),
             |m: &ModelTemplate| vec![Some(m.0.name.clone()), Some(m.0.id.clone())],
         )
         .map_err(|_| Error::internal())
@@ -224,6 +145,34 @@ impl ModelTemplate {
     }
     fn upstream_model_id(&self) -> &str {
         &self.0.name
+    }
+    fn name(&self) -> &str {
+        &self.0.name
+    }
+    fn connections(&self) -> Vec<super::output::TemplateModelConnection> {
+        self.0
+            .connections
+            .iter()
+            .map(
+                |(protocol, connection)| super::output::TemplateModelConnection {
+                    protocol: (*protocol).into(),
+                    configuration: connection.into(),
+                },
+            )
+            .collect()
+    }
+    fn body_defaults(&self) -> Vec<super::output::TemplateBodyDefault> {
+        self.0
+            .body_defaults
+            .iter()
+            .map(|(key, value)| super::output::TemplateBodyDefault {
+                key: key.clone(),
+                value: value.to_string(),
+            })
+            .collect()
+    }
+    fn route_selection(&self) -> Option<super::output::TemplateRouteSelection> {
+        self.0.route_selection.as_ref().map(Into::into)
     }
     fn display_name(&self) -> &str {
         self.0.display_name.as_deref().unwrap_or(&self.0.name)

@@ -313,6 +313,16 @@ enum TemplatePricingMode {
   SCHEDULED
 }
 
+enum TemplateProtocol {
+  OPENAI
+  OPENAI_RESPONSES
+  ANTHROPIC
+  GEMINI
+  MINIMAX
+  OPENROUTER
+  XAI
+}
+
 enum TemplateServiceKind {
   TEXT
   EMBEDDING
@@ -464,6 +474,19 @@ input MemberOrderInput {
 input MessageCompositionPatchInput {
   convertEmoticons: Boolean
   sendShortcut: PreferenceKeyCombination
+}
+
+input ModelTemplateFilterInput {
+  id: StringFilter
+  name: StringFilter
+  displayName: StringFilter
+  or: [ModelTemplateMatchInput!]
+}
+
+input ModelTemplateMatchInput {
+  id: StringFilter
+  name: StringFilter
+  displayName: StringFilter
 }
 
 input NavigationPatchInput {
@@ -620,6 +643,13 @@ input ProviderReplaceInput {
 }
 
 input ProviderTemplateFilterInput {
+  id: StringFilter
+  name: StringFilter
+  or: [ProviderTemplateMatchInput!]
+}
+
+input ProviderTemplateMatchInput {
+  id: StringFilter
   name: StringFilter
 }
 
@@ -1017,6 +1047,10 @@ type ModelTemplate {
   id: ID!
   providerTemplateId: ID!
   upstreamModelId: String!
+  name: String!
+  connections: [TemplateModelConnection!]!
+  bodyDefaults: [TemplateBodyDefault!]!
+  routeSelection: TemplateRouteSelection
   displayName: String!
   description: String
   headers: [TemplateHeader!]!
@@ -1263,11 +1297,12 @@ type ProviderTemplate {
   name: String!
   description: String
   logoUrl: String
+  connection: TemplateConnection!
   baseUrl: String
   headers: [TemplateHeader!]!
   endpoint: TemplateEndpoint!
   authentication: [TemplateAuthentication!]!
-  models: ModelTemplateConnection!
+  models(filter: ModelTemplateFilterInput): ModelTemplateConnection!
 }
 
 type ProviderTemplateConnection {
@@ -1285,8 +1320,11 @@ type ProviderTemplatePayload {
 }
 
 type Query {
+  "Public global provider catalog; defaults to 20 providers and caps pages at 100."
   providerTemplates(filter: ProviderTemplateFilterInput, orderBy: [ProviderTemplateOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): ProviderTemplateConnection!
+  "Public provider defaults with a complete, unpaginated collection of database-ready models."
   providerTemplate(id: ID!): ProviderTemplatePayload
+  "Public configuration defaults for one database-ready model, identified within its provider."
   modelTemplate(providerTemplateId: ID!, id: ID!): ModelTemplatePayload
   passkeys: PasskeySummaryConnection!
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
@@ -1438,11 +1476,27 @@ type TemplateAuthConfig {
   scopes: [String!]!
   requiredInputs: [CatalogRequiredInput!]!
   adapter: String
+  parameters: [TemplateHeader!]!
 }
 
 type TemplateAuthentication {
   method: TemplateAuthenticationMethod!
   configuration: TemplateAuthConfig!
+}
+
+"Public body default. Value is JSON text for the configuration editor."
+type TemplateBodyDefault {
+  key: String!
+  value: String!
+}
+
+type TemplateConnection {
+  baseUrl: String
+  path: String
+  timeoutMs: Float
+  query: [TemplateHeader!]!
+  authentication: TemplateAuthentication
+  endpoint: TemplateEndpoint!
 }
 
 type TemplateCredentialPlacement {
@@ -1471,9 +1525,31 @@ type TemplateHeader {
   value: String!
 }
 
+type TemplateModelConnection {
+  protocol: TemplateProtocol!
+  configuration: TemplateConnection!
+}
+
 type TemplateOperation {
   operation: TextModelProtocol!
   path: String!
+}
+
+type TemplateRouteOption {
+  id: String!
+  provider: String!
+  upstreamModelId: String!
+  contextTokens: ContextTokens
+  text: TextCapabilities!
+  billing: ModelBilling
+  implicitCaching: Boolean
+}
+
+type TemplateRouteSelection {
+  options: [TemplateRouteOption!]!
+  selected: String
+  allowFallbacks: Boolean!
+  exactProviderSelection: Boolean!
 }
 
 type TextCapabilities {

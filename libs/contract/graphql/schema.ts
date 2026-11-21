@@ -380,9 +380,11 @@ export interface ModelTemplate {
   audio: AudioCapabilities
   billing: ModelBilling | null
   billingModel: TemplateBillingModel
+  bodyDefaults: TemplateBodyDefault[]
   cacheBilling: TemplateCacheBilling
   cachedPrice: Scalars['String'] | null
   capabilities: ProviderModelCapability[]
+  connections: TemplateModelConnection[]
   description: Scalars['String'] | null
   displayName: Scalars['String']
   effortMapping: TemplateEffort[]
@@ -393,11 +395,13 @@ export interface ModelTemplate {
   maxContextTokens: Scalars['ContextTokens'] | null
   maxInputTokens: Scalars['ContextTokens'] | null
   maxOutputTokens: Scalars['ContextTokens'] | null
+  name: Scalars['String']
   operations: TemplateOperation[]
   outputPrice: Scalars['String'] | null
   pdf: PdfSupport
   pricingMode: TemplatePricingMode
   providerTemplateId: Scalars['ID']
+  routeSelection: TemplateRouteSelection | null
   search: SearchSupport
   serviceKind: TemplateServiceKind | null
   structuredOutput: StructuredOutputSupport
@@ -715,6 +719,7 @@ export type ProviderModelCapability =
 export interface ProviderTemplate {
   authentication: TemplateAuthentication[]
   baseUrl: Scalars['String'] | null
+  connection: TemplateConnection
   description: Scalars['String'] | null
   endpoint: TemplateEndpoint
   headers: TemplateHeader[]
@@ -752,6 +757,7 @@ export interface Query {
   invitations: InvitationConnection
   me: MePayload
   members: MemberConnection
+  /** Public configuration defaults for one database-ready model, identified within its provider. */
   modelTemplate: ModelTemplatePayload | null
   onboardingContext: OnboardingContextPayload | null
   /** Return the active organization from verified user authority. */
@@ -761,7 +767,9 @@ export interface Query {
   organizationPolicyActions: PolicyActionConnection
   organizationProfile: OrganizationPayload | null
   passkeys: PasskeySummaryConnection
+  /** Public provider defaults with a complete, unpaginated collection of database-ready models. */
   providerTemplate: ProviderTemplatePayload | null
+  /** Public global provider catalog; defaults to 20 providers and caps pages at 100. */
   providerTemplates: ProviderTemplateConnection
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
@@ -910,6 +918,7 @@ export interface TemplateAuthConfig {
   authorizationUrl: Scalars['String'] | null
   deviceAuthorizationUrl: Scalars['String'] | null
   flow: TemplateOAuthFlow | null
+  parameters: TemplateHeader[]
   placement: TemplateCredentialPlacement | null
   requiredInputs: CatalogRequiredInput[]
   scopes: Scalars['String'][]
@@ -927,8 +936,25 @@ export type TemplateAuthenticationMethod = 'API_KEY' | 'CUSTOM' | 'NONE' | 'OAUT
 
 export type TemplateBillingModel = 'FREE' | 'METERED' | 'SUBSCRIPTION' | 'SUBSCRIPTION_WITH_OVERAGE' | 'UNKNOWN'
 
+/** Public body default. Value is JSON text for the configuration editor. */
+export interface TemplateBodyDefault {
+  key: Scalars['String']
+  value: Scalars['String']
+  __typename: 'TemplateBodyDefault'
+}
+
 export type TemplateCacheBilling =
   'INCLUDED' | 'NOT_APPLICABLE' | 'PER_ROUTE' | 'SEPARATE_RATE' | 'STANDARD_INPUT_RATE' | 'UNKNOWN' | 'UNSUPPORTED'
+
+export interface TemplateConnection {
+  authentication: TemplateAuthentication | null
+  baseUrl: Scalars['String'] | null
+  endpoint: TemplateEndpoint
+  path: Scalars['String'] | null
+  query: TemplateHeader[]
+  timeoutMs: Scalars['Float'] | null
+  __typename: 'TemplateConnection'
+}
 
 export type TemplateCredentialLocation = 'HEADER' | 'QUERY'
 
@@ -969,6 +995,12 @@ export interface TemplateHeader {
 
 export type TemplateInputKind = 'OBJECT' | 'POSITIVE_INTEGER' | 'PRICE' | 'STRING' | 'URL'
 
+export interface TemplateModelConnection {
+  configuration: TemplateConnection
+  protocol: TemplateProtocol
+  __typename: 'TemplateModelConnection'
+}
+
 export type TemplateOAuthFlow = 'AUTHORIZATION_CODE' | 'CLIENT_CREDENTIALS' | 'DEVICE_CODE'
 
 export interface TemplateOperation {
@@ -979,6 +1011,27 @@ export interface TemplateOperation {
 
 export type TemplatePricingMode =
   'ACCOUNT_SPECIFIC' | 'API' | 'FIXED' | 'NOT_APPLICABLE' | 'SCHEDULED' | 'TIERED' | 'UNKNOWN' | 'UNPUBLISHED'
+
+export type TemplateProtocol = 'ANTHROPIC' | 'GEMINI' | 'MINIMAX' | 'OPENAI' | 'OPENAI_RESPONSES' | 'OPENROUTER' | 'XAI'
+
+export interface TemplateRouteOption {
+  billing: ModelBilling | null
+  contextTokens: Scalars['ContextTokens'] | null
+  id: Scalars['String']
+  implicitCaching: Scalars['Boolean'] | null
+  provider: Scalars['String']
+  text: TextCapabilities
+  upstreamModelId: Scalars['String']
+  __typename: 'TemplateRouteOption'
+}
+
+export interface TemplateRouteSelection {
+  allowFallbacks: Scalars['Boolean']
+  exactProviderSelection: Scalars['Boolean']
+  options: TemplateRouteOption[]
+  selected: Scalars['String'] | null
+  __typename: 'TemplateRouteSelection'
+}
 
 export type TemplateServiceKind = 'AUDIO' | 'EMBEDDING' | 'IMAGE' | 'RERANK' | 'STT' | 'TEXT' | 'TTS' | 'VIDEO'
 
@@ -1674,9 +1727,11 @@ export interface ModelTemplateGenqlSelection {
   audio?: AudioCapabilitiesGenqlSelection
   billing?: ModelBillingGenqlSelection
   billingModel?: boolean | number
+  bodyDefaults?: TemplateBodyDefaultGenqlSelection
   cacheBilling?: boolean | number
   cachedPrice?: boolean | number
   capabilities?: boolean | number
+  connections?: TemplateModelConnectionGenqlSelection
   description?: boolean | number
   displayName?: boolean | number
   effortMapping?: TemplateEffortGenqlSelection
@@ -1687,11 +1742,13 @@ export interface ModelTemplateGenqlSelection {
   maxContextTokens?: boolean | number
   maxInputTokens?: boolean | number
   maxOutputTokens?: boolean | number
+  name?: boolean | number
   operations?: TemplateOperationGenqlSelection
   outputPrice?: boolean | number
   pdf?: PdfSupportGenqlSelection
   pricingMode?: boolean | number
   providerTemplateId?: boolean | number
+  routeSelection?: TemplateRouteSelectionGenqlSelection
   search?: SearchSupportGenqlSelection
   serviceKind?: boolean | number
   structuredOutput?: StructuredOutputSupportGenqlSelection
@@ -1717,6 +1774,19 @@ export interface ModelTemplateEdgeGenqlSelection {
   node?: ModelTemplateGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface ModelTemplateFilterInput {
+  displayName?: StringFilter | null
+  id?: StringFilter | null
+  name?: StringFilter | null
+  or?: ModelTemplateMatchInput[] | null
+}
+
+export interface ModelTemplateMatchInput {
+  displayName?: StringFilter | null
+  id?: StringFilter | null
+  name?: StringFilter | null
 }
 
 export interface ModelTemplatePayloadGenqlSelection {
@@ -2135,12 +2205,13 @@ export interface ProviderReplaceInput {
 export interface ProviderTemplateGenqlSelection {
   authentication?: TemplateAuthenticationGenqlSelection
   baseUrl?: boolean | number
+  connection?: TemplateConnectionGenqlSelection
   description?: boolean | number
   endpoint?: TemplateEndpointGenqlSelection
   headers?: TemplateHeaderGenqlSelection
   id?: boolean | number
   logoUrl?: boolean | number
-  models?: ModelTemplateConnectionGenqlSelection
+  models?: ModelTemplateConnectionGenqlSelection & { __args?: { filter?: ModelTemplateFilterInput | null } }
   name?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2161,6 +2232,13 @@ export interface ProviderTemplateEdgeGenqlSelection {
 }
 
 export interface ProviderTemplateFilterInput {
+  id?: StringFilter | null
+  name?: StringFilter | null
+  or?: ProviderTemplateMatchInput[] | null
+}
+
+export interface ProviderTemplateMatchInput {
+  id?: StringFilter | null
   name?: StringFilter | null
 }
 
@@ -2203,6 +2281,7 @@ export interface QueryGenqlSelection {
       orderBy?: MemberOrderInput[] | null
     }
   }
+  /** Public configuration defaults for one database-ready model, identified within its provider. */
   modelTemplate?: ModelTemplatePayloadGenqlSelection & {
     __args: { id: Scalars['ID']; providerTemplateId: Scalars['ID'] }
   }
@@ -2214,7 +2293,9 @@ export interface QueryGenqlSelection {
   organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   organizationProfile?: OrganizationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   passkeys?: PasskeySummaryConnectionGenqlSelection
+  /** Public provider defaults with a complete, unpaginated collection of database-ready models. */
   providerTemplate?: ProviderTemplatePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  /** Public global provider catalog; defaults to 20 providers and caps pages at 100. */
   providerTemplates?: ProviderTemplateConnectionGenqlSelection & {
     __args?: {
       after?: Scalars['String'] | null
@@ -2449,6 +2530,7 @@ export interface TemplateAuthConfigGenqlSelection {
   authorizationUrl?: boolean | number
   deviceAuthorizationUrl?: boolean | number
   flow?: boolean | number
+  parameters?: TemplateHeaderGenqlSelection
   placement?: TemplateCredentialPlacementGenqlSelection
   requiredInputs?: CatalogRequiredInputGenqlSelection
   scopes?: boolean | number
@@ -2460,6 +2542,25 @@ export interface TemplateAuthConfigGenqlSelection {
 export interface TemplateAuthenticationGenqlSelection {
   configuration?: TemplateAuthConfigGenqlSelection
   method?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+/** Public body default. Value is JSON text for the configuration editor. */
+export interface TemplateBodyDefaultGenqlSelection {
+  key?: boolean | number
+  value?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateConnectionGenqlSelection {
+  authentication?: TemplateAuthenticationGenqlSelection
+  baseUrl?: boolean | number
+  endpoint?: TemplateEndpointGenqlSelection
+  path?: boolean | number
+  query?: TemplateHeaderGenqlSelection
+  timeoutMs?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -2500,9 +2601,37 @@ export interface TemplateHeaderGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface TemplateModelConnectionGenqlSelection {
+  configuration?: TemplateConnectionGenqlSelection
+  protocol?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface TemplateOperationGenqlSelection {
   operation?: boolean | number
   path?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateRouteOptionGenqlSelection {
+  billing?: ModelBillingGenqlSelection
+  contextTokens?: boolean | number
+  id?: boolean | number
+  implicitCaching?: boolean | number
+  provider?: boolean | number
+  text?: TextCapabilitiesGenqlSelection
+  upstreamModelId?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface TemplateRouteSelectionGenqlSelection {
+  allowFallbacks?: boolean | number
+  exactProviderSelection?: boolean | number
+  options?: TemplateRouteOptionGenqlSelection
+  selected?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -3342,6 +3471,18 @@ export const isTemplateAuthentication = (obj?: { __typename?: any } | null): obj
   return TemplateAuthentication_possibleTypes.includes(obj.__typename)
 }
 
+const TemplateBodyDefault_possibleTypes: string[] = ['TemplateBodyDefault']
+export const isTemplateBodyDefault = (obj?: { __typename?: any } | null): obj is TemplateBodyDefault => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateBodyDefault"')
+  return TemplateBodyDefault_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateConnection_possibleTypes: string[] = ['TemplateConnection']
+export const isTemplateConnection = (obj?: { __typename?: any } | null): obj is TemplateConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateConnection"')
+  return TemplateConnection_possibleTypes.includes(obj.__typename)
+}
+
 const TemplateCredentialPlacement_possibleTypes: string[] = ['TemplateCredentialPlacement']
 export const isTemplateCredentialPlacement = (
   obj?: { __typename?: any } | null,
@@ -3374,10 +3515,28 @@ export const isTemplateHeader = (obj?: { __typename?: any } | null): obj is Temp
   return TemplateHeader_possibleTypes.includes(obj.__typename)
 }
 
+const TemplateModelConnection_possibleTypes: string[] = ['TemplateModelConnection']
+export const isTemplateModelConnection = (obj?: { __typename?: any } | null): obj is TemplateModelConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateModelConnection"')
+  return TemplateModelConnection_possibleTypes.includes(obj.__typename)
+}
+
 const TemplateOperation_possibleTypes: string[] = ['TemplateOperation']
 export const isTemplateOperation = (obj?: { __typename?: any } | null): obj is TemplateOperation => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateOperation"')
   return TemplateOperation_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateRouteOption_possibleTypes: string[] = ['TemplateRouteOption']
+export const isTemplateRouteOption = (obj?: { __typename?: any } | null): obj is TemplateRouteOption => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateRouteOption"')
+  return TemplateRouteOption_possibleTypes.includes(obj.__typename)
+}
+
+const TemplateRouteSelection_possibleTypes: string[] = ['TemplateRouteSelection']
+export const isTemplateRouteSelection = (obj?: { __typename?: any } | null): obj is TemplateRouteSelection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateRouteSelection"')
+  return TemplateRouteSelection_possibleTypes.includes(obj.__typename)
 }
 
 const TextCapabilities_possibleTypes: string[] = ['TextCapabilities']
@@ -3823,6 +3982,16 @@ export const enumTemplatePricingMode = {
   TIERED: 'TIERED' as const,
   UNKNOWN: 'UNKNOWN' as const,
   UNPUBLISHED: 'UNPUBLISHED' as const,
+}
+
+export const enumTemplateProtocol = {
+  ANTHROPIC: 'ANTHROPIC' as const,
+  GEMINI: 'GEMINI' as const,
+  MINIMAX: 'MINIMAX' as const,
+  OPENAI: 'OPENAI' as const,
+  OPENAI_RESPONSES: 'OPENAI_RESPONSES' as const,
+  OPENROUTER: 'OPENROUTER' as const,
+  XAI: 'XAI' as const,
 }
 
 export const enumTemplateServiceKind = {

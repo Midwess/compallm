@@ -522,9 +522,11 @@ type ModelTemplate {
   audio: AudioCapabilities!
   billing: ModelBilling
   billingModel: TemplateBillingModel!
+  bodyDefaults: [TemplateBodyDefault!]!
   cacheBilling: TemplateCacheBilling!
   cachedPrice: String
   capabilities: [ProviderModelCapability!]!
+  connections: [TemplateModelConnection!]!
   description: String
   displayName: String!
   effortMapping: [TemplateEffort!]!
@@ -535,11 +537,13 @@ type ModelTemplate {
   maxContextTokens: ContextTokens
   maxInputTokens: ContextTokens
   maxOutputTokens: ContextTokens
+  name: String!
   operations: [TemplateOperation!]!
   outputPrice: String
   pdf: PdfSupport!
   pricingMode: TemplatePricingMode!
   providerTemplateId: ID!
+  routeSelection: TemplateRouteSelection
   search: SearchSupport!
   serviceKind: TemplateServiceKind
   structuredOutput: StructuredOutputSupport!
@@ -559,6 +563,19 @@ type ModelTemplateConnection {
 type ModelTemplateEdge {
   cursor: String!
   node: ModelTemplate!
+}
+
+input ModelTemplateFilterInput {
+  displayName: StringFilter
+  id: StringFilter
+  name: StringFilter
+  or: [ModelTemplateMatchInput!]
+}
+
+input ModelTemplateMatchInput {
+  displayName: StringFilter
+  id: StringFilter
+  name: StringFilter
 }
 
 type ModelTemplatePayload {
@@ -1187,12 +1204,13 @@ input ProviderReplaceInput {
 type ProviderTemplate {
   authentication: [TemplateAuthentication!]!
   baseUrl: String
+  connection: TemplateConnection!
   description: String
   endpoint: TemplateEndpoint!
   headers: [TemplateHeader!]!
   id: ID!
   logoUrl: String
-  models: ModelTemplateConnection!
+  models(filter: ModelTemplateFilterInput): ModelTemplateConnection!
   name: String!
 }
 
@@ -1207,6 +1225,13 @@ type ProviderTemplateEdge {
 }
 
 input ProviderTemplateFilterInput {
+  id: StringFilter
+  name: StringFilter
+  or: [ProviderTemplateMatchInput!]
+}
+
+input ProviderTemplateMatchInput {
+  id: StringFilter
   name: StringFilter
 }
 
@@ -1251,6 +1276,10 @@ type Query {
     offset: Int
     orderBy: [MemberOrderInput!]
   ): MemberConnection!
+
+  """
+  Public configuration defaults for one database-ready model, identified within its provider.
+  """
   modelTemplate(id: ID!, providerTemplateId: ID!): ModelTemplatePayload
   onboardingContext: OnboardingContextPayload
 
@@ -1266,7 +1295,15 @@ type Query {
   organizationPolicyActions: PolicyActionConnection!
   organizationProfile(id: ID!): OrganizationPayload
   passkeys: PasskeySummaryConnection!
+
+  """
+  Public provider defaults with a complete, unpaginated collection of database-ready models.
+  """
   providerTemplate(id: ID!): ProviderTemplatePayload
+
+  """
+  Public global provider catalog; defaults to 20 providers and caps pages at 100.
+  """
   providerTemplates(
     after: String
     before: String
@@ -1506,6 +1543,7 @@ type TemplateAuthConfig {
   authorizationUrl: String
   deviceAuthorizationUrl: String
   flow: TemplateOAuthFlow
+  parameters: [TemplateHeader!]!
   placement: TemplateCredentialPlacement
   requiredInputs: [CatalogRequiredInput!]!
   scopes: [String!]!
@@ -1532,6 +1570,14 @@ enum TemplateBillingModel {
   UNKNOWN
 }
 
+"""
+Public body default. Value is JSON text for the configuration editor.
+"""
+type TemplateBodyDefault {
+  key: String!
+  value: String!
+}
+
 enum TemplateCacheBilling {
   INCLUDED
   NOT_APPLICABLE
@@ -1540,6 +1586,15 @@ enum TemplateCacheBilling {
   STANDARD_INPUT_RATE
   UNKNOWN
   UNSUPPORTED
+}
+
+type TemplateConnection {
+  authentication: TemplateAuthentication
+  baseUrl: String
+  endpoint: TemplateEndpoint!
+  path: String
+  query: [TemplateHeader!]!
+  timeoutMs: Float
 }
 
 enum TemplateCredentialLocation {
@@ -1596,6 +1651,11 @@ enum TemplateInputKind {
   URL
 }
 
+type TemplateModelConnection {
+  configuration: TemplateConnection!
+  protocol: TemplateProtocol!
+}
+
 enum TemplateOAuthFlow {
   AUTHORIZATION_CODE
   CLIENT_CREDENTIALS
@@ -1616,6 +1676,33 @@ enum TemplatePricingMode {
   TIERED
   UNKNOWN
   UNPUBLISHED
+}
+
+enum TemplateProtocol {
+  ANTHROPIC
+  GEMINI
+  MINIMAX
+  OPENAI
+  OPENAI_RESPONSES
+  OPENROUTER
+  XAI
+}
+
+type TemplateRouteOption {
+  billing: ModelBilling
+  contextTokens: ContextTokens
+  id: String!
+  implicitCaching: Boolean
+  provider: String!
+  text: TextCapabilities!
+  upstreamModelId: String!
+}
+
+type TemplateRouteSelection {
+  allowFallbacks: Boolean!
+  exactProviderSelection: Boolean!
+  options: [TemplateRouteOption!]!
+  selected: String
 }
 
 enum TemplateServiceKind {

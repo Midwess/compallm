@@ -522,6 +522,29 @@ export const MessageCompositionPatchInput = z
   .strict()
 export type MessageCompositionPatchInputFormInput = z.input<typeof MessageCompositionPatchInput>
 export type MessageCompositionPatchInputFormOutput = z.output<typeof MessageCompositionPatchInput>
+export const ModelTemplateMatchInputConstraints = {} as const
+export const ModelTemplateMatchInputInput = {}
+export const ModelTemplateMatchInput = z
+  .object({
+    id: StringFilter.nullable().optional(),
+    name: StringFilter.nullable().optional(),
+    displayName: StringFilter.nullable().optional(),
+  })
+  .strict()
+export type ModelTemplateMatchInputFormInput = z.input<typeof ModelTemplateMatchInput>
+export type ModelTemplateMatchInputFormOutput = z.output<typeof ModelTemplateMatchInput>
+export const ModelTemplateFilterInputConstraints = {} as const
+export const ModelTemplateFilterInputInput = {}
+export const ModelTemplateFilterInput = z
+  .object({
+    id: StringFilter.nullable().optional(),
+    name: StringFilter.nullable().optional(),
+    displayName: StringFilter.nullable().optional(),
+    or: z.array(ModelTemplateMatchInput).nullable().optional(),
+  })
+  .strict()
+export type ModelTemplateFilterInputFormInput = z.input<typeof ModelTemplateFilterInput>
+export type ModelTemplateFilterInputFormOutput = z.output<typeof ModelTemplateFilterInput>
 export const PreferenceDestination = z.enum([
   'CHAT',
   'MODELS',
@@ -1517,9 +1540,22 @@ export const ProviderReplaceInput = z
   .describe('Full non-secret replacement. Omitting apiKey preserves the saved credential.')
 export type ProviderReplaceInputFormInput = z.input<typeof ProviderReplaceInput>
 export type ProviderReplaceInputFormOutput = z.output<typeof ProviderReplaceInput>
+export const ProviderTemplateMatchInputConstraints = {} as const
+export const ProviderTemplateMatchInputInput = {}
+export const ProviderTemplateMatchInput = z
+  .object({ id: StringFilter.nullable().optional(), name: StringFilter.nullable().optional() })
+  .strict()
+export type ProviderTemplateMatchInputFormInput = z.input<typeof ProviderTemplateMatchInput>
+export type ProviderTemplateMatchInputFormOutput = z.output<typeof ProviderTemplateMatchInput>
 export const ProviderTemplateFilterInputConstraints = {} as const
 export const ProviderTemplateFilterInputInput = {}
-export const ProviderTemplateFilterInput = z.object({ name: StringFilter.nullable().optional() }).strict()
+export const ProviderTemplateFilterInput = z
+  .object({
+    id: StringFilter.nullable().optional(),
+    name: StringFilter.nullable().optional(),
+    or: z.array(ProviderTemplateMatchInput).nullable().optional(),
+  })
+  .strict()
 export type ProviderTemplateFilterInputFormInput = z.input<typeof ProviderTemplateFilterInput>
 export type ProviderTemplateFilterInputFormOutput = z.output<typeof ProviderTemplateFilterInput>
 export const ProviderTemplateOrderInputConstraints = {} as const

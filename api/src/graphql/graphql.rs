@@ -648,6 +648,7 @@ impl GraphQLType for RegisteredQuery {
         registry.get_type::<authentication::input::EmailInput>(&());
         registry.get_type::<authentication::input::EmailCodeInput>(&());
         registry.get_type::<input::ProvidersCreateInput>(&());
+        registry.get_type::<input::ProviderApiProtocol>(&());
         registry.get_type::<input::ProviderReplaceInput>(&());
         registry.get_type::<input::ProviderPatchInput>(&());
         registry.get_type::<catalog::ProviderTemplate>(&());

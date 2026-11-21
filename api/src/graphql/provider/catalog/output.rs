@@ -1,3 +1,6 @@
+use super::r#type::{TemplateAuthentication, TemplateAuthenticationMethod};
+use compallm_core::provider as domain;
+
 #[derive(juniper::GraphQLObject)]
 pub struct CatalogRequiredInput {
     pub name: String,
@@ -5,91 +8,105 @@ pub struct CatalogRequiredInput {
     pub required: bool,
     pub allowed_values: Option<Vec<String>>,
 }
-impl From<compallm_core::provider_template::semantics::RequiredInput> for CatalogRequiredInput {
-    fn from(value: compallm_core::provider_template::semantics::RequiredInput) -> Self {
+impl From<domain::ConfigurationInput> for CatalogRequiredInput {
+    fn from(value: domain::ConfigurationInput) -> Self {
         Self {
             name: value.name,
             kind: value.kind.into(),
             required: value.required,
-            allowed_values: value.allowed_values.map(|v| v.into_iter().collect()),
+            allowed_values: value.allowed_values,
         }
     }
 }
 
-#[derive(juniper::GraphQLObject)]
+#[derive(juniper::GraphQLObject, Default)]
 pub struct TemplateAuthConfig {
-    pub status: TemplateAuthStatus,
-    pub placements: Option<Vec<TemplateCredentialPlacement>>,
-    pub flow: Option<String>,
+    pub placement: Option<TemplateCredentialPlacement>,
+    pub flow: Option<TemplateOAuthFlow>,
     pub authorization_url: Option<String>,
     pub token_url: Option<String>,
     pub device_authorization_url: Option<String>,
-    pub scopes: Option<Vec<String>>,
-    pub required_inputs: Option<Vec<CatalogRequiredInput>>,
-    pub reason: Option<String>,
+    pub scopes: Vec<String>,
+    pub required_inputs: Vec<CatalogRequiredInput>,
     pub adapter: Option<String>,
 }
-impl From<compallm_core::provider_template::AuthenticationDefaults> for TemplateAuthConfig {
-    fn from(value: compallm_core::provider_template::AuthenticationDefaults) -> Self {
+impl From<domain::Authentication> for TemplateAuthentication {
+    fn from(value: domain::Authentication) -> Self {
+        let (method, configuration) = match value {
+            domain::Authentication::ApiKey(value) => (
+                TemplateAuthenticationMethod::ApiKey,
+                TemplateAuthConfig {
+                    placement: value.placement.map(Into::into),
+                    required_inputs: value.required_inputs.into_iter().map(Into::into).collect(),
+                    ..Default::default()
+                },
+            ),
+            domain::Authentication::OAuth(value) => (
+                TemplateAuthenticationMethod::Oauth,
+                TemplateAuthConfig {
+                    placement: value.token_placement.map(Into::into),
+                    flow: value.flow.map(Into::into),
+                    authorization_url: value.authorization_url,
+                    token_url: value.token_url,
+                    device_authorization_url: value.device_authorization_url,
+                    scopes: value.scopes,
+                    required_inputs: value.required_inputs.into_iter().map(Into::into).collect(),
+                    ..Default::default()
+                },
+            ),
+            domain::Authentication::Custom(value) => (
+                TemplateAuthenticationMethod::Custom,
+                TemplateAuthConfig {
+                    adapter: value.adapter,
+                    required_inputs: value.required_inputs.into_iter().map(Into::into).collect(),
+                    ..Default::default()
+                },
+            ),
+            domain::Authentication::None => (
+                TemplateAuthenticationMethod::None,
+                TemplateAuthConfig::default(),
+            ),
+        };
         Self {
-            status: value.status.into(),
-            placements: value
-                .placements
-                .map(|v| v.into_iter().map(|v| v.into()).collect()),
-            flow: value.flow.map(|v| {
-                serde_json::to_value(v)
-                    .expect("serializable catalog enum")
-                    .as_str()
-                    .expect("string catalog enum")
-                    .to_owned()
-            }),
-            authorization_url: value.authorization_url,
-            token_url: value.token_url,
-            device_authorization_url: value.device_authorization_url,
-            scopes: value.scopes.map(|v| v.into_iter().collect()),
-            required_inputs: value
-                .required_inputs
-                .map(|v| v.into_iter().map(|v| v.into()).collect()),
-            reason: value.reason,
-            adapter: value.adapter,
+            method,
+            configuration,
         }
     }
 }
 
 #[derive(juniper::GraphQLObject)]
 pub struct TemplateCredentialPlacement {
-    pub operations: Vec<String>,
     pub location: TemplateCredentialLocation,
     pub name: String,
-    pub prefix: String,
-    pub adapter_requirements: Vec<String>,
+    pub prefix: Option<String>,
 }
-impl From<compallm_core::provider_template::semantics::CredentialPlacement>
-    for TemplateCredentialPlacement
-{
-    fn from(value: compallm_core::provider_template::semantics::CredentialPlacement) -> Self {
-        Self {
-            operations: value.operations.into_iter().collect(),
-            location: value.location.into(),
-            name: value.name,
-            prefix: value.prefix,
-            adapter_requirements: value.adapter_requirements.into_iter().collect(),
+impl From<domain::ApiKeyAuthentication> for TemplateCredentialPlacement {
+    fn from(value: domain::ApiKeyAuthentication) -> Self {
+        match value {
+            domain::ApiKeyAuthentication::Header { api_key_header } => Self {
+                location: TemplateCredentialLocation::Header,
+                name: api_key_header.name,
+                prefix: Some(api_key_header.prefix),
+            },
+            domain::ApiKeyAuthentication::Query { api_key_query } => Self {
+                location: TemplateCredentialLocation::Query,
+                name: api_key_query,
+                prefix: None,
+            },
         }
     }
 }
 
 #[derive(juniper::GraphQLObject)]
 pub struct TemplateEndpointConfig {
-    pub required_inputs: Option<Vec<CatalogRequiredInput>>,
-    pub reason: Option<String>,
+    pub url_template: Option<String>,
+    pub required_inputs: Vec<CatalogRequiredInput>,
 }
-impl From<compallm_core::provider_template::EndpointDefaults> for TemplateEndpointConfig {
-    fn from(value: compallm_core::provider_template::EndpointDefaults) -> Self {
+impl From<domain::EndpointRequirements> for TemplateEndpointConfig {
+    fn from(value: domain::EndpointRequirements) -> Self {
         Self {
-            required_inputs: value
-                .required_inputs
-                .map(|v| v.into_iter().map(|v| v.into()).collect()),
-            reason: value.reason,
+            url_template: value.url_template,
+            required_inputs: value.required_inputs.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -102,30 +119,14 @@ pub enum TemplateInputKind {
     PositiveInteger,
     Price,
 }
-impl From<compallm_core::provider_template::semantics::InputKind> for TemplateInputKind {
-    fn from(v: compallm_core::provider_template::semantics::InputKind) -> Self {
-        match v {
-            compallm_core::provider_template::semantics::InputKind::String => Self::String,
-            compallm_core::provider_template::semantics::InputKind::Url => Self::Url,
-            compallm_core::provider_template::semantics::InputKind::Object => Self::Object,
-            compallm_core::provider_template::semantics::InputKind::PositiveInteger => {
-                Self::PositiveInteger
-            }
-            compallm_core::provider_template::semantics::InputKind::Price => Self::Price,
-        }
-    }
-}
-
-#[derive(juniper::GraphQLEnum)]
-pub enum TemplateAuthStatus {
-    Configured,
-    Unknown,
-}
-impl From<compallm_core::provider_template::semantics::AuthStatus> for TemplateAuthStatus {
-    fn from(v: compallm_core::provider_template::semantics::AuthStatus) -> Self {
-        match v {
-            compallm_core::provider_template::semantics::AuthStatus::Configured => Self::Configured,
-            compallm_core::provider_template::semantics::AuthStatus::Unknown => Self::Unknown,
+impl From<domain::ConfigurationInputKind> for TemplateInputKind {
+    fn from(value: domain::ConfigurationInputKind) -> Self {
+        match value {
+            domain::ConfigurationInputKind::String => Self::String,
+            domain::ConfigurationInputKind::Url => Self::Url,
+            domain::ConfigurationInputKind::Object => Self::Object,
+            domain::ConfigurationInputKind::PositiveInteger => Self::PositiveInteger,
+            domain::ConfigurationInputKind::Price => Self::Price,
         }
     }
 }
@@ -135,13 +136,59 @@ pub enum TemplateCredentialLocation {
     Header,
     Query,
 }
-impl From<compallm_core::provider_template::semantics::CredentialLocation>
-    for TemplateCredentialLocation
-{
-    fn from(v: compallm_core::provider_template::semantics::CredentialLocation) -> Self {
-        match v {
-            compallm_core::provider_template::semantics::CredentialLocation::Header => Self::Header,
-            compallm_core::provider_template::semantics::CredentialLocation::Query => Self::Query,
+
+#[derive(juniper::GraphQLEnum)]
+pub enum TemplateOAuthFlow {
+    AuthorizationCode,
+    DeviceCode,
+    ClientCredentials,
+}
+impl From<domain::OAuthFlow> for TemplateOAuthFlow {
+    fn from(value: domain::OAuthFlow) -> Self {
+        match value {
+            domain::OAuthFlow::AuthorizationCode => Self::AuthorizationCode,
+            domain::OAuthFlow::DeviceCode => Self::DeviceCode,
+            domain::OAuthFlow::ClientCredentials => Self::ClientCredentials,
+        }
+    }
+}
+
+#[derive(Default)]
+pub(super) struct TokenDefaults {
+    pub input: Option<String>,
+    pub output: Option<String>,
+    pub cached: Option<String>,
+}
+impl From<Option<&domain::Pricing>> for TokenDefaults {
+    fn from(value: Option<&domain::Pricing>) -> Self {
+        fn amount(rate: &domain::Rate) -> Option<String> {
+            (rate.currency.as_deref() == Some("USD") && rate.quantity == Some(1_000_000))
+                .then(|| rate.amount.map(|v| v.to_string()))
+                .flatten()
+        }
+        match value {
+            Some(domain::Pricing::Free(_)) => Self {
+                input: Some("0".into()),
+                output: Some("0".into()),
+                cached: None,
+            },
+            Some(domain::Pricing::Usage(domain::UsagePricing::Fixed(
+                domain::UsageRates::Token(value),
+            ))) => {
+                let input = amount(&value.input);
+                let cached = match &value.cache {
+                    Some(domain::CachePricing::SeparateRate(value)) => amount(&value.rate),
+                    Some(domain::CachePricing::StandardInputRate) => input.clone(),
+                    Some(domain::CachePricing::Included) => Some("0".into()),
+                    _ => None,
+                };
+                Self {
+                    input,
+                    output: amount(&value.output),
+                    cached,
+                }
+            }
+            _ => Self::default(),
         }
     }
 }

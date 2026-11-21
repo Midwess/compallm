@@ -253,7 +253,6 @@ export interface ModelTemplate {
   cacheBilling: TemplateCacheBilling
   cachedPrice: Scalars['String'] | null
   capabilities: ProviderModelCapability[]
-  capabilitySupport: TemplateCapabilitySupport[]
   description: Scalars['String'] | null
   displayName: Scalars['String']
   effortMapping: TemplateEffort[]
@@ -267,8 +266,7 @@ export interface ModelTemplate {
   outputPrice: Scalars['String'] | null
   pricingMode: TemplatePricingMode
   providerTemplateId: Scalars['ID']
-  readiness: TemplateReadiness
-  serviceKind: TemplateServiceKind
+  serviceKind: TemplateServiceKind | null
   upstreamModelId: Scalars['String']
   __typename: 'ModelTemplate'
 }
@@ -562,11 +560,9 @@ export interface ProviderTemplate {
   endpoint: TemplateEndpoint
   headers: TemplateHeader[]
   id: Scalars['ID']
-  logoPath: Scalars['String']
+  logoUrl: Scalars['String'] | null
   models: ModelTemplateConnection
   name: Scalars['String']
-  protocol: ProviderApiProtocol
-  readiness: TemplateReadiness
   __typename: 'ProviderTemplate'
 }
 
@@ -729,17 +725,13 @@ export interface TemplateAuthConfig {
   adapter: Scalars['String'] | null
   authorizationUrl: Scalars['String'] | null
   deviceAuthorizationUrl: Scalars['String'] | null
-  flow: Scalars['String'] | null
-  placements: TemplateCredentialPlacement[] | null
-  reason: Scalars['String'] | null
-  requiredInputs: CatalogRequiredInput[] | null
-  scopes: Scalars['String'][] | null
-  status: TemplateAuthStatus
+  flow: TemplateOAuthFlow | null
+  placement: TemplateCredentialPlacement | null
+  requiredInputs: CatalogRequiredInput[]
+  scopes: Scalars['String'][]
   tokenUrl: Scalars['String'] | null
   __typename: 'TemplateAuthConfig'
 }
-
-export type TemplateAuthStatus = 'CONFIGURED' | 'UNKNOWN'
 
 export interface TemplateAuthentication {
   configuration: TemplateAuthConfig
@@ -754,20 +746,12 @@ export type TemplateBillingModel = 'FREE' | 'METERED' | 'SUBSCRIPTION' | 'SUBSCR
 export type TemplateCacheBilling =
   'INCLUDED' | 'NOT_APPLICABLE' | 'PER_ROUTE' | 'SEPARATE_RATE' | 'STANDARD_INPUT_RATE' | 'UNKNOWN' | 'UNSUPPORTED'
 
-export interface TemplateCapabilitySupport {
-  capability: ProviderModelCapability
-  supported: Scalars['Boolean'] | null
-  __typename: 'TemplateCapabilitySupport'
-}
-
 export type TemplateCredentialLocation = 'HEADER' | 'QUERY'
 
 export interface TemplateCredentialPlacement {
-  adapterRequirements: Scalars['String'][]
   location: TemplateCredentialLocation
   name: Scalars['String']
-  operations: Scalars['String'][]
-  prefix: Scalars['String']
+  prefix: Scalars['String'] | null
   __typename: 'TemplateCredentialPlacement'
 }
 
@@ -786,8 +770,8 @@ export interface TemplateEndpoint {
 }
 
 export interface TemplateEndpointConfig {
-  reason: Scalars['String'] | null
-  requiredInputs: CatalogRequiredInput[] | null
+  requiredInputs: CatalogRequiredInput[]
+  urlTemplate: Scalars['String'] | null
   __typename: 'TemplateEndpointConfig'
 }
 
@@ -801,6 +785,8 @@ export interface TemplateHeader {
 
 export type TemplateInputKind = 'OBJECT' | 'POSITIVE_INTEGER' | 'PRICE' | 'STRING' | 'URL'
 
+export type TemplateOAuthFlow = 'AUTHORIZATION_CODE' | 'CLIENT_CREDENTIALS' | 'DEVICE_CODE'
+
 export interface TemplateOperation {
   operation: TextModelProtocol
   path: Scalars['String']
@@ -810,9 +796,7 @@ export interface TemplateOperation {
 export type TemplatePricingMode =
   'ACCOUNT_SPECIFIC' | 'API' | 'FIXED' | 'NOT_APPLICABLE' | 'SCHEDULED' | 'TIERED' | 'UNKNOWN' | 'UNPUBLISHED'
 
-export type TemplateReadiness = 'INCOMPLETE' | 'NEEDS_CONFIGURATION' | 'NEEDS_FETCH' | 'READY'
-
-export type TemplateServiceKind = 'AUDIO' | 'EMBEDDING' | 'IMAGE' | 'RERANK' | 'TEXT' | 'UNKNOWN' | 'VIDEO'
+export type TemplateServiceKind = 'AUDIO' | 'EMBEDDING' | 'IMAGE' | 'RERANK' | 'STT' | 'TEXT' | 'TTS' | 'VIDEO'
 
 /** Text operation determining the upstream request and response format. */
 export type TextModelProtocol = 'ANTHROPIC_MESSAGES' | 'OPENAI_CHAT_COMPLETIONS' | 'OPENAI_RESPONSES'
@@ -1278,7 +1262,6 @@ export interface ModelTemplateGenqlSelection {
   cacheBilling?: boolean | number
   cachedPrice?: boolean | number
   capabilities?: boolean | number
-  capabilitySupport?: TemplateCapabilitySupportGenqlSelection
   description?: boolean | number
   displayName?: boolean | number
   effortMapping?: TemplateEffortGenqlSelection
@@ -1292,7 +1275,6 @@ export interface ModelTemplateGenqlSelection {
   outputPrice?: boolean | number
   pricingMode?: boolean | number
   providerTemplateId?: boolean | number
-  readiness?: boolean | number
   serviceKind?: boolean | number
   upstreamModelId?: boolean | number
   __typename?: boolean | number
@@ -1718,11 +1700,9 @@ export interface ProviderTemplateGenqlSelection {
   endpoint?: TemplateEndpointGenqlSelection
   headers?: TemplateHeaderGenqlSelection
   id?: boolean | number
-  logoPath?: boolean | number
+  logoUrl?: boolean | number
   models?: ModelTemplateConnectionGenqlSelection
   name?: boolean | number
-  protocol?: boolean | number
-  readiness?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -2001,11 +1981,9 @@ export interface TemplateAuthConfigGenqlSelection {
   authorizationUrl?: boolean | number
   deviceAuthorizationUrl?: boolean | number
   flow?: boolean | number
-  placements?: TemplateCredentialPlacementGenqlSelection
-  reason?: boolean | number
+  placement?: TemplateCredentialPlacementGenqlSelection
   requiredInputs?: CatalogRequiredInputGenqlSelection
   scopes?: boolean | number
-  status?: boolean | number
   tokenUrl?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2018,18 +1996,9 @@ export interface TemplateAuthenticationGenqlSelection {
   __scalar?: boolean | number
 }
 
-export interface TemplateCapabilitySupportGenqlSelection {
-  capability?: boolean | number
-  supported?: boolean | number
-  __typename?: boolean | number
-  __scalar?: boolean | number
-}
-
 export interface TemplateCredentialPlacementGenqlSelection {
-  adapterRequirements?: boolean | number
   location?: boolean | number
   name?: boolean | number
-  operations?: boolean | number
   prefix?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
@@ -2050,8 +2019,8 @@ export interface TemplateEndpointGenqlSelection {
 }
 
 export interface TemplateEndpointConfigGenqlSelection {
-  reason?: boolean | number
   requiredInputs?: CatalogRequiredInputGenqlSelection
+  urlTemplate?: boolean | number
   __typename?: boolean | number
   __scalar?: boolean | number
 }
@@ -2662,12 +2631,6 @@ export const isTemplateAuthentication = (obj?: { __typename?: any } | null): obj
   return TemplateAuthentication_possibleTypes.includes(obj.__typename)
 }
 
-const TemplateCapabilitySupport_possibleTypes: string[] = ['TemplateCapabilitySupport']
-export const isTemplateCapabilitySupport = (obj?: { __typename?: any } | null): obj is TemplateCapabilitySupport => {
-  if (!obj?.__typename) throw new Error('__typename is missing in "isTemplateCapabilitySupport"')
-  return TemplateCapabilitySupport_possibleTypes.includes(obj.__typename)
-}
-
 const TemplateCredentialPlacement_possibleTypes: string[] = ['TemplateCredentialPlacement']
 export const isTemplateCredentialPlacement = (
   obj?: { __typename?: any } | null,
@@ -2925,11 +2888,6 @@ export const enumProviderModelCapability = {
   VISION: 'VISION' as const,
 }
 
-export const enumTemplateAuthStatus = {
-  CONFIGURED: 'CONFIGURED' as const,
-  UNKNOWN: 'UNKNOWN' as const,
-}
-
 export const enumTemplateAuthenticationMethod = {
   API_KEY: 'API_KEY' as const,
   CUSTOM: 'CUSTOM' as const,
@@ -2983,6 +2941,12 @@ export const enumTemplateInputKind = {
   URL: 'URL' as const,
 }
 
+export const enumTemplateOAuthFlow = {
+  AUTHORIZATION_CODE: 'AUTHORIZATION_CODE' as const,
+  CLIENT_CREDENTIALS: 'CLIENT_CREDENTIALS' as const,
+  DEVICE_CODE: 'DEVICE_CODE' as const,
+}
+
 export const enumTemplatePricingMode = {
   ACCOUNT_SPECIFIC: 'ACCOUNT_SPECIFIC' as const,
   API: 'API' as const,
@@ -2994,20 +2958,14 @@ export const enumTemplatePricingMode = {
   UNPUBLISHED: 'UNPUBLISHED' as const,
 }
 
-export const enumTemplateReadiness = {
-  INCOMPLETE: 'INCOMPLETE' as const,
-  NEEDS_CONFIGURATION: 'NEEDS_CONFIGURATION' as const,
-  NEEDS_FETCH: 'NEEDS_FETCH' as const,
-  READY: 'READY' as const,
-}
-
 export const enumTemplateServiceKind = {
   AUDIO: 'AUDIO' as const,
   EMBEDDING: 'EMBEDDING' as const,
   IMAGE: 'IMAGE' as const,
   RERANK: 'RERANK' as const,
+  STT: 'STT' as const,
   TEXT: 'TEXT' as const,
-  UNKNOWN: 'UNKNOWN' as const,
+  TTS: 'TTS' as const,
   VIDEO: 'VIDEO' as const,
 }
 

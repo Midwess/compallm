@@ -383,7 +383,6 @@ type ModelTemplate {
   cacheBilling: TemplateCacheBilling!
   cachedPrice: String
   capabilities: [ProviderModelCapability!]!
-  capabilitySupport: [TemplateCapabilitySupport!]!
   description: String
   displayName: String!
   effortMapping: [TemplateEffort!]!
@@ -397,8 +396,7 @@ type ModelTemplate {
   outputPrice: String
   pricingMode: TemplatePricingMode!
   providerTemplateId: ID!
-  readiness: TemplateReadiness!
-  serviceKind: TemplateServiceKind!
+  serviceKind: TemplateServiceKind
   upstreamModelId: String!
 }
 
@@ -1006,11 +1004,9 @@ type ProviderTemplate {
   endpoint: TemplateEndpoint!
   headers: [TemplateHeader!]!
   id: ID!
-  logoPath: String!
+  logoUrl: String
   models: ModelTemplateConnection!
   name: String!
-  protocol: ProviderApiProtocol!
-  readiness: TemplateReadiness!
 }
 
 type ProviderTemplateConnection {
@@ -1301,18 +1297,11 @@ type TemplateAuthConfig {
   adapter: String
   authorizationUrl: String
   deviceAuthorizationUrl: String
-  flow: String
-  placements: [TemplateCredentialPlacement!]
-  reason: String
-  requiredInputs: [CatalogRequiredInput!]
-  scopes: [String!]
-  status: TemplateAuthStatus!
+  flow: TemplateOAuthFlow
+  placement: TemplateCredentialPlacement
+  requiredInputs: [CatalogRequiredInput!]!
+  scopes: [String!]!
   tokenUrl: String
-}
-
-enum TemplateAuthStatus {
-  CONFIGURED
-  UNKNOWN
 }
 
 type TemplateAuthentication {
@@ -1345,22 +1334,15 @@ enum TemplateCacheBilling {
   UNSUPPORTED
 }
 
-type TemplateCapabilitySupport {
-  capability: ProviderModelCapability!
-  supported: Boolean
-}
-
 enum TemplateCredentialLocation {
   HEADER
   QUERY
 }
 
 type TemplateCredentialPlacement {
-  adapterRequirements: [String!]!
   location: TemplateCredentialLocation!
   name: String!
-  operations: [String!]!
-  prefix: String!
+  prefix: String
 }
 
 type TemplateEffort {
@@ -1382,8 +1364,8 @@ type TemplateEndpoint {
 }
 
 type TemplateEndpointConfig {
-  reason: String
-  requiredInputs: [CatalogRequiredInput!]
+  requiredInputs: [CatalogRequiredInput!]!
+  urlTemplate: String
 }
 
 enum TemplateEndpointMode {
@@ -1406,6 +1388,12 @@ enum TemplateInputKind {
   URL
 }
 
+enum TemplateOAuthFlow {
+  AUTHORIZATION_CODE
+  CLIENT_CREDENTIALS
+  DEVICE_CODE
+}
+
 type TemplateOperation {
   operation: TextModelProtocol!
   path: String!
@@ -1422,20 +1410,14 @@ enum TemplatePricingMode {
   UNPUBLISHED
 }
 
-enum TemplateReadiness {
-  INCOMPLETE
-  NEEDS_CONFIGURATION
-  NEEDS_FETCH
-  READY
-}
-
 enum TemplateServiceKind {
   AUDIO
   EMBEDDING
   IMAGE
   RERANK
+  STT
   TEXT
-  UNKNOWN
+  TTS
   VIDEO
 }
 

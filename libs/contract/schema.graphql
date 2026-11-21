@@ -179,11 +179,6 @@ enum ProviderModelCapability {
   STRUCTURED_OUTPUT
 }
 
-enum TemplateAuthStatus {
-  CONFIGURED
-  UNKNOWN
-}
-
 enum TemplateAuthenticationMethod {
   API_KEY
   OAUTH
@@ -237,6 +232,12 @@ enum TemplateInputKind {
   PRICE
 }
 
+enum TemplateOAuthFlow {
+  AUTHORIZATION_CODE
+  DEVICE_CODE
+  CLIENT_CREDENTIALS
+}
+
 enum TemplatePricingMode {
   FIXED
   TIERED
@@ -248,13 +249,6 @@ enum TemplatePricingMode {
   SCHEDULED
 }
 
-enum TemplateReadiness {
-  READY
-  NEEDS_FETCH
-  NEEDS_CONFIGURATION
-  INCOMPLETE
-}
-
 enum TemplateServiceKind {
   TEXT
   EMBEDDING
@@ -262,7 +256,8 @@ enum TemplateServiceKind {
   AUDIO
   VIDEO
   RERANK
-  UNKNOWN
+  TTS
+  STT
 }
 
 "Text operation determining the upstream request and response format."
@@ -862,7 +857,6 @@ type ModelTemplate {
   headers: [TemplateHeader!]!
   operations: [TemplateOperation!]!
   capabilities: [ProviderModelCapability!]!
-  capabilitySupport: [TemplateCapabilitySupport!]!
   maxContextTokens: ContextTokens
   maxInputTokens: ContextTokens
   maxOutputTokens: ContextTokens
@@ -873,8 +867,7 @@ type ModelTemplate {
   billingModel: TemplateBillingModel!
   pricingMode: TemplatePricingMode!
   cacheBilling: TemplateCacheBilling!
-  readiness: TemplateReadiness!
-  serviceKind: TemplateServiceKind!
+  serviceKind: TemplateServiceKind
 }
 
 type ModelTemplateConnection {
@@ -1082,11 +1075,9 @@ type ProviderTemplate {
   id: ID!
   name: String!
   description: String
-  logoPath: String!
-  protocol: ProviderApiProtocol!
+  logoUrl: String
   baseUrl: String
   headers: [TemplateHeader!]!
-  readiness: TemplateReadiness!
   endpoint: TemplateEndpoint!
   authentication: [TemplateAuthentication!]!
   models: ModelTemplateConnection!
@@ -1231,15 +1222,13 @@ type SidebarPreferences {
 }
 
 type TemplateAuthConfig {
-  status: TemplateAuthStatus!
-  placements: [TemplateCredentialPlacement!]
-  flow: String
+  placement: TemplateCredentialPlacement
+  flow: TemplateOAuthFlow
   authorizationUrl: String
   tokenUrl: String
   deviceAuthorizationUrl: String
-  scopes: [String!]
-  requiredInputs: [CatalogRequiredInput!]
-  reason: String
+  scopes: [String!]!
+  requiredInputs: [CatalogRequiredInput!]!
   adapter: String
 }
 
@@ -1248,17 +1237,10 @@ type TemplateAuthentication {
   configuration: TemplateAuthConfig!
 }
 
-type TemplateCapabilitySupport {
-  capability: ProviderModelCapability!
-  supported: Boolean
-}
-
 type TemplateCredentialPlacement {
-  operations: [String!]!
   location: TemplateCredentialLocation!
   name: String!
-  prefix: String!
-  adapterRequirements: [String!]!
+  prefix: String
 }
 
 type TemplateEffort {
@@ -1272,8 +1254,8 @@ type TemplateEndpoint {
 }
 
 type TemplateEndpointConfig {
-  requiredInputs: [CatalogRequiredInput!]
-  reason: String
+  urlTemplate: String
+  requiredInputs: [CatalogRequiredInput!]!
 }
 
 type TemplateHeader {

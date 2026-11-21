@@ -1,5 +1,6 @@
 import type {
   ProviderTemplate,
+  ProviderApiProtocol,
   TextModelProtocol as ContractTextModelProtocol,
   ProviderModelCapability,
   ProviderEffortMapping,
@@ -9,7 +10,7 @@ import type { NavigationRequest } from '../../../url'
 import type { FormStore } from '../../../components/form'
 
 export type EndpointMode = 'chat_completions' | 'responses' | 'messages' | 'video' | 'realtime'
-export type ApiProtocol = Lowercase<ProviderTemplate['protocol']>
+export type ApiProtocol = Lowercase<ProviderApiProtocol>
 export type TextModelProtocol = Lowercase<ContractTextModelProtocol>
 export type ModelCapability = Lowercase<ProviderModelCapability>
 export type ModelStatusFilter = 'all' | 'enabled' | 'disabled'
@@ -23,7 +24,7 @@ export type ThinkingLevel = keyof EffortMapping
 export type ProviderPreset = Pick<ProviderTemplate, 'id' | 'name'> & {
   protocol: ApiProtocol
   baseUrl?: ProviderTemplate['baseUrl']
-  logoPath?: ProviderTemplate['logoPath']
+  logoPath?: NonNullable<ProviderTemplate['logoUrl']>
 }
 export interface ModelDraft {
   /** Persisted API identity; UI draft IDs and catalog IDs never substitute for it. */

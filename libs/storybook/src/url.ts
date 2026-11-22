@@ -8,7 +8,7 @@ export interface UrlState {
 export interface UrlController {
   readonly store: Pick<StoreApi<UrlState>, 'getState' | 'getInitialState' | 'subscribe'>
   navigate(href: string, options?: { replace?: boolean }): void
-  back(fallbackHref: string, options?: { steps?: number }): void
+  back(fallbackHref: string, options?: { steps?: number; matchTarget?: boolean }): void
   update(patch: Record<string, string | null>, options?: { pathname?: string; replace?: boolean }): void
 }
 export interface NavigationRequest {

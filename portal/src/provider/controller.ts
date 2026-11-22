@@ -35,6 +35,7 @@ export class CreateProviderController implements Controller {
   private query?: string
   private provider?: string | null
   private model?: string | null
+  private departingModel?: string | null
   private confirmedModels = new Map<string, ModelDraft>()
   private localModelIds = new Map<string, string>()
   private writes = new Map<string, Promise<unknown>>()
@@ -333,10 +334,13 @@ export class CreateProviderController implements Controller {
       else search.set(key, value)
     }
     this.url.back(`/${encodeURIComponent(org.name)}/providers/new/${page}${search.size ? '?' + search : ''}`, {
-      steps: step === 'choose' && this.model ? 2 : 1,
+      matchTarget: true,
     })
   }
-  onChooseProvider = () => this.back('choose', null)
+  onChooseProvider = () => {
+    this.departingModel = this.model
+    this.back('choose', null)
+  }
   private async loadProvider(id: string) {
     const owner = this.owner
     if (!owner) return
@@ -386,6 +390,7 @@ export class CreateProviderController implements Controller {
     this.url.update({ model_q: modelQuery || null }, { replace: true })
   }
   onEditModel = (id: string) => {
+    this.departingModel = undefined
     if (!this.provider) return
     this.navigate('configure', this.provider, id)
     if (id.startsWith('draft:')) {
@@ -449,6 +454,7 @@ export class CreateProviderController implements Controller {
     }
   }
   onCancelModel = () => {
+    this.departingModel = this.model
     if (this.provider) this.back('configure', this.provider)
   }
   onRetryCatalog = () => {
@@ -633,7 +639,8 @@ export class CreateProviderController implements Controller {
       }))
       if (!reference) {
         this.localModelIds.set(response.id, draft.id)
-        if (this.model === draft.id) this.url.update({ model: response.id }, { replace: true })
+        if (this.model === draft.id && this.departingModel !== draft.id)
+          this.url.update({ model: response.id }, { replace: true })
       }
       return saved
     })()

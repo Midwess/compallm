@@ -5,6 +5,24 @@ import { notify } from '../notifications/toast'
 
 type Router = ReturnType<typeof createBrowserRouter>
 const MAX_URL_LENGTH = 16 * 1024
+type ReturnLocation = { index: number; href: string }
+function returnLocations(state: unknown): ReturnLocation[] {
+  if (!state || typeof state !== 'object' || !('navigationParents' in state) || !Array.isArray(state.navigationParents))
+    return []
+  return state.navigationParents.filter(
+    (value): value is ReturnLocation =>
+      !!value &&
+      typeof value === 'object' &&
+      Number.isInteger(value.index) &&
+      value.index >= 0 &&
+      typeof value.href === 'string',
+  )
+}
+function canonical(href: string) {
+  const value = new URL(href, window.location.origin)
+  value.searchParams.sort()
+  return value.pathname + value.search + value.hash
+}
 function stateOf(url: URL): UrlState {
   return { pathname: url.pathname, search: url.search, hash: url.hash }
 }
@@ -84,16 +102,35 @@ export class UrlController implements Contract {
     }
     if (this.intended?.href === target.href) return true
     this.intended = target
+    const location = this.router.state.location
+    const index = window.history?.state?.idx
+    const parents = returnLocations(location.state).filter((value) => typeof index !== 'number' || value.index < index)
+    if (!options.replace && typeof index === 'number')
+      parents.push({ index, href: location.pathname + location.search + location.hash })
     void this.router
-      .navigate(path, { replace: options.replace, preventScrollReset: true })
+      .navigate(path, {
+        replace: options.replace,
+        preventScrollReset: true,
+        state: { ...location.state, navigationParents: parents.slice(-64) },
+      })
       .catch((error: unknown) => notify.error(error))
     return true
   }
-  back = (fallbackHref: string, options: { steps?: number } = {}) => {
+  back = (fallbackHref: string, options: { steps?: number; matchTarget?: boolean } = {}) => {
     if (!this.router) throw new Error('URL controller is not connected.')
     const index = window.history?.state?.idx
-    const steps = Math.max(1, Math.trunc(options.steps ?? 1))
-    if (typeof index === 'number' && index >= steps) {
+    const parent = options.matchTarget
+      ? returnLocations(this.router.state.location.state).findLast(
+          (entry) => typeof index === 'number' && entry.index < index && canonical(entry.href) === canonical(fallbackHref),
+        )
+      : undefined
+    const steps = options.matchTarget
+      ? parent && typeof index === 'number'
+        ? index - parent.index
+        : 0
+      : Math.max(1, Math.trunc(options.steps ?? 1))
+    if (typeof index === 'number' && steps > 0 && index >= steps) {
+      this.intended = new URL(fallbackHref, window.location.origin)
       void this.router.navigate(-steps).catch((error: unknown) => notify.error(error))
       return true
     }

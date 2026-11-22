@@ -26,6 +26,7 @@ function RequestDemo() {
       <section className="grid gap-3">
         <p className="text-muted-foreground">Pending requests: {pending}</p>
         <Button onClick={() => request(2500)}>Start request</Button>
+        <Button onClick={() => request(30000)}>Slow request</Button>
         <Button
           onClick={() => {
             request(1500)

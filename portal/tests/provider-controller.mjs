@@ -313,3 +313,31 @@ test('a new model save finishing after Back does not reopen its configuration pa
   assert.equal(c.store.getState().editingModelId, null)
   assert.ok(c.store.getState().models.some((row) => row.name === 'new-text'))
 })
+
+test('model form resets preserve navigation ownership when returning to Configure', async (t) => {
+  const requests = []
+  t.mock.method(
+    globalThis,
+    'fetch',
+    (_url, init) => new Promise((resolve) => requests.push({ body: JSON.parse(init.body), resolve })),
+  )
+  const { controller: c, url } = setup()
+  t.after(c.stop)
+  c.start()
+  await tick()
+  requests.at(-1).resolve(list(['a']))
+  await tick()
+  c.onSelectProvider('a')
+  await tick()
+  requests.at(-1).resolve(Response.json({ data: { effectiveProviderTemplate: { node: provider('a') } } }))
+  await tick()
+  c.onAddModel('openai_chat_completions')
+  const form = c.store.form.scope(['modelDraft'])
+  form.configure({ mode: 'blur' })
+  form.reset(c.store.getState())
+  c.onCancelModel()
+  assert.equal(new URLSearchParams(url.store.getState().search).has('model'), false)
+  assert.equal(c.store.getState().editingModelId, null)
+  assert.equal(c.store.getState().modelDraft, null)
+  form.stop()
+})

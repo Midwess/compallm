@@ -143,7 +143,7 @@ export class FormModel<T extends object> implements FormScope {
       this.timers.clear()
       this.queued.clear()
     }
-    this.options = options
+    this.options = { ...options, names: options.names ?? this.options.names }
   }
   get values(): T {
     return this.api.getValues() as T

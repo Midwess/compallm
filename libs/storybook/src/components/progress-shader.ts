@@ -1,3 +1,4 @@
+import { ProgressMotion, progressTiming, type ProgressPhase, type ProgressSnapshot } from './progress-motion'
 import { Renderer, Triangle, Program, Mesh } from 'ogl'
 
 const vertex = `
@@ -9,17 +10,15 @@ void main() {
   gl_Position = vec4(position, 0.0, 1.0);
 }`
 const fragment = `
-precision mediump float;
+precision highp float;
 uniform float uTime;
 uniform vec3 uColor;
-uniform float uElapsed;
 uniform float uProgress;
-uniform float uFinishing;
+uniform float uOpacity;
 varying vec2 vUv;
 void main() {
-  float elapsed = uElapsed;
   float progress = uProgress;
-  float fade = 1.0 - uFinishing * smoothstep(0.1, 0.18, elapsed);
+  float fade = uOpacity;
   float mask = 1.0 - smoothstep(progress, progress + 0.001, vUv.x);
   float depth = 1.0 - vUv.y;
   float behind = max(0.0, progress - vUv.x);
@@ -37,12 +36,11 @@ void main() {
   gl_FragColor = vec4(color, alpha * mask * fade);
 }`
 
-export type ProgressPhase = 'idle' | 'loading' | 'finishing'
 export type ProgressMessage =
   | { type: 'init'; canvas: OffscreenCanvas }
   | { type: 'resize'; width: number }
   | { type: 'theme'; color: number[] }
-  | { type: 'state'; phase: ProgressPhase; hidden: boolean; reduced: boolean }
+  | { type: 'state'; phase: ProgressPhase; hidden: boolean; reduced: boolean; motion: ProgressSnapshot }
 
 let renderer: Renderer
 let program: Program
@@ -51,33 +49,15 @@ let phase: ProgressPhase = 'idle'
 let hidden = false
 let reduced = false
 let frame = 0
-let changed = 0
-let from = 0
-let target = 0
-
-function progress(now: number) {
-  const elapsed = Math.max(0, now - changed)
-  if (phase === 'idle') return 0
-  if (phase === 'finishing') {
-    const t = Math.min(1, elapsed / 100)
-    return from + (1 - from) * (t * t * (3 - 2 * t))
-  }
-  const knee = Math.max(from, 0.7)
-  if (from < 0.7 && elapsed < 700) {
-    const t = elapsed / 700
-    return from + (knee - from) * (t * t * (3 - 2 * t))
-  }
-  const tail = Math.max(0, elapsed - (from < 0.7 ? 700 : 0))
-  return knee + ((Math.max(0.98, knee) - knee) * tail) / (tail + 30000)
-}
+const timeline = new ProgressMotion()
 function draw(now: number) {
   frame = 0
   if (!renderer || hidden || phase === 'idle' || renderer.gl.isContextLost()) return
-  program.uniforms.uTime.value = (now - changed) / 1000
-  program.uniforms.uElapsed.value = (now - changed) / 1000
-  program.uniforms.uProgress.value = reduced ? target : progress(now)
+  program.uniforms.uTime.value = (now / 1000) % (Math.PI * 10)
+  program.uniforms.uProgress.value = reduced ? (phase === 'loading' ? progressTiming.knee : 1) : timeline.value(now)
+  program.uniforms.uOpacity.value = reduced ? 1 : timeline.opacity(now)
   renderer.render({ scene: mesh })
-  if (!reduced && (phase === 'loading' || now - changed < 180)) frame = requestAnimationFrame(draw)
+  if (!reduced && (phase === 'loading' || timeline.opacity(now) > 0)) frame = requestAnimationFrame(draw)
 }
 function resume() {
   cancelAnimationFrame(frame)
@@ -106,9 +86,8 @@ self.onmessage = (event: MessageEvent<ProgressMessage>) => {
         uniforms: {
           uTime: { value: 0 },
           uColor: { value: [0.5, 0.4, 1] },
-          uElapsed: { value: 0 },
           uProgress: { value: 0 },
-          uFinishing: { value: 0 },
+          uOpacity: { value: 1 },
         },
       })
       mesh = new Mesh(gl, { geometry: new Triangle(gl), program })
@@ -122,16 +101,10 @@ self.onmessage = (event: MessageEvent<ProgressMessage>) => {
     } else if (message.type === 'theme') {
       program.uniforms.uColor.value = message.color
     } else {
-      const now = performance.now()
-      if (phase !== message.phase) {
-        from = phase === 'idle' ? 0.08 : progress(now)
-        phase = message.phase
-        target = phase === 'loading' ? 0.7 : phase === 'finishing' ? 1 : 0
-        changed = now
-      }
+      timeline.restore(message.motion, performance.timeOrigin)
+      phase = message.phase
       hidden = message.hidden
       reduced = message.reduced
-      program.uniforms.uFinishing.value = phase === 'finishing' && !reduced ? 1 : 0
     }
     resume()
   } catch {

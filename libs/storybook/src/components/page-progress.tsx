@@ -1,20 +1,25 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
-import { animation } from './motion'
-import type { ProgressMessage, ProgressPhase } from './progress-shader'
+import { useReducedMotion } from 'motion/react'
+import { animation, useRequestProgressMotion } from './motion'
+import type { ProgressMessage } from './progress-shader'
+import { ProgressMotion, type ProgressPhase } from './progress-motion'
 
 export function PageProgress({ active }: { active: boolean }) {
   const host = useRef<HTMLDivElement>(null)
   const surface = useRef<HTMLDivElement>(null)
+  const fallback = useRef<HTMLDivElement>(null)
   const worker = useRef<Worker | null>(null)
   const startedAt = useRef<number | null>(null)
   const [phase, setPhase] = useState<ProgressPhase>('idle')
   const [ready, setReady] = useState(false)
   const reduced = useReducedMotion()
-  const current = useRef({ phase, reduced: !!reduced })
+  const [timeline] = useState(() => new ProgressMotion())
+  useRequestProgressMotion(fallback, phase, !ready, timeline)
+  const current = useRef({ phase, reduced: !!reduced, motion: timeline.snapshot() })
   useLayoutEffect(() => {
-    current.current = { phase, reduced: !!reduced }
-  }, [phase, reduced])
+    timeline.setPhase(phase, performance.now())
+    current.current = { phase, reduced: !!reduced, motion: timeline.snapshot(performance.timeOrigin) }
+  }, [phase, reduced, timeline])
 
   useEffect(() => {
     const element = surface.current
@@ -85,7 +90,7 @@ export function PageProgress({ active }: { active: boolean }) {
   }, [])
 
   useEffect(() => {
-    worker.current?.postMessage({ type: 'state', phase, reduced: !!reduced, hidden: document.hidden } satisfies ProgressMessage)
+    worker.current?.postMessage({ type: 'state', ...current.current, hidden: document.hidden } satisfies ProgressMessage)
   }, [phase, reduced])
 
   useLayoutEffect(() => {
@@ -99,10 +104,15 @@ export function PageProgress({ active }: { active: boolean }) {
       finish = setTimeout(
         () => {
           setPhase('finishing')
-          hide = setTimeout(() => {
-            setPhase('idle')
-            startedAt.current = null
-          }, animation.progress.fade)
+          hide = setTimeout(
+            () => {
+              setPhase('idle')
+              startedAt.current = null
+            },
+            reduced
+              ? animation.progress.settle
+              : animation.progress.finish + animation.progress.settle + animation.progress.fade,
+          )
         },
         Math.max(animation.progress.grace, animation.progress.minimumVisible - (performance.now() - startedAt.current)),
       )
@@ -111,7 +121,7 @@ export function PageProgress({ active }: { active: boolean }) {
       clearTimeout(finish)
       clearTimeout(hide)
     }
-  }, [active])
+  }, [active, reduced])
 
   useLayoutEffect(() => {
     const element = host.current
@@ -141,18 +151,12 @@ export function PageProgress({ active }: { active: boolean }) {
       aria-hidden={phase === 'idle'}
     >
       <div ref={surface} className="absolute inset-0" hidden={phase === 'idle' || !ready} />
-      <motion.div
+      <div
+        ref={fallback}
         aria-hidden="true"
         className="absolute inset-x-0 top-0 h-0.5 origin-left bg-primary will-change-transform"
-        initial={false}
         hidden={ready}
-        animate={{ scaleX: phase === 'idle' ? 0 : phase === 'finishing' ? 1 : 0.9, opacity: phase === 'idle' ? 0 : 1 }}
-        transition={{
-          duration: reduced
-            ? 0
-            : (phase === 'finishing' ? animation.progress.finish : animation.progress.minimumVisible) / 1000,
-          ease: [...animation.progress.ease],
-        }}
+        style={{ transform: 'scaleX(0)', opacity: 0 }}
       />
     </div>
   )

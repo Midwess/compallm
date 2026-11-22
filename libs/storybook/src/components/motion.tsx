@@ -1,3 +1,4 @@
+import { ProgressMotion, progressTiming, type ProgressPhase } from './progress-motion'
 import {
   createElement,
   useCallback,
@@ -16,7 +17,7 @@ import { motion, useReducedMotion, type HTMLMotionProps } from 'motion/react'
 export const animation = {
   skeleton: { delayMs: 180, minimumVisibleMs: 180 },
   skeletonShimmer: { duration: 3.2, ease: 'linear', repeat: Infinity },
-  progress: { minimumVisible: 500, grace: 0, finish: 100, fade: 180, ease: [0.333333, 0, 0.666667, 1] },
+  progress: progressTiming,
   textEntrance: { duration: 1.1, ease: [0.12, 1, 0.18, 1], stagger: 0.1, delay: 0.3, distance: 20 },
   cascade: { duration: 1.5, ease: [0.12, 1, 0.18, 1], stagger: 0.14, delay: 0.3, distance: 128 },
   interaction: { duration: 0.12, ease: 'easeOut' },
@@ -97,6 +98,35 @@ export function useSkeletonMotion(ref: RefObject<HTMLElement | null>, active: bo
       node.style.backgroundPosition = previous
     }
   }, [ref, active])
+}
+
+export function useRequestProgressMotion(
+  ref: RefObject<HTMLElement | null>,
+  phase: ProgressPhase,
+  enabled: boolean,
+  timeline: ProgressMotion,
+) {
+  const reduced = useReducedMotion()
+  useEffect(() => {
+    const node = ref.current
+    if (!node || !enabled) return
+    let frame = 0
+    const draw = (now: number) => {
+      const position = reduced
+        ? phase === 'loading'
+          ? progressTiming.knee
+          : phase === 'finishing'
+            ? 1
+            : 0
+        : timeline.value(now)
+      node.style.transform = `scaleX(${position})`
+      node.style.opacity = String(reduced ? (phase === 'idle' ? 0 : 1) : timeline.opacity(now))
+      if (!reduced && phase !== 'idle' && (phase === 'loading' || timeline.opacity(now) > 0))
+        frame = requestAnimationFrame(draw)
+    }
+    draw(performance.now())
+    return () => cancelAnimationFrame(frame)
+  }, [ref, phase, enabled, reduced, timeline])
 }
 
 export function LoadingMotion({ children }: { children: React.ReactNode }) {

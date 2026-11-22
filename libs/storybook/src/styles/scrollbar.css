@@ -1,7 +1,8 @@
 /* Native scrolling shares one treatment across the consumer application. */
 html,
 body {
-  overscroll-behavior: none;
+  overscroll-behavior-x: auto;
+  overscroll-behavior-y: none;
 }
 
 html {

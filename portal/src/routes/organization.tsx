@@ -35,6 +35,7 @@ function Workspace({ user }: { user: AuthUser }) {
   const firstPresentation = useStore(onboarding.store, (s) => s.firstPresentation)
   const visible = useStore(onboarding.store, (s) => s.visible)
   const [controller] = useState(() => new OrganizationController(user, url, auth))
+  useEffect(() => controller.start(), [controller])
   useEffect(() => controller.setCurrentUser(user), [controller, user])
   useEffect(() => userPreferenceController.connectOrganization(controller, url), [controller, url])
   return (

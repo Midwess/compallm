@@ -183,7 +183,7 @@ export function SettingsPage() {
       <main
         className={cx(
           `@container relative mr-2 mb-2 ml-2 min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto
-overscroll-none rounded-xl border-(length:--border-hairline) border-divider bg-surface pr-2 scrollbar-gutter-stable md:ml-0`,
+overscroll-y-none rounded-xl border-(length:--border-hairline) border-divider bg-surface pr-2 scrollbar-gutter-stable md:ml-0`,
           membersPage ? 'mt-2' : 'mt-4',
         )}
         aria-label="Settings content"

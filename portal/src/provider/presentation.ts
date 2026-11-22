@@ -58,7 +58,7 @@ export function modelRow(value: ProviderDetail['models']['edges'][number]['node'
     ],
   }
 }
-export function modelDraft(value: ModelDetail): ModelDraft {
+export function modelDraft(value: ModelDetail, global?: ModelDetail | null): ModelDraft {
   const protocol = value.connections
     .map(
       ({ protocol }) =>
@@ -91,6 +91,7 @@ export function modelDraft(value: ModelDetail): ModelDraft {
   const entries = (items: { key: string; value: string }[]) => items.map((entry, index) => ({ id: String(index), ...entry }))
   const draft: ModelDraft = {
     id: value.id,
+    origin: value.origin,
     catalogRef: { provider: value.providerTemplateId, model: value.id },
     name: value.name,
     protocol,
@@ -126,5 +127,23 @@ export function modelDraft(value: ModelDetail): ModelDraft {
     headers: entries(value.headers),
     bodyDefaults: entries(value.bodyDefaults),
   }
-  return { ...draft, defaults: structuredClone(draft) }
+  const defaults = global ? modelDraft(global) : undefined
+  if (defaults) {
+    draft.providerContextTokens = defaults.maxContextTokens
+    draft.templatePrices = {
+      inputPrice: defaults.inputPrice,
+      outputPrice: defaults.outputPrice,
+      cachedPrice: defaults.cachedPrice,
+    }
+  }
+  for (const field of [
+    'contextLimitEnabled',
+    'inputLimitEnabled',
+    'outputLimitEnabled',
+    'inputPriceEnabled',
+    'outputPriceEnabled',
+    'cachedPriceEnabled',
+  ] as const)
+    draft[field] = value.customFields.includes(field)
+  return { ...draft, defaults: structuredClone(defaults ?? draft) }
 }

@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use validify::{ValidationError, ValidationErrors, Validify};
 
 /// Catalog connection family hint; each configured model selects its own operation.
-#[derive(Clone, Copy, Debug, GraphQLEnum, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, GraphQLEnum, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ProviderApiProtocol {
     OpenaiCompatible,
@@ -20,7 +20,7 @@ pub enum ProviderApiProtocol {
 }
 
 /// Text operation determining the upstream request and response format.
-#[derive(Clone, Copy, Debug, GraphQLEnum, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, GraphQLEnum, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TextModelProtocol {
     OpenaiChatCompletions,
@@ -29,7 +29,7 @@ pub enum TextModelProtocol {
 }
 
 /// Capabilities declared by a catalog or configured model; not an authorization grant.
-#[derive(Clone, Copy, Debug, GraphQLEnum, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, GraphQLEnum, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ProviderModelCapability {
     Text,
@@ -198,7 +198,7 @@ pub struct ProviderModelConfiguration {
     pub cached_price_enabled: bool,
 }
 
-fn model_price(value: &str) -> Result<(), ValidationError> {
+pub(crate) fn model_price(value: &str) -> Result<(), ValidationError> {
     input::price(value)?;
     let (whole, fraction) = value.split_once('.').unwrap_or((value, ""));
     let whole = whole.trim_start_matches('0');
@@ -210,9 +210,11 @@ fn model_price(value: &str) -> Result<(), ValidationError> {
     }
     Ok(())
 }
-fn model_price_contract() -> Value {
+pub(crate) fn model_price_contract() -> Value {
     let mut metadata = input::price_contract();
     metadata["x-compallm-format"] = json!("modelPrice");
+    metadata["minimum"] = json!(0);
+    metadata["maximum"] = json!(10_000);
     metadata
 }
 
@@ -309,14 +311,14 @@ fn body_value(value: &str) -> Result<(), ValidationError> {
 fn body_value_contract() -> Value {
     json!({"x-compallm-format": "jsonValue"})
 }
-fn body_entries(entries: &[ProviderBodyDefault]) -> Result<(), ValidationError> {
+pub(crate) fn body_entries(entries: &[ProviderBodyDefault]) -> Result<(), ValidationError> {
     let mut keys = std::collections::HashSet::new();
     if entries.iter().any(|entry| !keys.insert(&entry.key)) {
         return Err(ValidationError::new_field("duplicate_body_field"));
     }
     Ok(())
 }
-fn body_entries_contract() -> Value {
+pub(crate) fn body_entries_contract() -> Value {
     json!({"x-compallm-array-rule": "bodyDefaults"})
 }
 fn enabled() -> bool {
@@ -360,10 +362,10 @@ fn model_writes(entries: &[ProviderModelWrite]) -> Result<(), ValidationError> {
 fn model_writes_contract() -> Value {
     json!({"minItems": 1, "x-compallm-array-rule": "modelWrites"})
 }
-fn header_entries(entries: &[ProviderHeader]) -> Result<(), ValidationError> {
+pub(crate) fn header_entries(entries: &[ProviderHeader]) -> Result<(), ValidationError> {
     unique_headers(entries.iter().map(|header| header.key.as_str()))
 }
-fn header_entries_contract() -> Value {
+pub(crate) fn header_entries_contract() -> Value {
     json!({"x-compallm-array-rule": "headers"})
 }
 fn unique_headers<'a>(keys: impl Iterator<Item = &'a str>) -> Result<(), ValidationError> {
@@ -599,4 +601,59 @@ impl From<compallm_core::provider::Capability> for ProviderModelCapability {
             compallm_core::provider::Capability::StructuredOutput => Self::StructuredOutput,
         }
     }
+}
+
+impl From<TextModelProtocol> for compallm_core::provider::Protocol {
+    fn from(value: TextModelProtocol) -> Self {
+        match value {
+            TextModelProtocol::OpenaiChatCompletions => Self::Openai,
+            TextModelProtocol::OpenaiResponses => Self::OpenaiResponses,
+            TextModelProtocol::AnthropicMessages => Self::Anthropic,
+        }
+    }
+}
+impl From<ProviderModelCapability> for compallm_core::provider::Capability {
+    fn from(value: ProviderModelCapability) -> Self {
+        match value {
+            ProviderModelCapability::Text => Self::Text,
+            ProviderModelCapability::Vision => Self::Vision,
+            ProviderModelCapability::Pdf => Self::Pdf,
+            ProviderModelCapability::Audio => Self::Audio,
+            ProviderModelCapability::Video => Self::Video,
+            ProviderModelCapability::ImageGeneration => Self::ImageGeneration,
+            ProviderModelCapability::AudioGeneration => Self::AudioGeneration,
+            ProviderModelCapability::Search => Self::Search,
+            ProviderModelCapability::Reasoning => Self::Reasoning,
+            ProviderModelCapability::ToolCall => Self::ToolCall,
+            ProviderModelCapability::ForcedToolChoice => Self::ForcedToolChoice,
+            ProviderModelCapability::StructuredOutput => Self::StructuredOutput,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProviderCreateFromTemplateInput {
+    #[modify(trim)]
+    #[validate(length(min=1,max=120,message="Connection name must contain 1 to 120 characters."),custom(function=input::nonblank,message="Enter a connection name."))]
+    pub name: String,
+    pub provider_template_id: String,
+    #[validate(custom(function=input::base_url,message="Enter an HTTP or HTTPS server URL without credentials, query, or fragment."))]
+    pub base_url: String,
+    #[validate(length(min=1,max=512,message="Enter an API key of 1 to 512 characters."),custom(function=input::api_key,message="API keys cannot contain whitespace."))]
+    pub api_key: String,
+    #[validify]
+    #[validate(custom(function=header_entries,message="Header names must be unique, ignoring case."))]
+    pub headers: Vec<ProviderHeader>,
+    #[validify]
+    #[validate(length(min = 1, max = 1000, message = "Enable between 1 and 1,000 models."))]
+    pub models: Vec<ProviderTemplateModelInput>,
+    pub logo_url: Option<String>,
+    pub logo_upload_id: Option<String>,
+}
+#[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProviderTemplateModelInput {
+    pub id: String,
+    pub protocol: TextModelProtocol,
 }

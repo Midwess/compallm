@@ -1693,6 +1693,7 @@ dependencies = [
  "juniper_axum",
  "loco-rs",
  "midwess-hero",
+ "rust_decimal",
  "schemars 1.2.1",
  "serde",
  "serde_json",
@@ -1701,6 +1702,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "uuid",
  "validify",
 ]
 
@@ -1846,6 +1848,7 @@ dependencies = [
  "serde",
  "serde_json",
  "url",
+ "uuid",
 ]
 
 [[package]]

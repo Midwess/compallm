@@ -196,3 +196,21 @@ impl FromContext<GraphqlContext> for compallm_postgres::catalog::repository::Cat
         <Self as FromContext<Di>>::from(context.di)
     }
 }
+
+impl FromContext<GraphqlContext> for compallm_core::provider::CreationService<'static> {
+    fn from(context: &GraphqlContext) -> &Self {
+        juniper::FromContext::from(context.di)
+    }
+}
+
+impl FromContext<GraphqlContext> for Option<compallm_core::provider::ProviderCredentialCipher> {
+    fn from(context: &GraphqlContext) -> &Self {
+        juniper::FromContext::from(context.di)
+    }
+}
+
+impl FromContext<GraphqlContext> for compallm_postgres::repository::provider::ProviderRepository {
+    fn from(context: &GraphqlContext) -> &Self {
+        juniper::FromContext::from(context.di)
+    }
+}

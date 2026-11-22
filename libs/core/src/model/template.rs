@@ -12,7 +12,9 @@ use crate::provider::{
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ModelTemplate {
     pub id: String,
-    pub research_id: String,
+    #[serde(default)]
+    pub custom_fields: std::collections::BTreeSet<String>,
+    pub research_id: Option<String>,
     pub provider_template_id: String,
     pub name: String,
     pub display_name: Option<String>,
@@ -36,7 +38,7 @@ pub struct ModelTemplate {
 }
 
 impl ModelTemplate {
-    fn capability_fields(&self) -> CapabilityFields<'_> {
+    pub(crate) fn capability_fields(&self) -> CapabilityFields<'_> {
         CapabilityFields {
             text: &self.text,
             vision: &self.vision,

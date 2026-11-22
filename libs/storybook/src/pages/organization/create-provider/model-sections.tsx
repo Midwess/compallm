@@ -1,3 +1,4 @@
+import { ModelTemplateLimitsInputConstraints, ModelTemplatePriceInputConstraints } from '@compallm/contract/validation'
 import { Skeleton } from '../../../components/loading'
 import { useId, type ReactNode } from 'react'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
@@ -170,12 +171,8 @@ function LimitRow({
   const id = useId()
   const field = useFormField<string>(`modelDraft.${valueKey}`)!
   const enabled = useFormField<boolean>(`modelDraft.${enabledKey}`)!
-  const context = useProvider(
-    (s) => (s.modelDraft ? effectiveContextTokens(s.modelDraft) : undefined),
-    ['modelDraft.maxContextTokens', 'modelDraft.contextLimitEnabled', 'modelDraft.providerContextTokens'],
-  )
-  const maximum =
-    kind === 'context' ? Math.max(10000000, Number(context) || 0) : Math.min(10000000, Number(context) || 10000000)
+  const minimum = ModelTemplateLimitsInputConstraints.context.minimum
+  const maximum = ModelTemplateLimitsInputConstraints.context.maximum
   const help = {
     context: `
 The total token budget shared by the request and reply. Uncheck to use the provider’s context value. If you
@@ -241,11 +238,12 @@ The reply also has to fit the space left after the actual input. Uncheck to use 
       {enabled.value ? (
         <RangeSlider
           label={`${label} capacity`}
-          min={100}
-          max={Math.max(101, maximum)}
+          min={minimum}
+          max={maximum}
           value={Number(field.value) || 100}
           onValueChange={(value) => field.change(String(value))}
           onBlur={field.blur}
+          onValueCommit={field.blur}
           className={`pl-7 pr-2 ${modelTones[kind]}`}
         />
       ) : null}
@@ -338,6 +336,8 @@ independent of the input price. Uncheck to use the template rate.
               name={`modelDraft.${name}`}
               aria-label={`${label} price`}
               inputMode="decimal"
+              min={ModelTemplatePriceInputConstraints.value.minimum}
+              max={ModelTemplatePriceInputConstraints.value.maximum}
               required
               placeholder="Enter rate"
               className="rounded-lg pl-6.5 text-right"

@@ -1,8 +1,8 @@
 use compallm_core::{model::ModelTemplate, provider::ProviderTemplate};
 use compallm_postgres::{Migrator, ProviderModelTemplateSchema, ProviderTemplateSchema};
 use sea_orm::{
-    ConnectionTrait, Database, DatabaseTransaction, EntityTrait, ExprTrait, ModelTrait,
-    TransactionTrait,
+    ColumnTrait, ConnectionTrait, Database, DatabaseTransaction, EntityTrait, ExprTrait,
+    ModelTrait, QueryFilter, TransactionTrait,
     sea_query::{Alias, Asterisk, Expr, Func, Query},
 };
 use sea_orm_migration::{MigrationTrait, MigratorTrait, SchemaManager};
@@ -17,6 +17,28 @@ async fn setup() -> anyhow::Result<(DatabaseTransaction, CatalogMigrations)> {
     tx.execute_unprepared("LOCK TABLE provider_templates IN ACCESS EXCLUSIVE MODE")
         .await?;
     let mut migrations = Migrator::migrations();
+    let search = migrations.remove(
+        migrations
+            .iter()
+            .position(|m| m.name().ends_with("catalog_search"))
+            .unwrap(),
+    );
+    let has_search=tx.query_one(&Query::select().expr(Expr::cust("EXISTS(SELECT 1 FROM pg_indexes WHERE indexname='provider_template_search_trgm')")).to_owned()).await?.unwrap().try_get_by_index::<bool>(0)?;
+    if has_search {
+        search.down(&SchemaManager::new(&tx)).await?;
+    }
+
+    let personal = migrations.remove(
+        migrations
+            .iter()
+            .position(|m| m.name().ends_with("personal_model_templates"))
+            .unwrap(),
+    );
+    let has_personal=tx.query_one(&Query::select().expr(Expr::cust("EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='provider_model_templates' AND column_name='row_id')")).to_owned()).await?.unwrap().try_get_by_index::<bool>(0)?;
+    if has_personal {
+        personal.down(&SchemaManager::new(&tx)).await?;
+    }
+
     let pricing = migrations.remove(
         migrations
             .iter()
@@ -43,6 +65,7 @@ async fn setup() -> anyhow::Result<(DatabaseTransaction, CatalogMigrations)> {
         shared,
         capabilities,
         pricing,
+        personal,
     };
     let has_capabilities=tx.query_one(&Query::select().expr(Expr::cust("EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='provider_model_templates' AND column_name='vision')")).to_owned()).await?.unwrap().try_get_by_index::<bool>(0)?;
     if has_capabilities {
@@ -95,7 +118,7 @@ async fn snapshot<C: ConnectionTrait>(db: &C) -> anyhow::Result<Value> {
 }
 
 #[tokio::test]
-#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 through 52"]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 through 53"]
 async fn shared_catalog_migration_preserves_every_row_and_decodes_shared_entities()
 -> anyhow::Result<()> {
     let (tx, migration) = setup().await?;
@@ -211,7 +234,7 @@ async fn update<C: ConnectionTrait>(
 }
 
 #[tokio::test]
-#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 through 52"]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 through 53"]
 async fn shared_catalog_research_links_and_rollback_preserve_later_edits() -> anyhow::Result<()> {
     let (tx, migration) = setup().await?;
     migration.up(&SchemaManager::new(&tx)).await?;
@@ -269,7 +292,7 @@ async fn shared_catalog_research_links_and_rollback_preserve_later_edits() -> an
 }
 
 #[tokio::test]
-#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 through 52"]
+#[ignore = "requires CATALOG_TYPES_TEST_URL in an isolated catalog database at migration 49 through 53"]
 async fn shared_catalog_rejects_invalid_capabilities_and_reflects_missing_configuration()
 -> anyhow::Result<()> {
     let (tx, migration) = setup().await?;
@@ -279,13 +302,13 @@ async fn shared_catalog_rejects_invalid_capabilities_and_reflects_missing_config
         .into_iter()
         .find(|r| r["readiness"] == "ready")
         .unwrap();
-    let model = Models::find_by_id((
-        ready["provider_template_id"].as_str().unwrap().to_owned(),
-        ready["id"].as_str().unwrap().to_owned(),
-    ))
-    .one(&tx)
-    .await?
-    .unwrap();
+    type MC = <Models as EntityTrait>::Column;
+    let model = Models::find()
+        .filter(MC::ProviderTemplateId.eq(ready["provider_template_id"].as_str().unwrap()))
+        .filter(MC::Id.eq(ready["id"].as_str().unwrap()))
+        .one(&tx)
+        .await?
+        .unwrap();
     let nested = tx.begin().await?;
     assert!(
         update(
@@ -428,14 +451,17 @@ struct CatalogMigrations {
     shared: Box<dyn MigrationTrait>,
     capabilities: Box<dyn MigrationTrait>,
     pricing: Box<dyn MigrationTrait>,
+    personal: Box<dyn MigrationTrait>,
 }
 impl CatalogMigrations {
     async fn up(&self, manager: &SchemaManager<'_>) -> Result<(), sea_orm::DbErr> {
         self.shared.up(manager).await?;
         self.capabilities.up(manager).await?;
-        self.pricing.up(manager).await
+        self.pricing.up(manager).await?;
+        self.personal.up(manager).await
     }
     async fn down(&self, manager: &SchemaManager<'_>) -> Result<(), sea_orm::DbErr> {
+        self.personal.down(manager).await?;
         self.pricing.down(manager).await?;
         self.capabilities.down(manager).await?;
         self.shared.down(manager).await

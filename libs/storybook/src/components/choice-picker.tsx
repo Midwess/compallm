@@ -160,7 +160,7 @@ function List({
 }: Omit<ComponentPropsWithRef<'div'>, 'children'> & {
   children: ReactNode | ((option: ChoicePickerOption) => ReactNode)
 }) {
-  return <Combobox.List {...props} className={cx('min-h-0 max-h-64 flex-1 overflow-y-auto overscroll-none p-1', className)} />
+  return <Combobox.List {...props} className={cx('min-h-0 max-h-64 flex-1 overflow-y-auto overscroll-y-none p-1', className)} />
 }
 function Item({
   className,

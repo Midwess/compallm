@@ -136,3 +136,93 @@ impl CoreProviderRepository for ProviderRepository {
         Provider::try_from(providers.pop().ok_or(ProviderRepositoryError::NotFound)?)
     }
 }
+
+impl ProviderRepository {
+    pub async fn find_by_id(&self, id: u64) -> Result<Option<Provider>, ProviderRepositoryError> {
+        let context = DbContext::current()?;
+        let db = PostgresConnection::from_context(&context)?;
+        let Some(row) = Providers::find_by_id(Self::database_id(id, "provider ID")?)
+            .one(db)
+            .await
+            .map_err(Self::write_error)?
+        else {
+            return Ok(None);
+        };
+        let mut value = Provider::try_from(row)?;
+        type ModelEntity = <crate::ProviderModelSchema as ModelTrait>::Entity;
+        type ModelColumn = <ModelEntity as EntityTrait>::Column;
+        value.models = ModelEntity::find()
+            .filter(ModelColumn::ProviderId.eq(id as i64))
+            .order_by_asc(ModelColumn::Id)
+            .all(db)
+            .await
+            .map_err(Self::write_error)?
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<_, _>>()?;
+        Ok(Some(value))
+    }
+}
+
+impl ProviderRepository {
+    pub async fn list(
+        &self,
+        pagination: compallm_query::Pagination,
+        scope: &str,
+    ) -> Result<compallm_query::Connection<Provider>, crate::query::QueryCompileError> {
+        use crate::query::IntoSeaQuery;
+        let context = DbContext::current()
+            .map_err(|_| DbErr::Custom("provider context unavailable".into()))?;
+        let db = PostgresConnection::from_context(&context)
+            .map_err(|_| DbErr::Custom("provider connection unavailable".into()))?;
+        let result = Box::new(compallm_query::Query::default())
+            .plan_page(
+                Providers::find(),
+                pagination,
+                vec![compallm_query::OrderBy {
+                    field: "id".into(),
+                    direction: compallm_query::OrderByDirection::AscNullsLast,
+                }],
+                100,
+                scope,
+            )?
+            .fetch(db)
+            .await?;
+        let mut edges: Vec<compallm_query::Edge<Provider>> = result
+            .edges
+            .into_iter()
+            .map(|edge| {
+                Ok(compallm_query::Edge {
+                    cursor: edge.cursor,
+                    node: Provider::try_from(edge.node)
+                        .map_err(|_| DbErr::Custom("invalid stored provider".into()))?,
+                })
+            })
+            .collect::<Result<_, DbErr>>()?;
+        if !edges.is_empty() {
+            type Models = <crate::ProviderModelSchema as ModelTrait>::Entity;
+            type MC = <Models as EntityTrait>::Column;
+            let ids = edges.iter().map(|v| v.node.id as i64).collect::<Vec<_>>();
+            let rows = Models::find()
+                .filter(MC::ProviderId.is_in(ids))
+                .order_by_asc(MC::Id)
+                .all(db)
+                .await?;
+            let mut grouped =
+                std::collections::HashMap::<u64, Vec<compallm_core::provider::ProviderModel>>::new(
+                );
+            for row in rows {
+                let model = compallm_core::provider::ProviderModel::try_from(row)
+                    .map_err(|_| DbErr::Custom("invalid configured model".into()))?;
+                grouped.entry(model.provider_id).or_default().push(model);
+            }
+            for edge in &mut edges {
+                edge.node.models = grouped.remove(&edge.node.id).unwrap_or_default();
+            }
+        }
+        Ok(compallm_query::Connection {
+            edges,
+            page_info: result.page_info,
+        })
+    }
+}

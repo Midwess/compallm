@@ -11,6 +11,7 @@ export interface OrganizationState {
   organizationId: string
   organizations: { id: string; name: string }[]
   providers: OrganizationDestination[]
+  providersLoading?: boolean
   models: OrganizationDestination[]
   conversations: { id: string; name: string; href: string }[]
   links: { stats: string; keys: string; members: string; notebooks: string; plugins: string }
@@ -31,6 +32,7 @@ export interface OrganizationController {
   onOpenSettings(): void
   onSearch(): void
   onOpenDestination(id: string): void
+  onProviderCreated?(provider: { id: string; name: string }): void
   onCreateProvider(): void
   onCreateRouter(): void
   onCreateModel(): void

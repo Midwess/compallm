@@ -22,8 +22,32 @@ impl From<CoreProviderModel> for ProviderModel {
 
 use juniper::{ID, graphql_object};
 
-#[graphql_object]
+#[graphql_object(context=crate::graphql::GraphqlContext)]
 impl Provider {
+    fn logo_url(&self) -> Option<&str> {
+        self.0.logo_url.as_deref()
+    }
+    fn description(&self) -> Option<&str> {
+        self.0.description.as_deref()
+    }
+    fn connection(&self) -> super::configuration::ConnectionConfiguration {
+        (&self.0.connection).into()
+    }
+    async fn models(
+        &self,
+        #[graphql(context)] authority: &crate::http::authorization::AuthorizationContext,
+    ) -> Result<Vec<ProviderModel>, crate::graphql::error::Error> {
+        use compallm_core::authorization::{condition::CheckPermission, policy::Action};
+        let permission = authority.member_permission().await?;
+        let mut models = Vec::new();
+        for model in &self.0.models {
+            Action::ProviderModelRead
+                .check_permission(&permission)
+                .map_err(compallm_core::authorization::error::AuthorizationError::from)?;
+            models.push(ProviderModel::from(model.clone()));
+        }
+        Ok(models)
+    }
     /// Stable provider identity, serialized as a string.
     fn id(&self) -> ID {
         ID::new(self.0.id.to_string())
@@ -42,6 +66,36 @@ impl Provider {
 
 #[graphql_object]
 impl ProviderModel {
+    fn capabilities(&self) -> Vec<super::input::ProviderModelCapability> {
+        self.0
+            .supported_capabilities()
+            .into_iter()
+            .map(Into::into)
+            .collect()
+    }
+    fn input_price(&self) -> Option<String> {
+        super::pricing::TokenDefaults::from(&self.0.text).input
+    }
+    fn output_price(&self) -> Option<String> {
+        super::pricing::TokenDefaults::from(&self.0.text).output
+    }
+    fn cached_price(&self) -> Option<String> {
+        super::pricing::TokenDefaults::from(&self.0.text).cached
+    }
+
+    fn protocol(&self) -> super::configuration::UpstreamProtocol {
+        self.0.protocol.into()
+    }
+    fn connection(&self) -> super::configuration::ConnectionConfiguration {
+        (&self.0.connection).into()
+    }
+    fn text(&self) -> super::capability::TextCapabilities {
+        (&self.0.text).into()
+    }
+    fn context_tokens(&self) -> Option<super::scalar::ContextTokens> {
+        self.0.limits.context_tokens.and_then(|v| v.try_into().ok())
+    }
+
     /// Stable configured-model identity, serialized as a string.
     fn id(&self) -> ID {
         ID::new(self.0.id.to_string())

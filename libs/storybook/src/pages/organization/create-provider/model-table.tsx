@@ -17,8 +17,10 @@ function price(value: string) {
 }
 export function ProviderModels() {
   const initial = useInitialLoading()
+  const readOnly = useProvider((state) => state.readOnly)
   const controller = useController()
   const templatePreview = useProvider((state) => state.templatePreview)
+  const creationEnabled = useProvider((state) => state.creationEnabled)
   const models = useProvider((state) => state.models, ['models'])
   const query = useProvider((state) => state.modelQuery)
   const status = useProvider((state) => state.modelStatusFilter)
@@ -48,7 +50,7 @@ export function ProviderModels() {
   )
   const editable = (id: string) =>
     templatePreview || permissionStates[intent === 'edit' ? models.findIndex((model) => model.id === id) : 0] === 'allowed'
-  const busy = useProvider((state) => state.submitting)
+  const busy = useProvider((state) => state.submitting) || !!readOnly
   const supported = (model: (typeof models)[number]) =>
     !!model.protocol || model.modes.some((mode) => ['chat_completions', 'responses', 'messages'].includes(mode))
   const visible = models.filter(
@@ -201,14 +203,14 @@ disabled:opacity-50"
             {templatePreview ? `${models.length} models available` : `${enabled} ${enabled === 1 ? 'model' : 'models'} enabled`}
           </p>
         </Skeleton>
-        {!templatePreview ? (
+        {!readOnly && (!templatePreview || creationEnabled) ? (
           <PermissionRequest
             actions={[intent === 'edit' ? 'provider.model.create' : 'provider.create']}
             resource={intent === 'edit' ? { type: 'Provider', id: providerId } : undefined}
             enabled={intent !== 'edit' || !!providerId}
           >
             {(allowed) =>
-              allowed ? (
+              allowed || creationEnabled ? (
                 <Popup.Root>
                   <Popup.Trigger
                     disabled={busy}

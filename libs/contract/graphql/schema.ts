@@ -473,6 +473,7 @@ export interface ModelTemplate {
   cachedPrice: Scalars['String'] | null
   capabilities: ProviderModelCapability[]
   connections: ModelConnection[]
+  customFields: Scalars['String'][]
   description: Scalars['String'] | null
   displayName: Scalars['String']
   effortMapping: ThinkingEffort[]
@@ -485,6 +486,7 @@ export interface ModelTemplate {
   maxOutputTokens: Scalars['ContextTokens'] | null
   name: Scalars['String']
   operations: ModelOperation[]
+  origin: ModelTemplateOrigin
   outputPrice: Scalars['String'] | null
   pdf: PdfSupport
   pricingMode: PricingMode
@@ -514,6 +516,8 @@ export interface ModelTemplateEdge {
   __typename: 'ModelTemplateEdge'
 }
 
+export type ModelTemplateOrigin = 'CUSTOM' | 'GLOBAL' | 'OVERRIDE'
+
 export interface ModelTemplatePayload {
   node: ModelTemplate
   __typename: 'ModelTemplatePayload'
@@ -539,6 +543,10 @@ export interface Mutation {
   invitationCreate: InvitationIssuedPayload
   invitationCreateMany: InvitationIssuedConnection
   invitationRevoke: InvitationPayload
+  modelTemplateCreate: ModelTemplatePayload
+  modelTemplateCustomize: ModelTemplatePayload
+  modelTemplateDelete: BooleanPayload
+  modelTemplateReset: ModelTemplatePayload
   onboardingAdvance: OnboardingContextPayload
   onboardingComplete: OnboardingContextPayload
   onboardingPresent: OnboardingContextPayload
@@ -550,6 +558,8 @@ export interface Mutation {
   passkeyRegistrationStart: PasskeyCeremonyPayload
   passkeyRemove: IDPayload
   passkeyUpdate: PasskeySummaryPayload
+  providerCreate: ProviderPayload
+  providerLogoUpload: ProviderLogoUploadPayload
   roleAssign: RolePayload
   /** Create a role in the verified active organization. */
   roleCreate: RolePayload
@@ -791,8 +801,67 @@ export type PriceUnit =
 export type PricingMode =
   'ACCOUNT_SPECIFIC' | 'API' | 'FIXED' | 'NOT_APPLICABLE' | 'SCHEDULED' | 'TIERED' | 'UNKNOWN' | 'UNPUBLISHED'
 
+export interface Provider {
+  connection: ConnectionConfiguration
+  description: Scalars['String'] | null
+  /** Stable provider identity, serialized as a string. */
+  id: Scalars['ID']
+  logoUrl: Scalars['String'] | null
+  models: ProviderModel[]
+  /** Provider display name within its organization. */
+  name: Scalars['String']
+  /** Owning organization; a supplied identifier never grants access. */
+  organizationId: Scalars['ID']
+  __typename: 'Provider'
+}
+
 /** Catalog connection family hint; each configured model selects its own operation. */
 export type ProviderApiProtocol = 'ANTHROPIC' | 'OPENAI_COMPATIBLE' | 'PROVIDER_SPECIFIC'
+
+export interface ProviderConnection {
+  edges: ProviderEdge[]
+  pageInfo: PageInfo
+  __typename: 'ProviderConnection'
+}
+
+export interface ProviderEdge {
+  cursor: Scalars['String']
+  node: Provider
+  __typename: 'ProviderEdge'
+}
+
+export interface ProviderLogoUpload {
+  id: Scalars['String']
+  upload: AvatarUpload
+  __typename: 'ProviderLogoUpload'
+}
+
+export interface ProviderLogoUploadPayload {
+  node: ProviderLogoUpload
+  __typename: 'ProviderLogoUploadPayload'
+}
+
+export interface ProviderModel {
+  cachedPrice: Scalars['String'] | null
+  capabilities: ProviderModelCapability[]
+  connection: ConnectionConfiguration
+  contextTokens: Scalars['ContextTokens'] | null
+  /** Configured availability; this flag alone does not authorize invocation. */
+  enabled: Scalars['Boolean']
+  /** Stable configured-model identity, serialized as a string. */
+  id: Scalars['ID']
+  inputPrice: Scalars['String'] | null
+  /** Configured upstream model name. */
+  name: Scalars['String']
+  /** Owning organization identity. */
+  organizationId: Scalars['ID']
+  outputPrice: Scalars['String'] | null
+  protocol: UpstreamProtocol
+  /** Owning provider identity. */
+  providerId: Scalars['ID']
+  text: TextCapabilities
+  __typename: 'ProviderModel'
+}
 
 /** Capabilities declared by a catalog or configured model; not an authorization grant. */
 export type ProviderModelCapability =
@@ -808,6 +877,11 @@ export type ProviderModelCapability =
   | 'TOOL_CALL'
   | 'VIDEO'
   | 'VISION'
+
+export interface ProviderPayload {
+  node: Provider
+  __typename: 'ProviderPayload'
+}
 
 export interface ProviderTemplate {
   authentication: AuthenticationConfiguration[]
@@ -842,6 +916,9 @@ export interface ProviderTemplatePayload {
 
 export interface Query {
   analyticUserProfile: AnalyticUserProfilePayload | null
+  effectiveModelTemplate: ModelTemplatePayload | null
+  effectiveProviderTemplate: ProviderTemplatePayload | null
+  effectiveProviderTemplates: ProviderTemplateConnection
   /** Find visible group metadata in the active organization. */
   group: GroupPayload | null
   /** Return the complete visible group metadata collection, ordered by ID. */
@@ -860,10 +937,12 @@ export interface Query {
   organizationPolicyActions: PolicyActionConnection
   organizationProfile: OrganizationPayload | null
   passkeys: PasskeySummaryConnection
+  provider: ProviderPayload | null
   /** Public provider defaults with a complete, unpaginated collection of database-ready models. */
   providerTemplate: ProviderTemplatePayload | null
   /** Public global provider catalog; defaults to 20 providers and caps pages at 100. */
   providerTemplates: ProviderTemplateConnection
+  providers: ProviderConnection
   /** Find visible role metadata in the active organization. */
   role: RolePayload | null
   /** Return the complete visible role metadata collection, ordered by ID. */
@@ -1182,6 +1261,13 @@ export interface UserPreferences {
 export interface UserPreferencesPayload {
   node: UserPreferences
   __typename: 'UserPreferencesPayload'
+}
+
+export interface ValidationIssue {
+  code: Scalars['String']
+  message: Scalars['String']
+  path: Scalars['String'][]
+  __typename: 'ValidationIssue'
 }
 
 export interface VideoConfiguration {
@@ -1815,6 +1901,7 @@ export interface ModelTemplateGenqlSelection {
   cachedPrice?: boolean | number
   capabilities?: boolean | number
   connections?: ModelConnectionGenqlSelection
+  customFields?: boolean | number
   description?: boolean | number
   displayName?: boolean | number
   effortMapping?: ThinkingEffortGenqlSelection
@@ -1827,6 +1914,7 @@ export interface ModelTemplateGenqlSelection {
   maxOutputTokens?: boolean | number
   name?: boolean | number
   operations?: ModelOperationGenqlSelection
+  origin?: boolean | number
   outputPrice?: boolean | number
   pdf?: PdfSupportGenqlSelection
   pricingMode?: boolean | number
@@ -1852,6 +1940,24 @@ export interface ModelTemplateConnectionGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface ModelTemplateCreateInput {
+  configuration: ModelTemplateCustomizeInput
+}
+
+export interface ModelTemplateCustomizeInput {
+  bodyDefaults?: ProviderBodyDefault[] | null
+  cachedPrice?: ModelTemplatePriceInput | null
+  capabilities?: ProviderModelCapability[] | null
+  effortMapping?: ProviderEffortMapping | null
+  headers?: ProviderHeader[] | null
+  inputPrice?: ModelTemplatePriceInput | null
+  limits?: ModelTemplateLimitsInput | null
+  name?: Scalars['String'] | null
+  outputPrice?: ModelTemplatePriceInput | null
+  path?: Scalars['String'] | null
+  protocol?: TextModelProtocol | null
+}
+
 export interface ModelTemplateEdgeGenqlSelection {
   cursor?: boolean | number
   node?: ModelTemplateGenqlSelection
@@ -1859,11 +1965,23 @@ export interface ModelTemplateEdgeGenqlSelection {
   __scalar?: boolean | number
 }
 
+export interface ModelTemplateEffectiveLimitsInput {
+  context?: Scalars['ContextTokens'] | null
+  input?: Scalars['ContextTokens'] | null
+  output?: Scalars['ContextTokens'] | null
+}
+
 export interface ModelTemplateFilterInput {
   displayName?: StringFilter | null
   id?: StringFilter | null
   name?: StringFilter | null
   or?: ModelTemplateMatchInput[] | null
+}
+
+export interface ModelTemplateLimitsInput {
+  context?: Scalars['ContextTokens'] | null
+  input?: Scalars['ContextTokens'] | null
+  output?: Scalars['ContextTokens'] | null
 }
 
 export interface ModelTemplateMatchInput {
@@ -1876,6 +1994,11 @@ export interface ModelTemplatePayloadGenqlSelection {
   node?: ModelTemplateGenqlSelection
   __typename?: boolean | number
   __scalar?: boolean | number
+}
+
+export interface ModelTemplatePriceInput {
+  enabled: Scalars['Boolean']
+  value?: Scalars['String'] | null
 }
 
 export interface MutationGenqlSelection {
@@ -1898,6 +2021,18 @@ export interface MutationGenqlSelection {
   invitationCreate?: InvitationIssuedPayloadGenqlSelection & { __args: { input: InvitationCreateInput } }
   invitationCreateMany?: InvitationIssuedConnectionGenqlSelection & { __args: { input: InvitationBatchCreateInput } }
   invitationRevoke?: InvitationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  modelTemplateCreate?: ModelTemplatePayloadGenqlSelection & {
+    __args: { input: ModelTemplateCreateInput; providerTemplateId: Scalars['ID'] }
+  }
+  modelTemplateCustomize?: ModelTemplatePayloadGenqlSelection & {
+    __args: { id: Scalars['ID']; input: ModelTemplateCustomizeInput; providerTemplateId: Scalars['ID'] }
+  }
+  modelTemplateDelete?: BooleanPayloadGenqlSelection & {
+    __args: { id: Scalars['ID']; providerTemplateId: Scalars['ID'] }
+  }
+  modelTemplateReset?: ModelTemplatePayloadGenqlSelection & {
+    __args: { id: Scalars['ID']; providerTemplateId: Scalars['ID'] }
+  }
   onboardingAdvance?: OnboardingContextPayloadGenqlSelection & { __args?: { back?: Scalars['Boolean'] } }
   onboardingComplete?: OnboardingContextPayloadGenqlSelection
   onboardingPresent?: OnboardingContextPayloadGenqlSelection & { __args?: { manual?: Scalars['Boolean'] } }
@@ -1915,6 +2050,8 @@ export interface MutationGenqlSelection {
   passkeyUpdate?: PasskeySummaryPayloadGenqlSelection & {
     __args: { id: Scalars['ID']; input: PasskeyRegistrationInput }
   }
+  providerCreate?: ProviderPayloadGenqlSelection & { __args: { input: ProviderCreateFromTemplateInput } }
+  providerLogoUpload?: ProviderLogoUploadPayloadGenqlSelection & { __args: { input: ImageUploadInput } }
   roleAssign?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; memberId: Scalars['ID'] } }
   /** Create a role in the verified active organization. */
   roleCreate?: RolePayloadGenqlSelection & { __args: { input: RoleCreateInput } }
@@ -2192,6 +2329,21 @@ export interface ProfileUpdateInput {
   username?: Scalars['String'] | null
 }
 
+export interface ProviderGenqlSelection {
+  connection?: ConnectionConfigurationGenqlSelection
+  description?: boolean | number
+  /** Stable provider identity, serialized as a string. */
+  id?: boolean | number
+  logoUrl?: boolean | number
+  models?: ProviderModelGenqlSelection
+  /** Provider display name within its organization. */
+  name?: boolean | number
+  /** Owning organization; a supplied identifier never grants access. */
+  organizationId?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
 export interface ProviderBodyDefault {
   key: Scalars['String']
   value: Scalars['String']
@@ -2203,6 +2355,24 @@ export interface ProviderCatalogRef {
   provider: Scalars['String']
 }
 
+export interface ProviderConnectionGenqlSelection {
+  edges?: ProviderEdgeGenqlSelection
+  pageInfo?: PageInfoGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ProviderCreateFromTemplateInput {
+  apiKey: Scalars['String']
+  baseUrl: Scalars['String']
+  headers: ProviderHeader[]
+  logoUploadId?: Scalars['String'] | null
+  logoUrl?: Scalars['String'] | null
+  models: ProviderTemplateModelInput[]
+  name: Scalars['String']
+  providerTemplateId: Scalars['String']
+}
+
 /** New connection definition; credentials and header values are write-only. */
 export interface ProviderCreateInput {
   apiKey: Scalars['String']
@@ -2210,6 +2380,13 @@ export interface ProviderCreateInput {
   headers: ProviderHeader[]
   models: ProviderModelWrite[]
   name: Scalars['String']
+}
+
+export interface ProviderEdgeGenqlSelection {
+  cursor?: boolean | number
+  node?: ProviderGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 /** Empty object means no configured effort levels. Configured values cannot be empty. */
@@ -2232,6 +2409,42 @@ export interface ProviderHeaderUpdate {
   key: Scalars['String']
   /** Omit to preserve the saved value for this header name. New names require a value. */
   value?: Scalars['String'] | null
+}
+
+export interface ProviderLogoUploadGenqlSelection {
+  id?: boolean | number
+  upload?: AvatarUploadGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ProviderLogoUploadPayloadGenqlSelection {
+  node?: ProviderLogoUploadGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
+}
+
+export interface ProviderModelGenqlSelection {
+  cachedPrice?: boolean | number
+  capabilities?: boolean | number
+  connection?: ConnectionConfigurationGenqlSelection
+  contextTokens?: boolean | number
+  /** Configured availability; this flag alone does not authorize invocation. */
+  enabled?: boolean | number
+  /** Stable configured-model identity, serialized as a string. */
+  id?: boolean | number
+  inputPrice?: boolean | number
+  /** Configured upstream model name. */
+  name?: boolean | number
+  /** Owning organization identity. */
+  organizationId?: boolean | number
+  outputPrice?: boolean | number
+  protocol?: boolean | number
+  /** Owning provider identity. */
+  providerId?: boolean | number
+  text?: TextCapabilitiesGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 /** Complete configured text-model values. Decimal prices are USD per million tokens. */
@@ -2273,6 +2486,12 @@ export interface ProviderPatchInput {
   headers?: ProviderHeaderUpdate[] | null
   models?: ProviderModelWrite[] | null
   name?: Scalars['String'] | null
+}
+
+export interface ProviderPayloadGenqlSelection {
+  node?: ProviderGenqlSelection
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 /** Full non-secret replacement. Omitting apiKey preserves the saved credential. */
@@ -2325,6 +2544,11 @@ export interface ProviderTemplateMatchInput {
   name?: StringFilter | null
 }
 
+export interface ProviderTemplateModelInput {
+  id: Scalars['String']
+  protocol: TextModelProtocol
+}
+
 export interface ProviderTemplateOrderInput {
   id?: OrderByDirection | null
   name?: OrderByDirection | null
@@ -2343,6 +2567,13 @@ export interface ProvidersCreateInput {
 
 export interface QueryGenqlSelection {
   analyticUserProfile?: AnalyticUserProfilePayloadGenqlSelection & { __args: { key: Scalars['String'] } }
+  effectiveModelTemplate?: ModelTemplatePayloadGenqlSelection & {
+    __args: { id: Scalars['ID']; providerTemplateId: Scalars['ID'] }
+  }
+  effectiveProviderTemplate?: ProviderTemplatePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
+  effectiveProviderTemplates?: ProviderTemplateConnectionGenqlSelection & {
+    __args?: { after?: Scalars['String'] | null; first?: Scalars['Int'] | null; search?: Scalars['String'] | null }
+  }
   /** Find visible group metadata in the active organization. */
   group?: GroupPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Return the complete visible group metadata collection, ordered by ID. */
@@ -2376,6 +2607,7 @@ export interface QueryGenqlSelection {
   organizationPolicyActions?: PolicyActionConnectionGenqlSelection
   organizationProfile?: OrganizationPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   passkeys?: PasskeySummaryConnectionGenqlSelection
+  provider?: ProviderPayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Public provider defaults with a complete, unpaginated collection of database-ready models. */
   providerTemplate?: ProviderTemplatePayloadGenqlSelection & { __args: { id: Scalars['ID'] } }
   /** Public global provider catalog; defaults to 20 providers and caps pages at 100. */
@@ -2390,6 +2622,9 @@ export interface QueryGenqlSelection {
       orderBy?: ProviderTemplateOrderInput[] | null
       search?: Scalars['String'] | null
     }
+  }
+  providers?: ProviderConnectionGenqlSelection & {
+    __args?: { after?: Scalars['String'] | null; first?: Scalars['Int'] | null }
   }
   /** Find visible role metadata in the active organization. */
   role?: RolePayloadGenqlSelection & { __args: { id: Scalars['ID']; includeUnseen?: Scalars['Boolean'] } }
@@ -2817,6 +3052,14 @@ export interface UserProfileUpdateInput {
   avatarUploaded?: Scalars['Boolean'] | null
   displayName?: Scalars['String'] | null
   username?: Scalars['String'] | null
+}
+
+export interface ValidationIssueGenqlSelection {
+  code?: boolean | number
+  message?: boolean | number
+  path?: boolean | number
+  __typename?: boolean | number
+  __scalar?: boolean | number
 }
 
 export interface VideoConfigurationGenqlSelection {
@@ -3388,6 +3631,48 @@ export const isPolicyActionEdge = (obj?: { __typename?: any } | null): obj is Po
   return PolicyActionEdge_possibleTypes.includes(obj.__typename)
 }
 
+const Provider_possibleTypes: string[] = ['Provider']
+export const isProvider = (obj?: { __typename?: any } | null): obj is Provider => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProvider"')
+  return Provider_possibleTypes.includes(obj.__typename)
+}
+
+const ProviderConnection_possibleTypes: string[] = ['ProviderConnection']
+export const isProviderConnection = (obj?: { __typename?: any } | null): obj is ProviderConnection => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProviderConnection"')
+  return ProviderConnection_possibleTypes.includes(obj.__typename)
+}
+
+const ProviderEdge_possibleTypes: string[] = ['ProviderEdge']
+export const isProviderEdge = (obj?: { __typename?: any } | null): obj is ProviderEdge => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProviderEdge"')
+  return ProviderEdge_possibleTypes.includes(obj.__typename)
+}
+
+const ProviderLogoUpload_possibleTypes: string[] = ['ProviderLogoUpload']
+export const isProviderLogoUpload = (obj?: { __typename?: any } | null): obj is ProviderLogoUpload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProviderLogoUpload"')
+  return ProviderLogoUpload_possibleTypes.includes(obj.__typename)
+}
+
+const ProviderLogoUploadPayload_possibleTypes: string[] = ['ProviderLogoUploadPayload']
+export const isProviderLogoUploadPayload = (obj?: { __typename?: any } | null): obj is ProviderLogoUploadPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProviderLogoUploadPayload"')
+  return ProviderLogoUploadPayload_possibleTypes.includes(obj.__typename)
+}
+
+const ProviderModel_possibleTypes: string[] = ['ProviderModel']
+export const isProviderModel = (obj?: { __typename?: any } | null): obj is ProviderModel => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProviderModel"')
+  return ProviderModel_possibleTypes.includes(obj.__typename)
+}
+
+const ProviderPayload_possibleTypes: string[] = ['ProviderPayload']
+export const isProviderPayload = (obj?: { __typename?: any } | null): obj is ProviderPayload => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isProviderPayload"')
+  return ProviderPayload_possibleTypes.includes(obj.__typename)
+}
+
 const ProviderTemplate_possibleTypes: string[] = ['ProviderTemplate']
 export const isProviderTemplate = (obj?: { __typename?: any } | null): obj is ProviderTemplate => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isProviderTemplate"')
@@ -3656,6 +3941,12 @@ export const isUserPreferencesPayload = (obj?: { __typename?: any } | null): obj
   return UserPreferencesPayload_possibleTypes.includes(obj.__typename)
 }
 
+const ValidationIssue_possibleTypes: string[] = ['ValidationIssue']
+export const isValidationIssue = (obj?: { __typename?: any } | null): obj is ValidationIssue => {
+  if (!obj?.__typename) throw new Error('__typename is missing in "isValidationIssue"')
+  return ValidationIssue_possibleTypes.includes(obj.__typename)
+}
+
 const VideoConfiguration_possibleTypes: string[] = ['VideoConfiguration']
 export const isVideoConfiguration = (obj?: { __typename?: any } | null): obj is VideoConfiguration => {
   if (!obj?.__typename) throw new Error('__typename is missing in "isVideoConfiguration"')
@@ -3800,6 +4091,12 @@ export const enumModelServiceKind = {
   TEXT: 'TEXT' as const,
   TTS: 'TTS' as const,
   VIDEO: 'VIDEO' as const,
+}
+
+export const enumModelTemplateOrigin = {
+  CUSTOM: 'CUSTOM' as const,
+  GLOBAL: 'GLOBAL' as const,
+  OVERRIDE: 'OVERRIDE' as const,
 }
 
 export const enumOAuthFlow = {

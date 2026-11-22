@@ -30,9 +30,11 @@ const connection = {
   authentication,
   endpoint,
 } as const satisfies ConnectionConfigurationGenqlSelection
-const modelDetail = {
+export const modelDetail = {
   id: true,
   providerTemplateId: true,
+  origin: true,
+  customFields: true,
   name: true,
   capabilities: true,
   maxContextTokens: true,
@@ -75,17 +77,17 @@ const modelRow = {
 } as const satisfies ModelTemplateGenqlSelection
 export async function listProviders(query: string, after: string | undefined, signal: AbortSignal) {
   const selection = {
-    providerTemplates: {
+    effectiveProviderTemplates: {
       __args: { first: 20, after, search: query || undefined },
       edges: { node: providerRow },
       pageInfo: { endCursor: true, hasNextPage: true },
     },
   } satisfies QueryGenqlSelection
-  return (await graphql(signal).query(selection)).providerTemplates
+  return (await graphql(signal).query(selection)).effectiveProviderTemplates
 }
 export async function getProvider(id: string, signal: AbortSignal) {
   const selection = {
-    providerTemplate: {
+    effectiveProviderTemplate: {
       __args: { id },
       node: {
         ...providerRow,
@@ -97,14 +99,19 @@ export async function getProvider(id: string, signal: AbortSignal) {
       },
     },
   } satisfies QueryGenqlSelection
-  return (await graphql(signal).query(selection)).providerTemplate?.node ?? null
+  return (await graphql(signal).query(selection)).effectiveProviderTemplate?.node ?? null
 }
 export async function getModel(providerTemplateId: string, id: string, signal: AbortSignal) {
   const selection = {
-    modelTemplate: { __args: { providerTemplateId, id }, node: modelDetail },
+    effectiveModelTemplate: { __args: { providerTemplateId, id }, node: modelDetail },
   } satisfies QueryGenqlSelection
-  return (await graphql(signal).query(selection)).modelTemplate?.node ?? null
+  return (await graphql(signal).query(selection)).effectiveModelTemplate?.node ?? null
 }
 export type ProviderPage = Awaited<ReturnType<typeof listProviders>>
 export type ProviderDetail = NonNullable<Awaited<ReturnType<typeof getProvider>>>
 export type ModelDetail = NonNullable<Awaited<ReturnType<typeof getModel>>>
+
+export async function getGlobalModel(providerTemplateId: string, id: string, signal: AbortSignal) {
+  const selection = { modelTemplate: { __args: { providerTemplateId, id }, node: modelDetail } } satisfies QueryGenqlSelection
+  return (await graphql(signal).query(selection)).modelTemplate?.node ?? null
+}

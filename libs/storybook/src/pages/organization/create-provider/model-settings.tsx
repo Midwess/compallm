@@ -1,6 +1,6 @@
 import { LoadingRegion } from '../../../components/loading'
 import { providerPageLayout } from './layout'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { DotsThreeIcon } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { ArrowCounterClockwiseIcon } from '@phosphor-icons/react/dist/csr/ArrowCounterClockwise'
 import { Popup } from '../../../components/popup'
@@ -14,7 +14,14 @@ import { Button } from '../../../components/buttons'
 import { AlertDialog } from '../../../components/dialog'
 import { FieldHelp, Tooltip } from '../../../components/feedback'
 import { usePermission } from '../../../components/permission'
-import { modelDraftFingerprint, modelPath, textModelOptions, joinModelEndpoint, initializeModelDraft } from './model-options'
+import {
+  modelSettingsIntent,
+  modelDraftFingerprint,
+  modelPath,
+  textModelOptions,
+  joinModelEndpoint,
+  initializeModelDraft,
+} from './model-options'
 import { useController, useProvider } from './controller'
 import { parseModelDraft } from './validation'
 import type { ModelDraft } from './types'
@@ -26,6 +33,7 @@ export function ModelSettingsPage() {
   const controller = useController()
   const identity = useProvider((s) => s.modelDraft?.id, ['modelDraft.id'])
   const [confirm, setConfirm] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
   const navigation = useProvider((s) => s.navigationRequest)
   const access = useModelEditAccess()
   const ready = useProvider((s) => !s.templatePreview || !!s.modelLoaded)
@@ -38,6 +46,7 @@ export function ModelSettingsPage() {
   const resetDefaults = receivedDefaults ?? initialDefaults
   const [editedFields] = useState(() => new Set<string>())
   const [form] = useState(() => controller.store.form.scope(['modelDraft']))
+
   useEffect(() => {
     if (!ready) return
     const fields = {
@@ -47,20 +56,45 @@ export function ModelSettingsPage() {
           `modelDraft.${key}`,
           {
             ...modelDraftRules[`modelDraft.${key}` as keyof typeof modelDraftRules],
-            mode: 'debounce' as const,
-            debounceMs: 300,
+            mode: ([
+              'headers',
+              'bodyDefaults',
+              'capabilities',
+              'contextLimitEnabled',
+              'inputLimitEnabled',
+              'outputLimitEnabled',
+              'inputPriceEnabled',
+              'outputPriceEnabled',
+              'cachedPriceEnabled',
+            ].includes(key)
+              ? 'change'
+              : 'blur') as 'change' | 'blur',
             group: 'modelDraft',
           },
         ]),
       ),
-      modelDraft: { mode: 'debounce' as const, debounceMs: 300, group: 'modelDraft' },
+      modelDraft: { mode: 'blur' as const, group: 'modelDraft' },
     }
     form.configure({
-      mode: 'debounce',
+      mode: 'blur',
       command: true,
       fields,
       validationNames: () => ['modelDraft'],
-      showError: (name) => [...editedFields].some((field) => name === field || name.startsWith(field + '.')),
+      showError: (name) =>
+        [...editedFields].some(
+          (field) =>
+            name === field ||
+            name.startsWith(field + '.') ||
+            ([
+              'maxContextTokens',
+              'maxInputTokens',
+              'maxOutputTokens',
+              'contextLimitEnabled',
+              'inputLimitEnabled',
+              'outputLimitEnabled',
+            ].some((key) => field === `modelDraft.${key}`) &&
+              ['modelDraft.maxContextTokens', 'modelDraft.maxInputTokens', 'modelDraft.maxOutputTokens'].includes(name)),
+        ),
       changed: (name, value) => {
         const relatedFields: Record<string, string> = {
           contextLimitEnabled: 'maxContextTokens',
@@ -82,16 +116,20 @@ export function ModelSettingsPage() {
               : {}),
           })
       },
-      parse: (values) => {
+      parse: (values, names) => {
         const state = controller.store.getState()
+        if (controller.validateModel && values.modelDraft) {
+          const issues = controller.validateModel(values.modelDraft, names)
+          return issues?.length ? { issues } : { values }
+        }
         if (state.templatePreview) return { values }
         const result = parseModelDraft(values.modelDraft ?? null, state.models, state.editingModelId)
         return result.issues ? { issues: result.issues } : { values }
       },
-      submit: async (values) => {
+      submit: async (values, _patch, _signal, names) => {
         const state = controller.store.getState()
         if (!values.modelDraft || state.submitting) return false
-        const saved = controller.onSaveModel(values.modelDraft)
+        const saved = await controller.onSaveModel(values.modelDraft, names)
         return saved ? { modelDraft: saved } : false
       },
     })
@@ -118,10 +156,19 @@ export function ModelSettingsPage() {
       },
     }
     for (const [key, value] of Object.entries(defaults)) controller.store.form.set(`modelDraft.${key}`, value)
+    form.reset(controller.store.getState())
   }, [controller, identity, form, editedFields, ready])
   const reset = () => {
     const current = controller.store.getState().modelDraft
     if (!current || !access || !resetDefaults) return
+    if (controller.onResetModel) {
+      form.stop()
+      void controller
+        .onResetModel()
+        .then(() => form.reset(controller.store.getState()))
+        .catch(() => undefined)
+      return
+    }
     const next = initializeModelDraft({
       ...structuredClone(resetDefaults),
       id: current.id,
@@ -134,6 +181,7 @@ export function ModelSettingsPage() {
   }
   const close = () => {
     if (controller.store.getState().templatePreview) {
+      form.stop()
       controller.onCancelModel()
       return
     }
@@ -176,14 +224,22 @@ export function ModelSettingsPage() {
         <PageHeader className="rounded-t-xl">
           <ModelBreadcrumb onBack={close} />
           <Functions>
+            {controller.validateModel ? <ModelSaveStatus form={form} /> : null}
             <Popup.Root>
               <Popup.Trigger aria-label="Model actions">
                 <DotsThreeIcon aria-hidden="true" className="size-4" />
               </Popup.Trigger>
               <Popup.Content aria-label="Model actions">
-                <Popup.Item disabled={!access} onSelect={reset} className="gap-2">
+                <Popup.Item
+                  disabled={!access}
+                  onSelect={() => {
+                    if (controller.store.getState().modelDraft?.origin === 'CUSTOM') setConfirm(true)
+                    else setConfirmReset(true)
+                  }}
+                  className="gap-2"
+                >
                   <ArrowCounterClockwiseIcon aria-hidden="true" className="size-3.5" />
-                  Reset to defaults
+                  {controller.store.getState().modelDraft?.origin === 'CUSTOM' ? 'Delete custom model' : 'Reset to defaults'}
                 </Popup.Item>
               </Popup.Content>
             </Popup.Root>
@@ -237,6 +293,32 @@ and credential. Valid edits are saved automatically into the provider draft. The
           </fieldset>
         </LoadingRegion>
       </Form.Root>
+      <AlertDialog.Root open={confirmReset} onOpenChange={setConfirmReset}>
+        <AlertDialog.Content>
+          <AlertDialog.Header>
+            <AlertDialog.Title>Reset model to defaults?</AlertDialog.Title>
+          </AlertDialog.Header>
+          <AlertDialog.Body>
+            <AlertDialog.Description>
+              This removes your personal overrides and restores the global model defaults. Saved providers are unchanged.
+            </AlertDialog.Description>
+          </AlertDialog.Body>
+          <AlertDialog.Footer>
+            <Button autoFocus onClick={() => setConfirmReset(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setConfirmReset(false)
+                reset()
+              }}
+            >
+              Reset to defaults
+            </Button>
+          </AlertDialog.Footer>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
       <AlertDialog.Root
         open={confirm || !!navigation}
         onOpenChange={(open) => {
@@ -248,7 +330,11 @@ and credential. Valid edits are saved automatically into the provider draft. The
       >
         <AlertDialog.Content>
           <AlertDialog.Header>
-            <AlertDialog.Title>Discard changes?</AlertDialog.Title>
+            <AlertDialog.Title>
+              {controller.store.getState().modelDraft?.origin === 'CUSTOM' && !navigation
+                ? 'Delete custom model?'
+                : 'Discard changes?'}
+            </AlertDialog.Title>
           </AlertDialog.Header>
           <AlertDialog.Body>
             <AlertDialog.Description>Your unsaved model changes will be lost.</AlertDialog.Description>
@@ -267,6 +353,11 @@ and credential. Valid edits are saved automatically into the provider draft. The
               variant="destructive"
               onClick={() => {
                 setConfirm(false)
+                if (controller.store.getState().modelDraft?.origin === 'CUSTOM' && !navigation) {
+                  form.stop()
+                  void controller.onDeleteModel?.().catch(() => undefined)
+                  return
+                }
                 if (navigation) navigation.discard()
                 else controller.onCancelModel()
               }}
@@ -340,21 +431,33 @@ function ModelEndpointPreview() {
 }
 
 function ModelBreadcrumb({ onBack }: { onBack(): void }) {
-  const provider = useProvider((s) => s.name || 'New provider', ['name'])
-  const editing = useProvider((s) => !!s.editingModelId)
+  const controller = useController()
+  const creating = useProvider((s) => modelSettingsIntent(s) === 'new', ['modelDraft.id', 'modelDraft.catalogRef', 'models'])
   return (
-    <nav aria-label="Model settings breadcrumb" className="flex min-w-0 flex-1 items-center gap-4 text-xs">
+    <nav aria-label="Provider configuration steps" className="flex min-w-0 flex-1 items-center gap-4 text-xs">
       <button
         type="button"
-        onClick={onBack}
-        className="min-w-0 truncate text-muted-foreground hover:text-foreground focus-visible:outline-ring"
+        onClick={controller.onChooseProvider}
+        className="truncate text-muted-foreground hover:text-foreground focus-visible:outline-ring"
       >
-        {provider}
+        Choose provider
       </button>
       <span aria-hidden="true" className="text-muted-foreground">
         /
       </span>
-      <span className="shrink-0 whitespace-nowrap">{editing ? 'Edit model' : 'Add model'}</span>
+      <button
+        type="button"
+        onClick={onBack}
+        className="truncate text-muted-foreground hover:text-foreground focus-visible:outline-ring"
+      >
+        Configure
+      </button>
+      <span aria-hidden="true" className="text-muted-foreground">
+        /
+      </span>
+      <span aria-current="page" className="shrink-0 whitespace-nowrap">
+        {creating ? 'New model' : 'Edit model'}
+      </span>
     </nav>
   )
 }
@@ -364,10 +467,10 @@ function ModelHeading() {
     ['modelDraft.name', 'modelDraft.protocol'],
   )
   const provider = useProvider((s) => s.name || 'New provider', ['name'])
-  const editing = useProvider((s) => !!s.editingModelId)
+  const editing = useProvider((s) => modelSettingsIntent(s) === 'edit', ['modelDraft.id', 'modelDraft.catalogRef', 'models'])
   return (
     <div className="grid gap-1 px-4">
-      <h1 className="text-2xl font-medium">{editing ? draft?.name || 'Edit model' : 'Add model'}</h1>
+      <h1 className="text-2xl font-medium">{editing ? draft?.name || 'Edit model' : 'New model'}</h1>
       <p className="text-xsm text-muted-foreground">
         {provider}
         {draft?.protocol ? ` · ${textModelOptions.find((o) => o.value === draft.protocol)?.label}` : ''}
@@ -387,4 +490,28 @@ function useModelEditAccess() {
     enabled: !preview && (!saved || !!provider),
   })
   return preview ? !loading : permission.allowed
+}
+
+function ModelSaveStatus({
+  form,
+}: {
+  form: import('../../../components/form').FormModel<Partial<import('./types').CreateProviderState>>
+}) {
+  useSyncExternalStore(
+    form.subscribe,
+    () => form.version,
+    () => form.version,
+  )
+  return (
+    <div className="flex items-center gap-2" role="status" aria-live="polite">
+      <span className="text-xs text-muted-foreground">
+        {form.pending ? 'Saving…' : form.error ? 'Changes could not be saved.' : form.dirty ? 'Unsaved changes' : 'Saved'}
+      </span>
+      {form.error ? (
+        <Button className="h-7 w-fit px-3 text-xs" onClick={() => void form.retry()}>
+          Retry
+        </Button>
+      ) : null}
+    </div>
+  )
 }

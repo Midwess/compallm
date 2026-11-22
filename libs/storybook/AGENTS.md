@@ -176,6 +176,8 @@ Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) an
   one reveal timer per region, with the shared adapter handling standalone skeletons. Fast requests show no skeleton flash. Once
   revealed, keep the skeleton presentation visible for at least the shared 180 ms minimum to avoid a brief flash. Reads
   completing before the reveal delay show content immediately. The hold is visual only; do not delay requests.
+- Shared skeletons use a slow, low-contrast moving highlight with a broad rounded falloff. Keep motion in the shared Motion
+  helper, retain the loaded component geometry, and use a static highlight for reduced motion.
 - Page/section request state ends as soon as the request settles; the shared presentation owns any remaining visual hold. Keep
   the shared request-progress bar. Do not add per-page timers, forced waiting periods, spinners on every field, a theme reset,
   or independent loading animations. Use shared Motion helpers for optional loading motion and respect reduced motion.
@@ -189,3 +191,25 @@ Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) an
   not invent loading states for destinations without a backend read. Table categories use DOM-free LoadingScope so loading never
   introduces invalid div/tbody nesting. Initial-load errors expose retry outside inert regions; confirmed refresh errors retain
   rows and drafts. No empty state before the first successful response.
+
+## Provider model overrides
+
+- Provider/model write constraints and error messages come from Rust-generated contracts. Read slider and price bounds from
+  exported constraints; do not hardcode a second min/max policy in controls. Keep inherited catalog values outside editable
+  ranges valid when the override is off.
+- Validate the complete effective context/input/output group. Each cap must fit known context, but their sum may exceed it. Keep
+  invalid values visible without clamping. Target the enabled context field when its reduction conflicts with an inherited cap
+  whose input is hidden. Unknown defaults remain unknown; missing prices never become zero.
+- Model text commits on blur/Enter, selections on change, and sliders on release. Submit only triggered fields or their related
+  group. Incomplete new models remain local. Reset cancels unsent commits before deleting the personal override; pending writes
+  must settle before reset/delete. Provider Create uses last saved model configuration independently of pending drafts.
+
+## Search and browser history
+
+- Searches submit explicitly; clearing a submitted query removes its filter. Keep confirmed rows during refresh and cancel
+  obsolete reads. Search normalization, bounds, matching, and database predicates belong to the backend; pages do not scan
+  remote catalogs.
+- Back actions call the root URL controller's history operation. Parent URLs serve direct-entry/reload fallback only. Preserve
+  native Back/Forward and horizontal browser gestures; contain only vertical overscroll in page/sidebar/menu scrollers.
+- Provider breadcrumbs have three steps: Choose provider, Configure, Edit model/New model. Derive edit intent from saved
+  identity. Reset requires a confirmation dialog before removing the personal model override.

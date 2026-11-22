@@ -10,7 +10,7 @@ See the [Compallm Wiki](https://github.com/Midwess/compallm/wiki) and [product o
 
 ## Development
 
-The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM. GraphQL is served at `POST /api/graphql` through Juniper and its Axum adapter, with Rust definitions under `api/src/graphql`. The authenticated session query and email-login, explicit refresh and signout mutations preserve credential policies, access freshness and cookie renewal. Portal uses the generated Genql client for authentication and role/group summaries. Protected role/group metadata reads use flat role/roles and group/groups fields, with roleCreate and groupCreate mutations, member role replacement, group membership changes, and invitations. Each member has one required direct role and can join multiple groups; groups cannot grant Owner. Provider runtime operations remain pending. Core services and offline component previews remain available.
+The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM. GraphQL is served at `POST /api/graphql` through Juniper and its Axum adapter, with Rust definitions under `api/src/graphql`. The authenticated session query and email-login, explicit refresh and signout mutations preserve credential policies, access freshness and cookie renewal. Portal uses the generated Genql client for authentication and role/group summaries. Protected role/group metadata reads use flat role/roles and group/groups fields, with roleCreate and groupCreate mutations, member role replacement, group membership changes, and invitations. Each member has one required direct role and can join multiple groups; groups cannot grant Owner. Provider creation and saved-provider reads are integrated through GraphQL, with private user/organization model defaults. Existing-provider updates and inference execution remain pending. Core services and offline component previews remain available.
 
 Axum serves the frontend in both local development and production. In development, it proxies the Vite dev server, including hot reload. In production, it directly serves Vite's built static files. The frontend and API share the same public origin.
 
@@ -21,6 +21,8 @@ npm --prefix portal ci
 docker compose up -d
 cargo run -p compallm-api -- start
 ```
+
+Provider creation requires `PROVIDER_CREDENTIAL_SECRET`, a server-only secret of at least 32 bytes. It encrypts stored provider API keys; keep it stable across restarts. Missing or invalid configuration makes creation unavailable.
 
 Access and Security settings request approximate city labels directly from the public location service. Lookup failures leave location unknown and never affect authentication. Portal uses the Railway endpoint directly. To run the DB-IP service locally:
 

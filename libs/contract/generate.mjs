@@ -117,6 +117,9 @@ const formats = new Set([
 const objectRules = {
   bodyDefault: 'bodyDefaultObject',
   modelLimits: 'modelLimitsObject',
+  templateLimits: 'templateLimitsObject',
+  templatePrice: 'templatePriceObject',
+  templateCreate:'templateCreateObject',
   header: 'headerObject',
   headerUpdate: 'headerUpdateObject',
   createProvider: 'createProviderObject',
@@ -124,6 +127,7 @@ const objectRules = {
   providerPatch: 'providerPatchObject',
 }
 const arrayRules = {
+  modelCapabilities:'modelCapabilitiesArray',
   bodyDefaults: 'bodyDefaultsArray',
   headers: '(entries) => headersObject({entries})',
   modelWrites: 'modelWritesArray',
@@ -197,7 +201,7 @@ function unwrapped(schema) {
   if (schema.anyOf) {
     const values = schema.anyOf.filter((value) => value.type !== 'null')
     if (values.length !== 1 || values.length === schema.anyOf.length) throw new Error('Unsupported input union')
-    return { ...schema, anyOf: undefined, ...values[0] }
+    return unwrapped({ ...values[0], ...schema, anyOf: undefined })
   }
   if (Array.isArray(schema.type)) {
     const types = schema.type.filter((type) => type !== 'null')
@@ -209,7 +213,7 @@ function unwrapped(schema) {
 function constraints(original) {
   const schema = unwrapped(original)
   const output = {}
-  for (const key of ['minLength', 'maxLength', 'pattern']) if (schema[key] !== undefined) output[key] = schema[key]
+  for (const key of ['minLength', 'maxLength', 'pattern', 'minimum', 'maximum', 'minItems', 'maxItems']) if (schema[key] !== undefined) output[key] = schema[key]
   for (const [source, target] of [
     ['x-compallm-messages', 'messages'],
     ['x-compallm-input-pattern', 'inputPattern'],
@@ -234,6 +238,10 @@ function render(schema) {
     const reference = value.$ref.split('/').at(-1)
     const message = value['x-compallm-messages']?.enum
     result = message ? `z.enum(${reference}.options, {error: ${JSON.stringify(message)}})` : reference
+    if (reference === 'ContextTokens') {
+      for (const [key,method] of [['minimum','min'],['maximum','max']])
+        if (schema[key] !== undefined) result += `.${method}(${schema[key]}, {message: ${JSON.stringify(schema['x-compallm-messages']?.[key] ?? 'Enter a valid token limit.')}})`
+    }
   } else if (value.oneOf?.every((variant) => typeof variant.const === 'string'))
     result = `z.enum(${JSON.stringify(value.oneOf.map((variant) => variant.const))})`
   else if (value.enum) result = `z.enum(${JSON.stringify(value.enum)})`
@@ -273,9 +281,15 @@ function render(schema) {
   } else throw new Error(`Unsupported input shape: ${JSON.stringify(value)}`)
   if (nullable(schema) && !schema['x-compallm-non-null']) result += '.nullable()'
   if (schema['x-compallm-array-rule'])
-    result += `.refine(${arrayRules[schema['x-compallm-array-rule']]}, {message: ${JSON.stringify(schema['x-compallm-messages']?.['x-compallm-array-rule'] ?? 'Invalid input')}})`
-  if (schema['x-compallm-object-rule'])
-    result += `.refine(${objectRules[schema['x-compallm-object-rule']]}, {message: ${JSON.stringify(schema['x-compallm-messages']?.['x-compallm-object-rule'] ?? 'Invalid input')}})`
+    result += `.refine(value => value == null || (${arrayRules[schema['x-compallm-array-rule']]})(value), {message: ${JSON.stringify(schema['x-compallm-messages']?.['x-compallm-array-rule'] ?? 'Invalid input')}})`
+  if (schema['x-compallm-object-rule'] === 'templateLimits')
+    result += `.superRefine((value, ctx) => { if (value == null) return; for (const field of ['input', 'output'] as const) { if (value.context != null && value[field] != null && value[field]! > value.context) ctx.addIssue({code: 'custom',path: [field],message: ${JSON.stringify(schema['x-compallm-messages'] ?? {})}[field] ?? 'Check the token limits.'}) } })`
+  else if (schema['x-compallm-object-rule'] === 'templateCreate')
+    result += `.superRefine((value,ctx)=>{ for(const field of ['name','protocol','path','inputPrice','outputPrice'] as const) {const configured=value.configuration[field];const valid=field==='inputPrice'?value.configuration.inputPrice?.enabled && value.configuration.inputPrice.value!=null:field==='outputPrice'?value.configuration.outputPrice?.enabled && value.configuration.outputPrice.value!=null:configured!=null;if(!valid)ctx.addIssue({code:'custom',path:['configuration',field],message:${JSON.stringify(schema['x-compallm-messages'])}[field]})} })`
+  else if (schema['x-compallm-object-rule'] === 'templatePrice')
+    result += `.refine(value=>value==null || templatePriceObject(value), {path: ['value'],message: ${JSON.stringify(schema['x-compallm-messages']?.['x-compallm-object-rule'])}})`
+  else if (schema['x-compallm-object-rule'])
+    result += `.refine(value => value == null || (${objectRules[schema['x-compallm-object-rule']]})(value), {message: ${JSON.stringify(schema['x-compallm-messages']?.['x-compallm-object-rule'] ?? 'Invalid input')}})`
   if (schema.default !== undefined && !(schema['x-compallm-non-null'] && schema.default === null))
     result += `.default(${JSON.stringify(schema.default)})`
   if (schema.description) result += `.describe(${JSON.stringify(schema.description)})`
@@ -284,7 +298,7 @@ function render(schema) {
 const lines = [
   banner,
   "import { z } from 'zod'",
-  "import { inputString, stringInput, integerInput, headerObject, headersObject, headerUpdateObject, modelWritesArray, modelLimitsObject, bodyDefaultsArray, bodyDefaultObject, createProviderObject, createProvidersObject, providerPatchObject } from './runtime.ts'",
+  "import { inputString, stringInput, integerInput, headerObject, headersObject, headerUpdateObject, modelWritesArray, modelCapabilitiesArray, modelLimitsObject, templateLimitsObject, templatePriceObject, bodyDefaultsArray, bodyDefaultObject, createProviderObject, createProvidersObject, providerPatchObject } from './runtime.ts'",
 ]
 for (const name of ordered) {
   const schema = definitions[name]
@@ -292,17 +306,12 @@ for (const name of ordered) {
   const guards = []
   for (const [key, field] of Object.entries(schema.properties ?? {})) {
     const rule = constraints(field)
-    if (Object.keys(rule).length) {
-      fieldConstraints[key] = rule
-      guards.push(`${JSON.stringify(key)}: stringInput(${name}Constraints[${JSON.stringify(key)}])`)
-    } else if (unwrapped(field).type === 'integer') {
-      const numeric = Object.fromEntries(
-        ['minimum', 'maximum']
-          .filter((key) => unwrapped(field)[key] !== undefined)
-          .map((key) => [key, unwrapped(field)[key]]),
-      )
+    if (Object.keys(rule).length) fieldConstraints[key]=rule
+    if (unwrapped(field).type === 'integer' || unwrapped(field).type === 'number') {
+      const numeric=Object.fromEntries(['minimum','maximum'].filter(key=>unwrapped(field)[key]!==undefined).map(key=>[key,unwrapped(field)[key]]))
       guards.push(`${JSON.stringify(key)}: integerInput(${JSON.stringify(numeric)})`)
-    }
+    } else if (Object.keys(rule).length && unwrapped(field).type === 'string') guards.push(`${JSON.stringify(key)}: stringInput(${name}Constraints[${JSON.stringify(key)}])`)
+
   }
   if (schema.properties) {
     lines.push(`export const ${name}Constraints = ${JSON.stringify(fieldConstraints)} as const`)

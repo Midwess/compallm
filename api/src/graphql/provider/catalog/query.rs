@@ -15,9 +15,10 @@ pub async fn list(
     order_by: Option<Vec<ProviderTemplateOrderInput>>,
     repository: &CatalogRepository,
 ) -> Result<Collection<ProviderTemplate>, Error> {
-    if search
-        .as_ref()
-        .is_some_and(|value| value.chars().count() > 256 || value.split_whitespace().count() > 8)
+    if compallm_core::provider::template::CatalogSearch::try_from(
+        search.as_deref().unwrap_or_default(),
+    )
+    .is_err()
     {
         return Err(Error::invalid_input());
     }
@@ -40,6 +41,7 @@ pub async fn list(
             ordering,
             scope,
             search.as_deref(),
+            None,
         )
         .await
         .map_err(|error| match error {
@@ -66,8 +68,88 @@ pub async fn model(
     repository: &CatalogRepository,
 ) -> Result<Option<Payload<ModelTemplate>>, Error> {
     Ok(repository
-        .model(&provider_template_id, &id)
+        .model(&provider_template_id, &id, None)
         .await
         .map_err(|_| Error::internal())?
         .map(|node| Payload::from(ModelTemplate::from(node))))
+}
+
+use crate::http::authorization::AuthorizationContext;
+use compallm_postgres::catalog::repository::CatalogScope;
+async fn owner(authority: &AuthorizationContext) -> Result<CatalogScope, Error> {
+    let p = authority.member_permission().await?;
+    Ok(CatalogScope {
+        organization_id: p.organization_id(),
+        user_id: p.user_id(),
+    })
+}
+pub async fn effective_get(
+    id: ID,
+    authority: &AuthorizationContext,
+    repository: &CatalogRepository,
+) -> Result<Option<Payload<ProviderTemplate>>, Error> {
+    let scope = owner(authority).await?;
+    Ok(repository
+        .provider(&id)
+        .await
+        .map_err(|_| Error::internal())?
+        .map(|v| ProviderTemplate(v, Some(scope)).into()))
+}
+pub async fn effective_model(
+    provider: ID,
+    id: ID,
+    authority: &AuthorizationContext,
+    repository: &CatalogRepository,
+) -> Result<Option<Payload<ModelTemplate>>, Error> {
+    let scope = owner(authority).await?;
+    Ok(repository
+        .model(&provider, &id, Some(scope))
+        .await
+        .map_err(|_| Error::internal())?
+        .map(|v| ModelTemplate(v).into()))
+}
+pub async fn effective_list(
+    search: Option<String>,
+    first: Option<i32>,
+    after: Option<String>,
+    authority: &AuthorizationContext,
+    repository: &CatalogRepository,
+) -> Result<Collection<ProviderTemplate>, Error> {
+    let scope = owner(authority).await?;
+    if compallm_core::provider::template::CatalogSearch::try_from(
+        search.as_deref().unwrap_or_default(),
+    )
+    .is_err()
+    {
+        return Err(Error::invalid_input());
+    }
+    let result = repository
+        .list(
+            Box::new(ProviderTemplateFilterInput::default()),
+            compallm_query::Pagination {
+                first: Some(first.unwrap_or(20)),
+                after: after.map(compallm_query::Cursor),
+                ..Default::default()
+            },
+            vec![compallm_query::OrderBy {
+                field: "name".into(),
+                direction: compallm_query::OrderByDirection::AscNullsLast,
+            }],
+            &format!(
+                "effective-templates:{}:{}",
+                scope.organization_id, scope.user_id
+            ),
+            search.as_deref(),
+            Some(scope),
+        )
+        .await
+        .map_err(|error| match error {
+            compallm_postgres::query::QueryCompileError::Database(_) => Error::internal(),
+            _ => Error::invalid_input(),
+        })?;
+    let mut output: Collection<ProviderTemplate> = result.into();
+    for edge in &mut output.edges {
+        edge.node.1 = Some(scope);
+    }
+    Ok(output)
 }

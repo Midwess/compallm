@@ -9,7 +9,10 @@ import {
   headersObject,
   headerUpdateObject,
   modelWritesArray,
+  modelCapabilitiesArray,
   modelLimitsObject,
+  templateLimitsObject,
+  templatePriceObject,
   bodyDefaultsArray,
   bodyDefaultObject,
   createProviderObject,
@@ -253,12 +256,11 @@ export const GroupCreateInputConstraints = {
     trim: true,
   },
   description: { maxLength: 128, messages: { maxLength: 'Description must be 128 characters or fewer.' } },
-  roleIds: { messages: { maxItems: 'Choose no more than 32 roles.' } },
+  roleIds: { maxItems: 32, messages: { maxItems: 'Choose no more than 32 roles.' } },
 } as const
 export const GroupCreateInputInput = {
   name: stringInput(GroupCreateInputConstraints['name']),
   description: stringInput(GroupCreateInputConstraints['description']),
-  roleIds: stringInput(GroupCreateInputConstraints['roleIds']),
 }
 export const GroupCreateInput = z
   .object({
@@ -288,18 +290,14 @@ export const GroupUpdateInputConstraints = {
     trim: true,
   },
   description: { maxLength: 128, messages: { maxLength: 'Description must be 128 characters or fewer.' } },
-  addMemberIds: { messages: { maxItems: 'Add no more than 100 members at a time.' } },
-  removeMemberIds: { messages: { maxItems: 'Remove no more than 100 members at a time.' } },
-  addRoleIds: { messages: { maxItems: 'Add no more than 32 roles at a time.' } },
-  removeRoleIds: { messages: { maxItems: 'Remove no more than 32 roles at a time.' } },
+  addMemberIds: { maxItems: 100, messages: { maxItems: 'Add no more than 100 members at a time.' } },
+  removeMemberIds: { maxItems: 100, messages: { maxItems: 'Remove no more than 100 members at a time.' } },
+  addRoleIds: { maxItems: 32, messages: { maxItems: 'Add no more than 32 roles at a time.' } },
+  removeRoleIds: { maxItems: 32, messages: { maxItems: 'Remove no more than 32 roles at a time.' } },
 } as const
 export const GroupUpdateInputInput = {
   name: stringInput(GroupUpdateInputConstraints['name']),
   description: stringInput(GroupUpdateInputConstraints['description']),
-  addMemberIds: stringInput(GroupUpdateInputConstraints['addMemberIds']),
-  removeMemberIds: stringInput(GroupUpdateInputConstraints['removeMemberIds']),
-  addRoleIds: stringInput(GroupUpdateInputConstraints['addRoleIds']),
-  removeRoleIds: stringInput(GroupUpdateInputConstraints['removeRoleIds']),
 }
 export const GroupUpdateInput = z
   .object({
@@ -355,6 +353,8 @@ export type ImageMediaTypeFormOutput = z.output<typeof ImageMediaType>
 export const ImageUploadInputConstraints = {
   mediaType: { messages: { enum: 'Choose a JPEG, PNG, or WebP image.' } },
   size: {
+    minimum: 1,
+    maximum: 5242880,
     messages: {
       minimum: 'Choose a profile photo that is not empty.',
       maximum: 'Profile photos must be 5 MiB or smaller.',
@@ -363,7 +363,7 @@ export const ImageUploadInputConstraints = {
 } as const
 export const ImageUploadInputInput = {
   mediaType: stringInput(ImageUploadInputConstraints['mediaType']),
-  size: stringInput(ImageUploadInputConstraints['size']),
+  size: integerInput({ minimum: 1, maximum: 5242880 }),
 }
 export const ImageUploadInput = z
   .object({
@@ -431,15 +431,15 @@ export type InvitationCreateInputFormInput = z.input<typeof InvitationCreateInpu
 export type InvitationCreateInputFormOutput = z.output<typeof InvitationCreateInput>
 export const InvitationBatchCreateInputConstraints = {
   invitations: {
+    minItems: 1,
+    maxItems: 100,
     messages: {
       minItems: 'Invite between 1 and 100 people at a time.',
       maxItems: 'Invite between 1 and 100 people at a time.',
     },
   },
 } as const
-export const InvitationBatchCreateInputInput = {
-  invitations: stringInput(InvitationBatchCreateInputConstraints['invitations']),
-}
+export const InvitationBatchCreateInputInput = {}
 export const InvitationBatchCreateInput = z
   .object({
     invitations: z
@@ -522,6 +522,503 @@ export const MessageCompositionPatchInput = z
   .strict()
 export type MessageCompositionPatchInputFormInput = z.input<typeof MessageCompositionPatchInput>
 export type MessageCompositionPatchInputFormOutput = z.output<typeof MessageCompositionPatchInput>
+/** Text operation determining the upstream request and response format. */
+export const TextModelProtocol = z
+  .enum(['OPENAI_CHAT_COMPLETIONS', 'OPENAI_RESPONSES', 'ANTHROPIC_MESSAGES'])
+  .describe('Text operation determining the upstream request and response format.')
+export type TextModelProtocolFormInput = z.input<typeof TextModelProtocol>
+export type TextModelProtocolFormOutput = z.output<typeof TextModelProtocol>
+export const ModelTemplateLimitsInputConstraints = {
+  context: {
+    minimum: 100,
+    maximum: 10000000,
+    messages: {
+      minimum: 'Enter between 100 and 10,000,000 tokens.',
+      maximum: 'Enter between 100 and 10,000,000 tokens.',
+    },
+  },
+  input: {
+    minimum: 100,
+    maximum: 10000000,
+    messages: {
+      minimum: 'Enter between 100 and 10,000,000 tokens.',
+      maximum: 'Enter between 100 and 10,000,000 tokens.',
+    },
+  },
+  output: {
+    minimum: 100,
+    maximum: 10000000,
+    messages: {
+      minimum: 'Enter between 100 and 10,000,000 tokens.',
+      maximum: 'Enter between 100 and 10,000,000 tokens.',
+    },
+  },
+} as const
+export const ModelTemplateLimitsInputInput = {
+  context: integerInput({ minimum: 100, maximum: 10000000 }),
+  input: integerInput({ minimum: 100, maximum: 10000000 }),
+  output: integerInput({ minimum: 100, maximum: 10000000 }),
+}
+export const ModelTemplateLimitsInput = z
+  .object({
+    context: ContextTokens.min(100, { message: 'Enter between 100 and 10,000,000 tokens.' })
+      .max(10000000, { message: 'Enter between 100 and 10,000,000 tokens.' })
+      .nullable()
+      .optional(),
+    input: ContextTokens.min(100, { message: 'Enter between 100 and 10,000,000 tokens.' })
+      .max(10000000, { message: 'Enter between 100 and 10,000,000 tokens.' })
+      .nullable()
+      .optional(),
+    output: ContextTokens.min(100, { message: 'Enter between 100 and 10,000,000 tokens.' })
+      .max(10000000, { message: 'Enter between 100 and 10,000,000 tokens.' })
+      .nullable()
+      .optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value == null) return
+    for (const field of ['input', 'output'] as const) {
+      if (value.context != null && value[field] != null && value[field]! > value.context)
+        ctx.addIssue({
+          code: 'custom',
+          path: [field],
+          message:
+            {
+              input: 'Input limit cannot exceed the context window.',
+              output: 'Output limit cannot exceed the context window.',
+            }[field] ?? 'Check the token limits.',
+        })
+    }
+  })
+export type ModelTemplateLimitsInputFormInput = z.input<typeof ModelTemplateLimitsInput>
+export type ModelTemplateLimitsInputFormOutput = z.output<typeof ModelTemplateLimitsInput>
+export const ModelTemplatePriceInputConstraints = {
+  value: {
+    pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
+    minimum: 0,
+    maximum: 10000,
+    messages: {
+      pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
+      'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
+      'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
+      minimum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+      maximum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+    },
+    inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
+    format: 'modelPrice',
+  },
+} as const
+export const ModelTemplatePriceInputInput = { value: stringInput(ModelTemplatePriceInputConstraints['value']) }
+export const ModelTemplatePriceInput = z
+  .object({
+    enabled: z.boolean(),
+    value: inputString({
+      pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
+      minimum: 0,
+      maximum: 10000,
+      messages: {
+        pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
+        'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
+        'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
+        minimum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+        maximum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+      },
+      inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
+      format: 'modelPrice',
+    })
+      .nullable()
+      .optional(),
+  })
+  .strict()
+  .refine((value) => value == null || templatePriceObject(value), { path: ['value'], message: 'Enter a custom price.' })
+export type ModelTemplatePriceInputFormInput = z.input<typeof ModelTemplatePriceInput>
+export type ModelTemplatePriceInputFormOutput = z.output<typeof ModelTemplatePriceInput>
+/** Capabilities declared by a catalog or configured model; not an authorization grant. */
+export const ProviderModelCapability = z
+  .enum([
+    'TEXT',
+    'VISION',
+    'PDF',
+    'AUDIO',
+    'VIDEO',
+    'IMAGE_GENERATION',
+    'AUDIO_GENERATION',
+    'SEARCH',
+    'REASONING',
+    'TOOL_CALL',
+    'FORCED_TOOL_CHOICE',
+    'STRUCTURED_OUTPUT',
+  ])
+  .describe('Capabilities declared by a catalog or configured model; not an authorization grant.')
+export type ProviderModelCapabilityFormInput = z.input<typeof ProviderModelCapability>
+export type ProviderModelCapabilityFormOutput = z.output<typeof ProviderModelCapability>
+export const ProviderEffortMappingConstraints = {
+  low: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
+  medium: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
+  high: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
+  xhigh: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
+  max: {
+    minLength: 1,
+    maxLength: 25,
+    pattern: '^[A-Za-z0-9_-]+$',
+    messages: {
+      minLength: 'Enter an effort value of 1 to 25 characters.',
+      maxLength: 'Enter an effort value of 1 to 25 characters.',
+      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+    },
+  },
+} as const
+export const ProviderEffortMappingInput = {
+  low: stringInput(ProviderEffortMappingConstraints['low']),
+  medium: stringInput(ProviderEffortMappingConstraints['medium']),
+  high: stringInput(ProviderEffortMappingConstraints['high']),
+  xhigh: stringInput(ProviderEffortMappingConstraints['xhigh']),
+  max: stringInput(ProviderEffortMappingConstraints['max']),
+}
+/** Empty object means no configured effort levels. Configured values cannot be empty. */
+export const ProviderEffortMapping = z
+  .object({
+    low: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
+    medium: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
+    high: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
+    xhigh: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
+    max: inputString({
+      minLength: 1,
+      maxLength: 25,
+      pattern: '^[A-Za-z0-9_-]+$',
+      messages: {
+        minLength: 'Enter an effort value of 1 to 25 characters.',
+        maxLength: 'Enter an effort value of 1 to 25 characters.',
+        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
+      },
+    }).optional(),
+  })
+  .strict()
+  .describe('Empty object means no configured effort levels. Configured values cannot be empty.')
+export type ProviderEffortMappingFormInput = z.input<typeof ProviderEffortMapping>
+export type ProviderEffortMappingFormOutput = z.output<typeof ProviderEffortMapping>
+export const ProviderHeaderConstraints = {
+  key: {
+    maxLength: 128,
+    pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+    messages: { pattern: 'Enter a valid HTTP header name.', maxLength: 'Header name must be 128 characters or fewer.' },
+  },
+  value: {
+    pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$',
+    messages: { pattern: 'Header values cannot contain newlines or unsupported characters.' },
+  },
+} as const
+export const ProviderHeaderInput = {
+  key: stringInput(ProviderHeaderConstraints['key']),
+  value: stringInput(ProviderHeaderConstraints['value']),
+}
+export const ProviderHeader = z
+  .object({
+    key: inputString({
+      maxLength: 128,
+      pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+      messages: {
+        pattern: 'Enter a valid HTTP header name.',
+        maxLength: 'Header name must be 128 characters or fewer.',
+      },
+    }),
+    value: inputString({
+      pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$',
+      messages: { pattern: 'Header values cannot contain newlines or unsupported characters.' },
+    }).describe('Write-only header content; never returned by management reads.'),
+  })
+  .strict()
+  .refine((value) => value == null || headerObject(value), { message: 'Enter a valid Authorization header value.' })
+export type ProviderHeaderFormInput = z.input<typeof ProviderHeader>
+export type ProviderHeaderFormOutput = z.output<typeof ProviderHeader>
+export const ProviderBodyDefaultConstraints = {
+  key: {
+    minLength: 1,
+    maxLength: 128,
+    messages: {
+      minLength: 'Body field names must contain 1 to 128 characters.',
+      maxLength: 'Body field names must contain 1 to 128 characters.',
+      'x-compallm-format': 'Use a body field name other than model, messages, input, or stream.',
+      'x-compallm-input-pattern': 'Use a body field name other than model, messages, input, or stream.',
+    },
+    inputPattern: '^[A-Za-z0-9_.-]*$',
+    format: 'bodyDefaultKey',
+  },
+  value: {
+    minLength: 1,
+    maxLength: 16384,
+    messages: {
+      minLength: 'Enter a JSON value of at most 16,384 characters.',
+      maxLength: 'Enter a JSON value of at most 16,384 characters.',
+      'x-compallm-format': 'Enter a valid JSON value.',
+    },
+    format: 'jsonValue',
+  },
+} as const
+export const ProviderBodyDefaultInput = {
+  key: stringInput(ProviderBodyDefaultConstraints['key']),
+  value: stringInput(ProviderBodyDefaultConstraints['value']),
+}
+export const ProviderBodyDefault = z
+  .object({
+    key: inputString({
+      minLength: 1,
+      maxLength: 128,
+      messages: {
+        minLength: 'Body field names must contain 1 to 128 characters.',
+        maxLength: 'Body field names must contain 1 to 128 characters.',
+        'x-compallm-format': 'Use a body field name other than model, messages, input, or stream.',
+        'x-compallm-input-pattern': 'Use a body field name other than model, messages, input, or stream.',
+      },
+      inputPattern: '^[A-Za-z0-9_.-]*$',
+      format: 'bodyDefaultKey',
+    }),
+    value: inputString({
+      minLength: 1,
+      maxLength: 16384,
+      messages: {
+        minLength: 'Enter a JSON value of at most 16,384 characters.',
+        maxLength: 'Enter a JSON value of at most 16,384 characters.',
+        'x-compallm-format': 'Enter a valid JSON value.',
+      },
+      format: 'jsonValue',
+    }),
+  })
+  .strict()
+  .refine((value) => value == null || bodyDefaultObject(value), {
+    message: 'Use the JSON value type required by the selected body field.',
+  })
+export type ProviderBodyDefaultFormInput = z.input<typeof ProviderBodyDefault>
+export type ProviderBodyDefaultFormOutput = z.output<typeof ProviderBodyDefault>
+export const ModelTemplateCustomizeInputConstraints = {
+  name: {
+    minLength: 1,
+    maxLength: 512,
+    pattern: '^[\\x21-\\x7e]{1,512}$',
+    messages: {
+      minLength: 'Model identifier must contain 1 to 512 characters.',
+      maxLength: 'Model identifier must contain 1 to 512 characters.',
+      pattern: 'Use the exact upstream model identifier without spaces or control characters.',
+    },
+    trim: true,
+  },
+  path: {
+    maxLength: 40,
+    pattern: '^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$',
+    messages: {
+      pattern: 'Enter a valid endpoint path beginning with /.',
+      maxLength: 'Path must be 40 characters or fewer.',
+    },
+  },
+  limits: {
+    messages: {
+      input: 'Input limit cannot exceed the context window.',
+      output: 'Output limit cannot exceed the context window.',
+    },
+  },
+  inputPrice: { messages: { 'x-compallm-object-rule': 'Enter a custom price.' } },
+  outputPrice: { messages: { 'x-compallm-object-rule': 'Enter a custom price.' } },
+  cachedPrice: { messages: { 'x-compallm-object-rule': 'Enter a custom price.' } },
+  capabilities: {
+    messages: { 'x-compallm-array-rule': 'Text models require Text; forced tool choice also requires tool calling.' },
+  },
+  headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
+  bodyDefaults: { messages: { 'x-compallm-array-rule': 'Body field names must be unique.' } },
+} as const
+export const ModelTemplateCustomizeInputInput = {
+  name: stringInput(ModelTemplateCustomizeInputConstraints['name']),
+  path: stringInput(ModelTemplateCustomizeInputConstraints['path']),
+}
+export const ModelTemplateCustomizeInput = z
+  .object({
+    name: inputString({
+      minLength: 1,
+      maxLength: 512,
+      pattern: '^[\\x21-\\x7e]{1,512}$',
+      messages: {
+        minLength: 'Model identifier must contain 1 to 512 characters.',
+        maxLength: 'Model identifier must contain 1 to 512 characters.',
+        pattern: 'Use the exact upstream model identifier without spaces or control characters.',
+      },
+      trim: true,
+    })
+      .nullable()
+      .optional(),
+    protocol: TextModelProtocol.nullable().optional(),
+    path: inputString({
+      maxLength: 40,
+      pattern: '^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$',
+      messages: {
+        pattern: 'Enter a valid endpoint path beginning with /.',
+        maxLength: 'Path must be 40 characters or fewer.',
+      },
+    })
+      .nullable()
+      .optional(),
+    limits: ModelTemplateLimitsInput.nullable().optional(),
+    inputPrice: ModelTemplatePriceInput.nullable().optional(),
+    outputPrice: ModelTemplatePriceInput.nullable().optional(),
+    cachedPrice: ModelTemplatePriceInput.nullable().optional(),
+    capabilities: z
+      .array(ProviderModelCapability)
+      .nullable()
+      .refine((value) => value == null || modelCapabilitiesArray(value), {
+        message: 'Text models require Text; forced tool choice also requires tool calling.',
+      })
+      .optional(),
+    effortMapping: ProviderEffortMapping.nullable().optional(),
+    headers: z
+      .array(ProviderHeader)
+      .nullable()
+      .refine((value) => value == null || ((entries) => headersObject({ entries }))(value), {
+        message: 'Header names must be unique, ignoring case.',
+      })
+      .optional(),
+    bodyDefaults: z
+      .array(ProviderBodyDefault)
+      .nullable()
+      .refine((value) => value == null || bodyDefaultsArray(value), { message: 'Body field names must be unique.' })
+      .optional(),
+  })
+  .strict()
+export type ModelTemplateCustomizeInputFormInput = z.input<typeof ModelTemplateCustomizeInput>
+export type ModelTemplateCustomizeInputFormOutput = z.output<typeof ModelTemplateCustomizeInput>
+export const ModelTemplateCreateInputConstraints = {} as const
+export const ModelTemplateCreateInputInput = {}
+export const ModelTemplateCreateInput = z
+  .object({ configuration: ModelTemplateCustomizeInput })
+  .strict()
+  .superRefine((value, ctx) => {
+    for (const field of ['name', 'protocol', 'path', 'inputPrice', 'outputPrice'] as const) {
+      const configured = value.configuration[field]
+      const valid =
+        field === 'inputPrice'
+          ? value.configuration.inputPrice?.enabled && value.configuration.inputPrice.value != null
+          : field === 'outputPrice'
+            ? value.configuration.outputPrice?.enabled && value.configuration.outputPrice.value != null
+            : configured != null
+      if (!valid)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['configuration', field],
+          message: {
+            name: 'Enter the upstream model identifier.',
+            protocol: 'Choose a text operation.',
+            path: 'Enter an endpoint path.',
+            inputPrice: 'Set an input price for the new model.',
+            outputPrice: 'Set an output price for the new model.',
+          }[field],
+        })
+    }
+  })
+export type ModelTemplateCreateInputFormInput = z.input<typeof ModelTemplateCreateInput>
+export type ModelTemplateCreateInputFormOutput = z.output<typeof ModelTemplateCreateInput>
+export const ModelTemplateEffectiveLimitsInputConstraints = {
+  context: { minimum: 1, maximum: 4294967295 },
+  input: { minimum: 1, maximum: 4294967295 },
+  output: { minimum: 1, maximum: 4294967295 },
+} as const
+export const ModelTemplateEffectiveLimitsInputInput = {
+  context: integerInput({ minimum: 1, maximum: 4294967295 }),
+  input: integerInput({ minimum: 1, maximum: 4294967295 }),
+  output: integerInput({ minimum: 1, maximum: 4294967295 }),
+}
+export const ModelTemplateEffectiveLimitsInput = z
+  .object({
+    context: ContextTokens.nullable().optional(),
+    input: ContextTokens.nullable().optional(),
+    output: ContextTokens.nullable().optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value == null) return
+    for (const field of ['input', 'output'] as const) {
+      if (value.context != null && value[field] != null && value[field]! > value.context)
+        ctx.addIssue({
+          code: 'custom',
+          path: [field],
+          message:
+            {
+              input: 'Input limit cannot exceed the context window.',
+              output: 'Output limit cannot exceed the context window.',
+            }[field] ?? 'Check the token limits.',
+        })
+    }
+  })
+export type ModelTemplateEffectiveLimitsInputFormInput = z.input<typeof ModelTemplateEffectiveLimitsInput>
+export type ModelTemplateEffectiveLimitsInputFormOutput = z.output<typeof ModelTemplateEffectiveLimitsInput>
 export const ModelTemplateMatchInputConstraints = {} as const
 export const ModelTemplateMatchInputInput = {}
 export const ModelTemplateMatchInput = z
@@ -612,7 +1109,7 @@ export type OnboardingLinkInputFormInput = z.input<typeof OnboardingLinkInput>
 export type OnboardingLinkInputFormOutput = z.output<typeof OnboardingLinkInput>
 export const OrganizationOnboardingSettingsInputConstraints = {
   welcome: { maxLength: 4096, messages: { maxLength: 'Welcome message must be 4096 characters or fewer.' } },
-  links: { messages: { maxItems: 'Use no more than 20 links.' } },
+  links: { maxItems: 20, messages: { maxItems: 'Use no more than 20 links.' } },
   artworkColor: {
     pattern: '^#[0-9a-fA-F]{6}$',
     messages: { pattern: 'Enter a six-digit hex color, such as #5588cc.' },
@@ -620,7 +1117,6 @@ export const OrganizationOnboardingSettingsInputConstraints = {
 } as const
 export const OrganizationOnboardingSettingsInputInput = {
   welcome: stringInput(OrganizationOnboardingSettingsInputConstraints['welcome']),
-  links: stringInput(OrganizationOnboardingSettingsInputConstraints['links']),
   artworkColor: stringInput(OrganizationOnboardingSettingsInputConstraints['artworkColor']),
 }
 export const OrganizationOnboardingSettingsInput = z
@@ -803,63 +1299,6 @@ export const ProfileUpdateInput = z
   .strict()
 export type ProfileUpdateInputFormInput = z.input<typeof ProfileUpdateInput>
 export type ProfileUpdateInputFormOutput = z.output<typeof ProfileUpdateInput>
-export const ProviderBodyDefaultConstraints = {
-  key: {
-    minLength: 1,
-    maxLength: 128,
-    messages: {
-      minLength: 'Body field names must contain 1 to 128 characters.',
-      maxLength: 'Body field names must contain 1 to 128 characters.',
-      'x-compallm-format': 'Use a body field name other than model, messages, input, or stream.',
-      'x-compallm-input-pattern': 'Use a body field name other than model, messages, input, or stream.',
-    },
-    inputPattern: '^[A-Za-z0-9_.-]*$',
-    format: 'bodyDefaultKey',
-  },
-  value: {
-    minLength: 1,
-    maxLength: 16384,
-    messages: {
-      minLength: 'Enter a JSON value of at most 16,384 characters.',
-      maxLength: 'Enter a JSON value of at most 16,384 characters.',
-      'x-compallm-format': 'Enter a valid JSON value.',
-    },
-    format: 'jsonValue',
-  },
-} as const
-export const ProviderBodyDefaultInput = {
-  key: stringInput(ProviderBodyDefaultConstraints['key']),
-  value: stringInput(ProviderBodyDefaultConstraints['value']),
-}
-export const ProviderBodyDefault = z
-  .object({
-    key: inputString({
-      minLength: 1,
-      maxLength: 128,
-      messages: {
-        minLength: 'Body field names must contain 1 to 128 characters.',
-        maxLength: 'Body field names must contain 1 to 128 characters.',
-        'x-compallm-format': 'Use a body field name other than model, messages, input, or stream.',
-        'x-compallm-input-pattern': 'Use a body field name other than model, messages, input, or stream.',
-      },
-      inputPattern: '^[A-Za-z0-9_.-]*$',
-      format: 'bodyDefaultKey',
-    }),
-    value: inputString({
-      minLength: 1,
-      maxLength: 16384,
-      messages: {
-        minLength: 'Enter a JSON value of at most 16,384 characters.',
-        maxLength: 'Enter a JSON value of at most 16,384 characters.',
-        'x-compallm-format': 'Enter a valid JSON value.',
-      },
-      format: 'jsonValue',
-    }),
-  })
-  .strict()
-  .refine(bodyDefaultObject, { message: 'Use the JSON value type required by the selected body field.' })
-export type ProviderBodyDefaultFormInput = z.input<typeof ProviderBodyDefault>
-export type ProviderBodyDefaultFormOutput = z.output<typeof ProviderBodyDefault>
 export const ProviderCatalogRefConstraints = {} as const
 export const ProviderCatalogRefInput = {}
 /** Opaque registry identity, independent of an edited upstream model name. */
@@ -869,182 +1308,100 @@ export const ProviderCatalogRef = z
   .describe('Opaque registry identity, independent of an edited upstream model name.')
 export type ProviderCatalogRefFormInput = z.input<typeof ProviderCatalogRef>
 export type ProviderCatalogRefFormOutput = z.output<typeof ProviderCatalogRef>
-export const ProviderHeaderConstraints = {
-  key: {
-    maxLength: 128,
-    pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
-    messages: { pattern: 'Enter a valid HTTP header name.', maxLength: 'Header name must be 128 characters or fewer.' },
+export const ProviderTemplateModelInputConstraints = {} as const
+export const ProviderTemplateModelInputInput = {}
+export const ProviderTemplateModelInput = z.object({ id: inputString({}), protocol: TextModelProtocol }).strict()
+export type ProviderTemplateModelInputFormInput = z.input<typeof ProviderTemplateModelInput>
+export type ProviderTemplateModelInputFormOutput = z.output<typeof ProviderTemplateModelInput>
+export const ProviderCreateFromTemplateInputConstraints = {
+  name: {
+    minLength: 1,
+    maxLength: 120,
+    messages: {
+      minLength: 'Connection name must contain 1 to 120 characters.',
+      maxLength: 'Connection name must contain 1 to 120 characters.',
+      'x-compallm-format': 'Enter a connection name.',
+    },
+    format: 'nonblank',
+    trim: true,
   },
-  value: {
-    pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$',
-    messages: { pattern: 'Header values cannot contain newlines or unsupported characters.' },
+  baseUrl: {
+    maxLength: 512,
+    messages: {
+      maxLength: 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+      'x-compallm-format': 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+    },
+    format: 'baseUrl',
+  },
+  apiKey: {
+    minLength: 1,
+    maxLength: 512,
+    pattern: '^[^\\s]+$',
+    messages: {
+      minLength: 'Enter an API key of 1 to 512 characters.',
+      maxLength: 'Enter an API key of 1 to 512 characters.',
+      pattern: 'API keys cannot contain whitespace.',
+    },
+  },
+  headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
+  models: {
+    minItems: 1,
+    maxItems: 1000,
+    messages: { minItems: 'Enable between 1 and 1,000 models.', maxItems: 'Enable between 1 and 1,000 models.' },
   },
 } as const
-export const ProviderHeaderInput = {
-  key: stringInput(ProviderHeaderConstraints['key']),
-  value: stringInput(ProviderHeaderConstraints['value']),
+export const ProviderCreateFromTemplateInputInput = {
+  name: stringInput(ProviderCreateFromTemplateInputConstraints['name']),
+  baseUrl: stringInput(ProviderCreateFromTemplateInputConstraints['baseUrl']),
+  apiKey: stringInput(ProviderCreateFromTemplateInputConstraints['apiKey']),
 }
-export const ProviderHeader = z
+export const ProviderCreateFromTemplateInput = z
   .object({
-    key: inputString({
-      maxLength: 128,
-      pattern: "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+    name: inputString({
+      minLength: 1,
+      maxLength: 120,
       messages: {
-        pattern: 'Enter a valid HTTP header name.',
-        maxLength: 'Header name must be 128 characters or fewer.',
+        minLength: 'Connection name must contain 1 to 120 characters.',
+        maxLength: 'Connection name must contain 1 to 120 characters.',
+        'x-compallm-format': 'Enter a connection name.',
+      },
+      format: 'nonblank',
+      trim: true,
+    }),
+    providerTemplateId: inputString({}),
+    baseUrl: inputString({
+      maxLength: 512,
+      messages: {
+        maxLength: 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+        'x-compallm-format': 'Enter an HTTP or HTTPS server URL without credentials, query, or fragment.',
+      },
+      format: 'baseUrl',
+    }),
+    apiKey: inputString({
+      minLength: 1,
+      maxLength: 512,
+      pattern: '^[^\\s]+$',
+      messages: {
+        minLength: 'Enter an API key of 1 to 512 characters.',
+        maxLength: 'Enter an API key of 1 to 512 characters.',
+        pattern: 'API keys cannot contain whitespace.',
       },
     }),
-    value: inputString({
-      pattern: '^[\\t\\x20-\\x7e\\x80-\\xff]*$',
-      messages: { pattern: 'Header values cannot contain newlines or unsupported characters.' },
-    }).describe('Write-only header content; never returned by management reads.'),
+    headers: z
+      .array(ProviderHeader)
+      .refine((value) => value == null || ((entries) => headersObject({ entries }))(value), {
+        message: 'Header names must be unique, ignoring case.',
+      }),
+    models: z
+      .array(ProviderTemplateModelInput)
+      .min(1, { message: 'Enable between 1 and 1,000 models.' })
+      .max(1000, { message: 'Enable between 1 and 1,000 models.' }),
+    logoUrl: inputString({}).nullable().optional(),
+    logoUploadId: inputString({}).nullable().optional(),
   })
   .strict()
-  .refine(headerObject, { message: 'Enter a valid Authorization header value.' })
-export type ProviderHeaderFormInput = z.input<typeof ProviderHeader>
-export type ProviderHeaderFormOutput = z.output<typeof ProviderHeader>
-/** Text operation determining the upstream request and response format. */
-export const TextModelProtocol = z
-  .enum(['OPENAI_CHAT_COMPLETIONS', 'OPENAI_RESPONSES', 'ANTHROPIC_MESSAGES'])
-  .describe('Text operation determining the upstream request and response format.')
-export type TextModelProtocolFormInput = z.input<typeof TextModelProtocol>
-export type TextModelProtocolFormOutput = z.output<typeof TextModelProtocol>
-export const ProviderEffortMappingConstraints = {
-  low: {
-    minLength: 1,
-    maxLength: 25,
-    pattern: '^[A-Za-z0-9_-]+$',
-    messages: {
-      minLength: 'Enter an effort value of 1 to 25 characters.',
-      maxLength: 'Enter an effort value of 1 to 25 characters.',
-      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-    },
-  },
-  medium: {
-    minLength: 1,
-    maxLength: 25,
-    pattern: '^[A-Za-z0-9_-]+$',
-    messages: {
-      minLength: 'Enter an effort value of 1 to 25 characters.',
-      maxLength: 'Enter an effort value of 1 to 25 characters.',
-      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-    },
-  },
-  high: {
-    minLength: 1,
-    maxLength: 25,
-    pattern: '^[A-Za-z0-9_-]+$',
-    messages: {
-      minLength: 'Enter an effort value of 1 to 25 characters.',
-      maxLength: 'Enter an effort value of 1 to 25 characters.',
-      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-    },
-  },
-  xhigh: {
-    minLength: 1,
-    maxLength: 25,
-    pattern: '^[A-Za-z0-9_-]+$',
-    messages: {
-      minLength: 'Enter an effort value of 1 to 25 characters.',
-      maxLength: 'Enter an effort value of 1 to 25 characters.',
-      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-    },
-  },
-  max: {
-    minLength: 1,
-    maxLength: 25,
-    pattern: '^[A-Za-z0-9_-]+$',
-    messages: {
-      minLength: 'Enter an effort value of 1 to 25 characters.',
-      maxLength: 'Enter an effort value of 1 to 25 characters.',
-      pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-    },
-  },
-} as const
-export const ProviderEffortMappingInput = {
-  low: stringInput(ProviderEffortMappingConstraints['low']),
-  medium: stringInput(ProviderEffortMappingConstraints['medium']),
-  high: stringInput(ProviderEffortMappingConstraints['high']),
-  xhigh: stringInput(ProviderEffortMappingConstraints['xhigh']),
-  max: stringInput(ProviderEffortMappingConstraints['max']),
-}
-/** Empty object means no configured effort levels. Configured values cannot be empty. */
-export const ProviderEffortMapping = z
-  .object({
-    low: inputString({
-      minLength: 1,
-      maxLength: 25,
-      pattern: '^[A-Za-z0-9_-]+$',
-      messages: {
-        minLength: 'Enter an effort value of 1 to 25 characters.',
-        maxLength: 'Enter an effort value of 1 to 25 characters.',
-        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-      },
-    }).optional(),
-    medium: inputString({
-      minLength: 1,
-      maxLength: 25,
-      pattern: '^[A-Za-z0-9_-]+$',
-      messages: {
-        minLength: 'Enter an effort value of 1 to 25 characters.',
-        maxLength: 'Enter an effort value of 1 to 25 characters.',
-        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-      },
-    }).optional(),
-    high: inputString({
-      minLength: 1,
-      maxLength: 25,
-      pattern: '^[A-Za-z0-9_-]+$',
-      messages: {
-        minLength: 'Enter an effort value of 1 to 25 characters.',
-        maxLength: 'Enter an effort value of 1 to 25 characters.',
-        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-      },
-    }).optional(),
-    xhigh: inputString({
-      minLength: 1,
-      maxLength: 25,
-      pattern: '^[A-Za-z0-9_-]+$',
-      messages: {
-        minLength: 'Enter an effort value of 1 to 25 characters.',
-        maxLength: 'Enter an effort value of 1 to 25 characters.',
-        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-      },
-    }).optional(),
-    max: inputString({
-      minLength: 1,
-      maxLength: 25,
-      pattern: '^[A-Za-z0-9_-]+$',
-      messages: {
-        minLength: 'Enter an effort value of 1 to 25 characters.',
-        maxLength: 'Enter an effort value of 1 to 25 characters.',
-        pattern: 'Use letters, numbers, hyphens, or underscores for effort values.',
-      },
-    }).optional(),
-  })
-  .strict()
-  .describe('Empty object means no configured effort levels. Configured values cannot be empty.')
-export type ProviderEffortMappingFormInput = z.input<typeof ProviderEffortMapping>
-export type ProviderEffortMappingFormOutput = z.output<typeof ProviderEffortMapping>
-/** Capabilities declared by a catalog or configured model; not an authorization grant. */
-export const ProviderModelCapability = z
-  .enum([
-    'TEXT',
-    'VISION',
-    'PDF',
-    'AUDIO',
-    'VIDEO',
-    'IMAGE_GENERATION',
-    'AUDIO_GENERATION',
-    'SEARCH',
-    'REASONING',
-    'TOOL_CALL',
-    'FORCED_TOOL_CHOICE',
-    'STRUCTURED_OUTPUT',
-  ])
-  .describe('Capabilities declared by a catalog or configured model; not an authorization grant.')
-export type ProviderModelCapabilityFormInput = z.input<typeof ProviderModelCapability>
-export type ProviderModelCapabilityFormOutput = z.output<typeof ProviderModelCapability>
+export type ProviderCreateFromTemplateInputFormInput = z.input<typeof ProviderCreateFromTemplateInput>
+export type ProviderCreateFromTemplateInputFormOutput = z.output<typeof ProviderCreateFromTemplateInput>
 export const ProviderModelConfigurationConstraints = {
   name: {
     minLength: 1,
@@ -1064,34 +1421,49 @@ export const ProviderModelConfigurationConstraints = {
       maxLength: 'Path must be 40 characters or fewer.',
     },
   },
+  maxContextTokens: { minimum: 1, maximum: 4294967295 },
+  maxInputTokens: { minimum: 1, maximum: 4294967295 },
+  maxOutputTokens: { minimum: 1, maximum: 4294967295 },
   headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
   bodyDefaults: { messages: { 'x-compallm-array-rule': 'Body field names must be unique.' } },
   inputPrice: {
     pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
+    minimum: 0,
+    maximum: 10000,
     messages: {
       pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
       'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
       'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
+      minimum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+      maximum: 'Enter a price between $0 and $10,000 per 1M tokens.',
     },
     inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
     format: 'modelPrice',
   },
   outputPrice: {
     pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
+    minimum: 0,
+    maximum: 10000,
     messages: {
       pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
       'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
       'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
+      minimum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+      maximum: 'Enter a price between $0 and $10,000 per 1M tokens.',
     },
     inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
     format: 'modelPrice',
   },
   cachedPrice: {
     pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
+    minimum: 0,
+    maximum: 10000,
     messages: {
       pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
       'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
       'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
+      minimum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+      maximum: 'Enter a price between $0 and $10,000 per 1M tokens.',
     },
     inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
     format: 'modelPrice',
@@ -1101,8 +1473,8 @@ export const ProviderModelConfigurationInput = {
   name: stringInput(ProviderModelConfigurationConstraints['name']),
   path: stringInput(ProviderModelConfigurationConstraints['path']),
   maxContextTokens: integerInput({ minimum: 1, maximum: 4294967295 }),
-  headers: stringInput(ProviderModelConfigurationConstraints['headers']),
-  bodyDefaults: stringInput(ProviderModelConfigurationConstraints['bodyDefaults']),
+  maxInputTokens: integerInput({ minimum: 1, maximum: 4294967295 }),
+  maxOutputTokens: integerInput({ minimum: 1, maximum: 4294967295 }),
   inputPrice: stringInput(ProviderModelConfigurationConstraints['inputPrice']),
   outputPrice: stringInput(ProviderModelConfigurationConstraints['outputPrice']),
   cachedPrice: stringInput(ProviderModelConfigurationConstraints['cachedPrice']),
@@ -1135,11 +1507,13 @@ export const ProviderModelConfiguration = z
     maxOutputTokens: ContextTokens.optional(),
     headers: z
       .array(ProviderHeader)
-      .refine((entries) => headersObject({ entries }), { message: 'Header names must be unique, ignoring case.' })
+      .refine((value) => value == null || ((entries) => headersObject({ entries }))(value), {
+        message: 'Header names must be unique, ignoring case.',
+      })
       .default([]),
     bodyDefaults: z
       .array(ProviderBodyDefault)
-      .refine(bodyDefaultsArray, { message: 'Body field names must be unique.' })
+      .refine((value) => value == null || bodyDefaultsArray(value), { message: 'Body field names must be unique.' })
       .default([]),
     enabled: z.boolean().default(true),
     effortMapping: ProviderEffortMapping.optional(),
@@ -1147,30 +1521,42 @@ export const ProviderModelConfiguration = z
     catalogRef: ProviderCatalogRef.optional(),
     inputPrice: inputString({
       pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
+      minimum: 0,
+      maximum: 10000,
       messages: {
         pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
         'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
         'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
+        minimum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+        maximum: 'Enter a price between $0 and $10,000 per 1M tokens.',
       },
       inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
       format: 'modelPrice',
     }),
     outputPrice: inputString({
       pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
+      minimum: 0,
+      maximum: 10000,
       messages: {
         pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
         'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
         'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
+        minimum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+        maximum: 'Enter a price between $0 and $10,000 per 1M tokens.',
       },
       inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
       format: 'modelPrice',
     }),
     cachedPrice: inputString({
       pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
+      minimum: 0,
+      maximum: 10000,
       messages: {
         pattern: 'Enter a price between $0 and $10,000 per 1M tokens.',
         'x-compallm-input-pattern': 'Enter a price between $0 and $10,000 per 1M tokens.',
         'x-compallm-format': 'Enter a price between $0 and $10,000 per 1M tokens.',
+        minimum: 'Enter a price between $0 and $10,000 per 1M tokens.',
+        maximum: 'Enter a price between $0 and $10,000 per 1M tokens.',
       },
       inputPattern: '^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$',
       format: 'modelPrice',
@@ -1180,7 +1566,7 @@ export const ProviderModelConfiguration = z
     cachedPriceEnabled: z.boolean().default(true),
   })
   .strict()
-  .refine(modelLimitsObject, {
+  .refine((value) => value == null || modelLimitsObject(value), {
     message: 'Enabled limits must be between 100 and 10,000,000 tokens and cannot exceed the context window.',
   })
   .describe('Complete configured text-model values. Decimal prices are USD per million tokens.')
@@ -1202,10 +1588,7 @@ export const ProviderModelWriteConstraints = {
     },
   },
 } as const
-export const ProviderModelWriteInput = {
-  id: stringInput(ProviderModelWriteConstraints['id']),
-  configuration: stringInput(ProviderModelWriteConstraints['configuration']),
-}
+export const ProviderModelWriteInput = { id: stringInput(ProviderModelWriteConstraints['id']) }
 /** Persisted identity is omitted for new models and forbidden during provider creation. */
 export const ProviderModelWrite = z
   .object({
@@ -1259,6 +1642,7 @@ export const ProviderCreateInputConstraints = {
   },
   headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
   models: {
+    minItems: 1,
     messages: {
       minItems: 'Add at least one enabled model and use unique model names and IDs.',
       'x-compallm-array-rule': 'Add at least one enabled model and use unique model names and IDs.',
@@ -1269,8 +1653,6 @@ export const ProviderCreateInputInput = {
   name: stringInput(ProviderCreateInputConstraints['name']),
   baseUrl: stringInput(ProviderCreateInputConstraints['baseUrl']),
   apiKey: stringInput(ProviderCreateInputConstraints['apiKey']),
-  headers: stringInput(ProviderCreateInputConstraints['headers']),
-  models: stringInput(ProviderCreateInputConstraints['models']),
 }
 /** New connection definition; credentials and header values are write-only. */
 export const ProviderCreateInput = z
@@ -1306,14 +1688,20 @@ export const ProviderCreateInput = z
     }),
     headers: z
       .array(ProviderHeader)
-      .refine((entries) => headersObject({ entries }), { message: 'Header names must be unique, ignoring case.' }),
+      .refine((value) => value == null || ((entries) => headersObject({ entries }))(value), {
+        message: 'Header names must be unique, ignoring case.',
+      }),
     models: z
       .array(ProviderModelWrite)
       .min(1, { message: 'Add at least one enabled model and use unique model names and IDs.' })
-      .refine(modelWritesArray, { message: 'Add at least one enabled model and use unique model names and IDs.' }),
+      .refine((value) => value == null || modelWritesArray(value), {
+        message: 'Add at least one enabled model and use unique model names and IDs.',
+      }),
   })
   .strict()
-  .refine(createProviderObject, { message: 'New models must not include a saved model identity.' })
+  .refine((value) => value == null || createProviderObject(value), {
+    message: 'New models must not include a saved model identity.',
+  })
   .describe('New connection definition; credentials and header values are write-only.')
 export type ProviderCreateInputFormInput = z.input<typeof ProviderCreateInput>
 export type ProviderCreateInputFormOutput = z.output<typeof ProviderCreateInput>
@@ -1351,7 +1739,9 @@ export const ProviderHeaderUpdate = z
       .optional(),
   })
   .strict()
-  .refine(headerUpdateObject, { message: 'Enter a valid Authorization header value.' })
+  .refine((value) => value == null || headerUpdateObject(value), {
+    message: 'Enter a valid Authorization header value.',
+  })
   .describe('Omit value to retain an existing header secret; new names require a value.')
 export type ProviderHeaderUpdateFormInput = z.input<typeof ProviderHeaderUpdate>
 export type ProviderHeaderUpdateFormOutput = z.output<typeof ProviderHeaderUpdate>
@@ -1387,6 +1777,7 @@ export const ProviderPatchInputConstraints = {
   },
   headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
   models: {
+    minItems: 1,
     messages: {
       minItems: 'Add at least one enabled model and use unique model names and IDs.',
       'x-compallm-array-rule': 'Add at least one enabled model and use unique model names and IDs.',
@@ -1397,8 +1788,6 @@ export const ProviderPatchInputInput = {
   name: stringInput(ProviderPatchInputConstraints['name']),
   baseUrl: stringInput(ProviderPatchInputConstraints['baseUrl']),
   apiKey: stringInput(ProviderPatchInputConstraints['apiKey']),
-  headers: stringInput(ProviderPatchInputConstraints['headers']),
-  models: stringInput(ProviderPatchInputConstraints['models']),
 }
 /** Partial update. Omitted fields are unchanged; explicit null is rejected. */
 export const ProviderPatchInput = z
@@ -1436,16 +1825,20 @@ export const ProviderPatchInput = z
       .optional(),
     headers: z
       .array(ProviderHeaderUpdate)
-      .refine((entries) => headersObject({ entries }), { message: 'Header names must be unique, ignoring case.' })
+      .refine((value) => value == null || ((entries) => headersObject({ entries }))(value), {
+        message: 'Header names must be unique, ignoring case.',
+      })
       .optional(),
     models: z
       .array(ProviderModelWrite)
       .min(1, { message: 'Add at least one enabled model and use unique model names and IDs.' })
-      .refine(modelWritesArray, { message: 'Add at least one enabled model and use unique model names and IDs.' })
+      .refine((value) => value == null || modelWritesArray(value), {
+        message: 'Add at least one enabled model and use unique model names and IDs.',
+      })
       .optional(),
   })
   .strict()
-  .refine(providerPatchObject, { message: 'Change at least one connection field.' })
+  .refine((value) => value == null || providerPatchObject(value), { message: 'Change at least one connection field.' })
   .describe('Partial update. Omitted fields are unchanged; explicit null is rejected.')
 export type ProviderPatchInputFormInput = z.input<typeof ProviderPatchInput>
 export type ProviderPatchInputFormOutput = z.output<typeof ProviderPatchInput>
@@ -1481,6 +1874,7 @@ export const ProviderReplaceInputConstraints = {
   },
   headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
   models: {
+    minItems: 1,
     messages: {
       minItems: 'Add at least one enabled model and use unique model names and IDs.',
       'x-compallm-array-rule': 'Add at least one enabled model and use unique model names and IDs.',
@@ -1491,8 +1885,6 @@ export const ProviderReplaceInputInput = {
   name: stringInput(ProviderReplaceInputConstraints['name']),
   baseUrl: stringInput(ProviderReplaceInputConstraints['baseUrl']),
   apiKey: stringInput(ProviderReplaceInputConstraints['apiKey']),
-  headers: stringInput(ProviderReplaceInputConstraints['headers']),
-  models: stringInput(ProviderReplaceInputConstraints['models']),
 }
 /** Full non-secret replacement. Omitting apiKey preserves the saved credential. */
 export const ProviderReplaceInput = z
@@ -1530,11 +1922,15 @@ export const ProviderReplaceInput = z
       .optional(),
     headers: z
       .array(ProviderHeaderUpdate)
-      .refine((entries) => headersObject({ entries }), { message: 'Header names must be unique, ignoring case.' }),
+      .refine((value) => value == null || ((entries) => headersObject({ entries }))(value), {
+        message: 'Header names must be unique, ignoring case.',
+      }),
     models: z
       .array(ProviderModelWrite)
       .min(1, { message: 'Add at least one enabled model and use unique model names and IDs.' })
-      .refine(modelWritesArray, { message: 'Add at least one enabled model and use unique model names and IDs.' }),
+      .refine((value) => value == null || modelWritesArray(value), {
+        message: 'Add at least one enabled model and use unique model names and IDs.',
+      }),
   })
   .strict()
   .describe('Full non-secret replacement. Omitting apiKey preserves the saved credential.')
@@ -1571,7 +1967,9 @@ export const ProvidersCreateInputInput = {}
 export const ProvidersCreateInput = z
   .object({ providers: z.array(ProviderCreateInput) })
   .strict()
-  .refine(createProvidersObject, { message: 'Add at least one connection and use unique connection names.' })
+  .refine((value) => value == null || createProvidersObject(value), {
+    message: 'Add at least one connection and use unique connection names.',
+  })
   .describe('Atomic batch of new provider connections for the verified organization.')
 export type ProvidersCreateInputFormInput = z.input<typeof ProvidersCreateInput>
 export type ProvidersCreateInputFormOutput = z.output<typeof ProvidersCreateInput>

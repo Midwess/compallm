@@ -1,10 +1,10 @@
 import { Skeleton as RadixSkeleton } from '@radix-ui/themes/components/skeleton'
-import { useContext, useEffect, useState, type ComponentProps, type HTMLAttributes, type ReactNode } from 'react'
+import { useContext, useEffect, useRef, useState, type ComponentProps, type HTMLAttributes, type ReactNode } from 'react'
 import { useStore } from 'zustand'
 import { LoadingRegionContext } from '../context'
 import type { LoadingController } from '../app'
-import { animation } from './motion'
-import { cx } from './shared'
+import { animation, useSkeletonMotion } from './motion'
+import { composeRefs, cx } from './shared'
 
 export function useInitialLoading() {
   return useContext(LoadingRegionContext)?.initial ?? false
@@ -56,14 +56,24 @@ export function LoadingFallback({
   return pending || presentation.visible ? fallback : children
 }
 
-function Placeholder({ loading, visible, className, ...props }: ComponentProps<typeof RadixSkeleton> & { visible: boolean }) {
+function Placeholder({
+  loading,
+  visible,
+  className,
+  ref,
+  ...props
+}: ComponentProps<typeof RadixSkeleton> & { visible: boolean }) {
+  const element = useRef<HTMLElement>(null)
+  useSkeletonMotion(element, !!loading && visible)
   return (
     <RadixSkeleton
       {...props}
+      ref={composeRefs(element, ref)}
       loading={loading}
       className={cx(
-        `pointer-events-none select-none border-transparent! bg-foreground/10! text-transparent!
-        caret-transparent shadow-none! placeholder:text-transparent! *:invisible!`,
+        `pointer-events-none select-none rounded-lg animate-none! border-transparent! bg-foreground/6! text-transparent!
+        bg-[radial-gradient(ellipse_at_center,color-mix(in_oklab,var(--foreground)_5%,transparent),transparent_70%)]!
+        bg-size-[70%_250%]! bg-no-repeat! caret-transparent shadow-none! placeholder:text-transparent! *:invisible!`,
         !visible && 'opacity-0!',
         className,
       )}

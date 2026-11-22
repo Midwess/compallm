@@ -30,6 +30,7 @@ function ProviderHeader() {
   const controller = useController()
   const step = useProvider((state) => state.step)
   const intent = useProvider((state) => state.intent)
+  const readOnly = useProvider((state) => state.readOnly)
   const name = useProvider((state) => (state.intent === 'edit' ? state.savedProvider?.name : state.name), ['name'])
   if (step === 'choose')
     return (
@@ -41,9 +42,11 @@ function ProviderHeader() {
     return (
       <PageHeader>
         <Title>{name}</Title>
-        <Functions>
-          <ProviderActions />
-        </Functions>
+        {!readOnly ? (
+          <Functions>
+            <ProviderActions />
+          </Functions>
+        ) : null}
       </PageHeader>
     )
   return (
@@ -114,3 +117,5 @@ export { capabilityOptions } from './model-options'
 export { initializeModelDraft, modelDraftFingerprint } from './model-options'
 
 export { providerCreateRequest, providerReplaceRequest } from './contract'
+
+export { templateCustomization } from './contract'

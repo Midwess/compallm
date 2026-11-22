@@ -1,0 +1,3 @@
+DROP INDEX provider_template_search_trgm;
+DROP INDEX model_template_search_trgm;
+DROP INDEX provider_template_catalog_order;

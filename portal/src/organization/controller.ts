@@ -8,6 +8,8 @@ import find from 'lodash-es/find'
 import type { AuthUser } from '@compallm/storybook'
 import { notify } from '../notifications/toast'
 import type { PreferenceDestination } from '@compallm/contract/graphql'
+import { graphql, ApiError } from '../graphql-client'
+import type { QueryGenqlSelection } from '@compallm/contract/graphql'
 import { organizationHome, organizationRoot } from './paths'
 
 export class OrganizationController implements Controller {
@@ -22,6 +24,49 @@ export class OrganizationController implements Controller {
     this.setCurrentUser(user)
   }
 
+  private providerRequest?: AbortController
+  start = () => {
+    void this.loadProviders()
+    return this.stop
+  }
+  stop = () => {
+    this.providerRequest?.abort()
+  }
+  private async loadProviders() {
+    this.providerRequest?.abort()
+    const request = new AbortController(),
+      organization = this.getCurrentOrganization()
+    if (!organization) return
+    this.providerRequest = request
+    this.store.setState({ providersLoading: true })
+    try {
+      let after: string | undefined
+      do {
+        const selection = {
+          providers: {
+            __args: { first: 100, after },
+            edges: { node: { id: true, name: true } },
+            pageInfo: { endCursor: true, hasNextPage: true },
+          },
+        } satisfies QueryGenqlSelection
+        const result = (await graphql(request.signal).query(selection)).providers
+        if (request.signal.aborted || this.getCurrentOrganization()?.id !== organization.id) return
+        this.store.setState((state) => {
+          const rows = new Map(state.providers.map((value) => [value.id, value]))
+          for (const { node } of result.edges)
+            if (!rows.has(node.id))
+              rows.set(node.id, { ...node, href: `/${encodeURIComponent(organization.name)}/providers/${node.id}` })
+          return { providers: [...rows.values()] }
+        })
+        after = result.pageInfo.hasNextPage ? (result.pageInfo.endCursor ?? undefined) : undefined
+      } while (after)
+    } catch (error) {
+      if (!request.signal.aborted && (!(error instanceof ApiError) || error.status !== 403))
+        notify.apiError(error, () => void this.loadProviders())
+    } finally {
+      if (this.providerRequest === request) this.store.setState({ providersLoading: false })
+    }
+  }
   getCurrentOrganization = () => {
     const state = this.store.getState()
     return find(state.organizations, { id: state.organizationId }) ?? null
@@ -86,6 +131,15 @@ export class OrganizationController implements Controller {
   }
   onOpenDestination = () => {
     notify.info('This feature is not available yet.')
+  }
+  onProviderCreated = (provider: { id: string; name: string }) => {
+    const organization = this.getCurrentOrganization()
+    if (!organization) return
+    const href = `/${encodeURIComponent(organization.name)}/providers/${provider.id}`
+    this.store.setState((state) => ({
+      providers: [...state.providers.filter((v) => v.id !== provider.id), { ...provider, href }],
+    }))
+    this.url.navigate(href)
   }
   onCreateProvider = () => {
     const organization = this.getCurrentOrganization()

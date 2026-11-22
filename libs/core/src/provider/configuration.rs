@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
+pub const DEFAULT_REQUEST_TIMEOUT_MS: u32 = 30_000;
+
 pub type Headers = BTreeMap<String, String>;
 pub type BodyDefaults = BTreeMap<String, serde_json::Value>;
 

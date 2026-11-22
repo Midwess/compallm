@@ -3,6 +3,18 @@
   "title": "Inputs",
   "type": "object",
   "properties": {
+    "provider_create_from_template": {
+      "$ref": "#/$defs/ProviderCreateFromTemplateInput"
+    },
+    "effective_model_limits": {
+      "$ref": "#/$defs/ModelTemplateEffectiveLimitsInput"
+    },
+    "model_template_create": {
+      "$ref": "#/$defs/ModelTemplateCreateInput"
+    },
+    "model_template_customize": {
+      "$ref": "#/$defs/ModelTemplateCustomizeInput"
+    },
     "model_template_filter": {
       "$ref": "#/$defs/ModelTemplateFilterInput"
     },
@@ -98,6 +110,10 @@
     }
   },
   "required": [
+    "provider_create_from_template",
+    "effective_model_limits",
+    "model_template_create",
+    "model_template_customize",
     "model_template_filter",
     "provider_template_filter",
     "provider_template_order",
@@ -131,6 +147,586 @@
     "provider_patch"
   ],
   "$defs": {
+    "ProviderCreateFromTemplateInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 120,
+          "x-compallm-messages": {
+            "minLength": "Connection name must contain 1 to 120 characters.",
+            "maxLength": "Connection name must contain 1 to 120 characters.",
+            "x-compallm-format": "Enter a connection name."
+          },
+          "x-compallm-format": "nonblank"
+        },
+        "providerTemplateId": {
+          "type": "string"
+        },
+        "baseUrl": {
+          "type": "string",
+          "maxLength": 512,
+          "x-compallm-format": "baseUrl",
+          "x-compallm-messages": {
+            "maxLength": "Enter an HTTP or HTTPS server URL without credentials, query, or fragment.",
+            "x-compallm-format": "Enter an HTTP or HTTPS server URL without credentials, query, or fragment."
+          }
+        },
+        "apiKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "x-compallm-messages": {
+            "minLength": "Enter an API key of 1 to 512 characters.",
+            "maxLength": "Enter an API key of 1 to 512 characters.",
+            "pattern": "API keys cannot contain whitespace."
+          },
+          "pattern": "^[^\\s]+$"
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderHeader"
+          },
+          "x-compallm-array-rule": "headers",
+          "x-compallm-messages": {
+            "x-compallm-array-rule": "Header names must be unique, ignoring case."
+          }
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderTemplateModelInput"
+          },
+          "minItems": 1,
+          "maxItems": 1000,
+          "x-compallm-messages": {
+            "minItems": "Enable between 1 and 1,000 models.",
+            "maxItems": "Enable between 1 and 1,000 models."
+          }
+        },
+        "logoUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "logoUploadId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "providerTemplateId",
+        "baseUrl",
+        "apiKey",
+        "headers",
+        "models"
+      ],
+      "x-compallm-input": true
+    },
+    "ProviderHeader": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
+          "x-compallm-messages": {
+            "pattern": "Enter a valid HTTP header name.",
+            "maxLength": "Header name must be 128 characters or fewer."
+          },
+          "maxLength": 128
+        },
+        "value": {
+          "description": "Write-only header content; never returned by management reads.",
+          "type": "string",
+          "pattern": "^[\\t\\x20-\\x7e\\x80-\\xff]*$",
+          "x-compallm-messages": {
+            "pattern": "Header values cannot contain newlines or unsupported characters."
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "value"
+      ],
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "header",
+      "x-compallm-messages": {
+        "x-compallm-object-rule": "Enter a valid Authorization header value."
+      }
+    },
+    "ProviderTemplateModelInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "protocol": {
+          "$ref": "#/$defs/TextModelProtocol"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "protocol"
+      ],
+      "x-compallm-input": true
+    },
+    "TextModelProtocol": {
+      "description": "Text operation determining the upstream request and response format.",
+      "type": "string",
+      "enum": [
+        "OPENAI_CHAT_COMPLETIONS",
+        "OPENAI_RESPONSES",
+        "ANTHROPIC_MESSAGES"
+      ]
+    },
+    "ModelTemplateEffectiveLimitsInput": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContextTokens"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContextTokens"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContextTokens"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "templateLimits",
+      "x-compallm-messages": {
+        "input": "Input limit cannot exceed the context window.",
+        "output": "Output limit cannot exceed the context window."
+      }
+    },
+    "ContextTokens": {
+      "description": "Positive u32 context size, encoded as an exact JSON number (1–4294967295).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 1,
+      "maximum": 4294967295
+    },
+    "ModelTemplateCreateInput": {
+      "type": "object",
+      "properties": {
+        "configuration": {
+          "$ref": "#/$defs/ModelTemplateCustomizeInput"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "configuration"
+      ],
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "templateCreate",
+      "x-compallm-messages": {
+        "name": "Enter the upstream model identifier.",
+        "protocol": "Choose a text operation.",
+        "path": "Enter an endpoint path.",
+        "inputPrice": "Set an input price for the new model.",
+        "outputPrice": "Set an output price for the new model."
+      }
+    },
+    "ModelTemplateCustomizeInput": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-trim": true,
+          "minLength": 1,
+          "maxLength": 512,
+          "x-compallm-messages": {
+            "minLength": "Model identifier must contain 1 to 512 characters.",
+            "maxLength": "Model identifier must contain 1 to 512 characters.",
+            "pattern": "Use the exact upstream model identifier without spaces or control characters."
+          },
+          "pattern": "^[\\x21-\\x7e]{1,512}$"
+        },
+        "protocol": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TextModelProtocol"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^/(?:[A-Za-z0-9_-][A-Za-z0-9_/-]*)?$",
+          "x-compallm-messages": {
+            "pattern": "Enter a valid endpoint path beginning with /.",
+            "maxLength": "Path must be 40 characters or fewer."
+          },
+          "maxLength": 40
+        },
+        "limits": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelTemplateLimitsInput"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inputPrice": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelTemplatePriceInput"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputPrice": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelTemplatePriceInput"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cachedPrice": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelTemplatePriceInput"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capabilities": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/ProviderModelCapability"
+          },
+          "x-compallm-array-rule": "modelCapabilities",
+          "x-compallm-messages": {
+            "x-compallm-array-rule": "Text models require Text; forced tool choice also requires tool calling."
+          }
+        },
+        "effortMapping": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProviderEffortMapping"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "headers": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/ProviderHeader"
+          },
+          "x-compallm-array-rule": "headers",
+          "x-compallm-messages": {
+            "x-compallm-array-rule": "Header names must be unique, ignoring case."
+          }
+        },
+        "bodyDefaults": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/ProviderBodyDefault"
+          },
+          "x-compallm-array-rule": "bodyDefaults",
+          "x-compallm-messages": {
+            "x-compallm-array-rule": "Body field names must be unique."
+          }
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "ModelTemplateLimitsInput": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContextTokens"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 100,
+          "maximum": 10000000,
+          "x-compallm-messages": {
+            "minimum": "Enter between 100 and 10,000,000 tokens.",
+            "maximum": "Enter between 100 and 10,000,000 tokens."
+          }
+        },
+        "input": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContextTokens"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 100,
+          "maximum": 10000000,
+          "x-compallm-messages": {
+            "minimum": "Enter between 100 and 10,000,000 tokens.",
+            "maximum": "Enter between 100 and 10,000,000 tokens."
+          }
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContextTokens"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 100,
+          "maximum": 10000000,
+          "x-compallm-messages": {
+            "minimum": "Enter between 100 and 10,000,000 tokens.",
+            "maximum": "Enter between 100 and 10,000,000 tokens."
+          }
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "templateLimits",
+      "x-compallm-messages": {
+        "input": "Input limit cannot exceed the context window.",
+        "output": "Output limit cannot exceed the context window."
+      }
+    },
+    "ModelTemplatePriceInput": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$",
+          "x-compallm-input-pattern": "^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$",
+          "x-compallm-format": "modelPrice",
+          "minimum": 0,
+          "maximum": 10000,
+          "x-compallm-messages": {
+            "pattern": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "x-compallm-input-pattern": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "x-compallm-format": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "minimum": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "maximum": "Enter a price between $0 and $10,000 per 1M tokens."
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled"
+      ],
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "templatePrice",
+      "x-compallm-messages": {
+        "x-compallm-object-rule": "Enter a custom price."
+      }
+    },
+    "ProviderModelCapability": {
+      "description": "Capabilities declared by a catalog or configured model; not an authorization grant.",
+      "type": "string",
+      "enum": [
+        "TEXT",
+        "VISION",
+        "PDF",
+        "AUDIO",
+        "VIDEO",
+        "IMAGE_GENERATION",
+        "AUDIO_GENERATION",
+        "SEARCH",
+        "REASONING",
+        "TOOL_CALL",
+        "FORCED_TOOL_CHOICE",
+        "STRUCTURED_OUTPUT"
+      ]
+    },
+    "ProviderEffortMapping": {
+      "description": "Empty object means no configured effort levels. Configured values cannot be empty.",
+      "type": "object",
+      "properties": {
+        "low": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "x-compallm-messages": {
+            "minLength": "Enter an effort value of 1 to 25 characters.",
+            "maxLength": "Enter an effort value of 1 to 25 characters.",
+            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
+          },
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "medium": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "x-compallm-messages": {
+            "minLength": "Enter an effort value of 1 to 25 characters.",
+            "maxLength": "Enter an effort value of 1 to 25 characters.",
+            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
+          },
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "high": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "x-compallm-messages": {
+            "minLength": "Enter an effort value of 1 to 25 characters.",
+            "maxLength": "Enter an effort value of 1 to 25 characters.",
+            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
+          },
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "xhigh": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "x-compallm-messages": {
+            "minLength": "Enter an effort value of 1 to 25 characters.",
+            "maxLength": "Enter an effort value of 1 to 25 characters.",
+            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
+          },
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "max": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-compallm-non-null": true,
+          "minLength": 1,
+          "maxLength": 25,
+          "x-compallm-messages": {
+            "minLength": "Enter an effort value of 1 to 25 characters.",
+            "maxLength": "Enter an effort value of 1 to 25 characters.",
+            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
+          },
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false,
+      "x-compallm-input": true
+    },
+    "ProviderBodyDefault": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "x-compallm-messages": {
+            "minLength": "Body field names must contain 1 to 128 characters.",
+            "maxLength": "Body field names must contain 1 to 128 characters.",
+            "x-compallm-format": "Use a body field name other than model, messages, input, or stream.",
+            "x-compallm-input-pattern": "Use a body field name other than model, messages, input, or stream."
+          },
+          "x-compallm-format": "bodyDefaultKey",
+          "x-compallm-input-pattern": "^[A-Za-z0-9_.-]*$"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384,
+          "x-compallm-messages": {
+            "minLength": "Enter a JSON value of at most 16,384 characters.",
+            "maxLength": "Enter a JSON value of at most 16,384 characters.",
+            "x-compallm-format": "Enter a valid JSON value."
+          },
+          "x-compallm-format": "jsonValue"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "value"
+      ],
+      "x-compallm-input": true,
+      "x-compallm-object-rule": "bodyDefault",
+      "x-compallm-messages": {
+        "x-compallm-object-rule": "Use the JSON value type required by the selected body field."
+      }
+    },
     "ModelTemplateFilterInput": {
       "type": "object",
       "properties": {
@@ -2089,38 +2685,6 @@
         "x-compallm-object-rule": "New models must not include a saved model identity."
       }
     },
-    "ProviderHeader": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "type": "string",
-          "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$",
-          "x-compallm-messages": {
-            "pattern": "Enter a valid HTTP header name.",
-            "maxLength": "Header name must be 128 characters or fewer."
-          },
-          "maxLength": 128
-        },
-        "value": {
-          "description": "Write-only header content; never returned by management reads.",
-          "type": "string",
-          "pattern": "^[\\t\\x20-\\x7e\\x80-\\xff]*$",
-          "x-compallm-messages": {
-            "pattern": "Header values cannot contain newlines or unsupported characters."
-          }
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "key",
-        "value"
-      ],
-      "x-compallm-input": true,
-      "x-compallm-object-rule": "header",
-      "x-compallm-messages": {
-        "x-compallm-object-rule": "Enter a valid Authorization header value."
-      }
-    },
     "ProviderModelWrite": {
       "description": "Persisted identity is omitted for new models and forbidden during provider creation.",
       "type": "object",
@@ -2266,10 +2830,14 @@
           "pattern": "^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$",
           "x-compallm-input-pattern": "^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$",
           "x-compallm-format": "modelPrice",
+          "minimum": 0,
+          "maximum": 10000,
           "x-compallm-messages": {
             "pattern": "Enter a price between $0 and $10,000 per 1M tokens.",
             "x-compallm-input-pattern": "Enter a price between $0 and $10,000 per 1M tokens.",
-            "x-compallm-format": "Enter a price between $0 and $10,000 per 1M tokens."
+            "x-compallm-format": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "minimum": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "maximum": "Enter a price between $0 and $10,000 per 1M tokens."
           }
         },
         "outputPrice": {
@@ -2277,10 +2845,14 @@
           "pattern": "^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$",
           "x-compallm-input-pattern": "^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$",
           "x-compallm-format": "modelPrice",
+          "minimum": 0,
+          "maximum": 10000,
           "x-compallm-messages": {
             "pattern": "Enter a price between $0 and $10,000 per 1M tokens.",
             "x-compallm-input-pattern": "Enter a price between $0 and $10,000 per 1M tokens.",
-            "x-compallm-format": "Enter a price between $0 and $10,000 per 1M tokens."
+            "x-compallm-format": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "minimum": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "maximum": "Enter a price between $0 and $10,000 per 1M tokens."
           }
         },
         "cachedPrice": {
@@ -2288,10 +2860,14 @@
           "pattern": "^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$",
           "x-compallm-input-pattern": "^0*(?:[0-9]{0,10}(?:\\.[0-9]{0,18})?|[0-9]{11}(?:\\.[0-9]{0,17})?|[0-9]{12}(?:\\.[0-9]{0,16})?)$",
           "x-compallm-format": "modelPrice",
+          "minimum": 0,
+          "maximum": 10000,
           "x-compallm-messages": {
             "pattern": "Enter a price between $0 and $10,000 per 1M tokens.",
             "x-compallm-input-pattern": "Enter a price between $0 and $10,000 per 1M tokens.",
-            "x-compallm-format": "Enter a price between $0 and $10,000 per 1M tokens."
+            "x-compallm-format": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "minimum": "Enter a price between $0 and $10,000 per 1M tokens.",
+            "maximum": "Enter a price between $0 and $10,000 per 1M tokens."
           }
         },
         "inputPriceEnabled": {
@@ -2322,162 +2898,6 @@
       "x-compallm-messages": {
         "x-compallm-object-rule": "Enabled limits must be between 100 and 10,000,000 tokens and cannot exceed the context window."
       }
-    },
-    "TextModelProtocol": {
-      "description": "Text operation determining the upstream request and response format.",
-      "type": "string",
-      "enum": [
-        "OPENAI_CHAT_COMPLETIONS",
-        "OPENAI_RESPONSES",
-        "ANTHROPIC_MESSAGES"
-      ]
-    },
-    "ContextTokens": {
-      "description": "Positive u32 context size, encoded as an exact JSON number (1–4294967295).",
-      "type": "integer",
-      "format": "uint32",
-      "minimum": 1,
-      "maximum": 4294967295
-    },
-    "ProviderBodyDefault": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "x-compallm-messages": {
-            "minLength": "Body field names must contain 1 to 128 characters.",
-            "maxLength": "Body field names must contain 1 to 128 characters.",
-            "x-compallm-format": "Use a body field name other than model, messages, input, or stream.",
-            "x-compallm-input-pattern": "Use a body field name other than model, messages, input, or stream."
-          },
-          "x-compallm-format": "bodyDefaultKey",
-          "x-compallm-input-pattern": "^[A-Za-z0-9_.-]*$"
-        },
-        "value": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 16384,
-          "x-compallm-messages": {
-            "minLength": "Enter a JSON value of at most 16,384 characters.",
-            "maxLength": "Enter a JSON value of at most 16,384 characters.",
-            "x-compallm-format": "Enter a valid JSON value."
-          },
-          "x-compallm-format": "jsonValue"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "key",
-        "value"
-      ],
-      "x-compallm-input": true,
-      "x-compallm-object-rule": "bodyDefault",
-      "x-compallm-messages": {
-        "x-compallm-object-rule": "Use the JSON value type required by the selected body field."
-      }
-    },
-    "ProviderEffortMapping": {
-      "description": "Empty object means no configured effort levels. Configured values cannot be empty.",
-      "type": "object",
-      "properties": {
-        "low": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "x-compallm-non-null": true,
-          "minLength": 1,
-          "maxLength": 25,
-          "x-compallm-messages": {
-            "minLength": "Enter an effort value of 1 to 25 characters.",
-            "maxLength": "Enter an effort value of 1 to 25 characters.",
-            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
-          },
-          "pattern": "^[A-Za-z0-9_-]+$"
-        },
-        "medium": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "x-compallm-non-null": true,
-          "minLength": 1,
-          "maxLength": 25,
-          "x-compallm-messages": {
-            "minLength": "Enter an effort value of 1 to 25 characters.",
-            "maxLength": "Enter an effort value of 1 to 25 characters.",
-            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
-          },
-          "pattern": "^[A-Za-z0-9_-]+$"
-        },
-        "high": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "x-compallm-non-null": true,
-          "minLength": 1,
-          "maxLength": 25,
-          "x-compallm-messages": {
-            "minLength": "Enter an effort value of 1 to 25 characters.",
-            "maxLength": "Enter an effort value of 1 to 25 characters.",
-            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
-          },
-          "pattern": "^[A-Za-z0-9_-]+$"
-        },
-        "xhigh": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "x-compallm-non-null": true,
-          "minLength": 1,
-          "maxLength": 25,
-          "x-compallm-messages": {
-            "minLength": "Enter an effort value of 1 to 25 characters.",
-            "maxLength": "Enter an effort value of 1 to 25 characters.",
-            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
-          },
-          "pattern": "^[A-Za-z0-9_-]+$"
-        },
-        "max": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "x-compallm-non-null": true,
-          "minLength": 1,
-          "maxLength": 25,
-          "x-compallm-messages": {
-            "minLength": "Enter an effort value of 1 to 25 characters.",
-            "maxLength": "Enter an effort value of 1 to 25 characters.",
-            "pattern": "Use letters, numbers, hyphens, or underscores for effort values."
-          },
-          "pattern": "^[A-Za-z0-9_-]+$"
-        }
-      },
-      "additionalProperties": false,
-      "x-compallm-input": true
-    },
-    "ProviderModelCapability": {
-      "description": "Capabilities declared by a catalog or configured model; not an authorization grant.",
-      "type": "string",
-      "enum": [
-        "TEXT",
-        "VISION",
-        "PDF",
-        "AUDIO",
-        "VIDEO",
-        "IMAGE_GENERATION",
-        "AUDIO_GENERATION",
-        "SEARCH",
-        "REASONING",
-        "TOOL_CALL",
-        "FORCED_TOOL_CHOICE",
-        "STRUCTURED_OUTPUT"
-      ]
     },
     "ProviderCatalogRef": {
       "description": "Opaque registry identity, independent of an edited upstream model name.",

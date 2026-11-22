@@ -1,5 +1,5 @@
 import type { ProviderModelConfiguration as ModelConfiguration } from '@compallm/contract/graphql'
-import { ProviderModelConfiguration, ProviderCreateInput } from '@compallm/contract/validation'
+import { ProviderCreateFromTemplateInput, ProviderModelConfiguration, ProviderCreateInput } from '@compallm/contract/validation'
 import { ProviderFields, ProviderModelFields, ProviderInputRules } from '@compallm/contract/provider'
 import { headersAreValid, acceptsHeaderInput } from '@compallm/contract/provider'
 import { modelPath, modelDraftFingerprint, effectiveContextTokens, effectiveModelPrice } from './model-options'
@@ -118,6 +118,19 @@ export function parseProvider(state: CreateProviderState): {
   values?: Partial<CreateProviderState>
   issues?: { path: PropertyKey[]; message: string }[]
 } {
+  if (state.creationEnabled) {
+    const result = ProviderCreateFromTemplateInput.safeParse({
+      name: state.name,
+      providerTemplateId: state.selectedProviderId,
+      baseUrl: state.baseUrl,
+      apiKey: state.apiKey,
+      headers: state.headers.map(({ key, value }) => ({ key, value })),
+      models: state.models
+        .filter((v) => v.enabled)
+        .map((v) => ({ id: v.catalogRef?.model ?? v.id, protocol: (v.protocol ?? 'openai_chat_completions').toUpperCase() })),
+    })
+    return result.success ? { values: state } : { issues: result.error.issues.map((issue) => ({ ...issue, path: issue.path })) }
+  }
   const result = state.intent === 'edit' ? providerReplaceRequest(state) : providerCreateRequest(state)
   if (result.success) {
     const normalized = 'providers' in result.data ? result.data.providers[0] : result.data

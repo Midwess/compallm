@@ -1,6 +1,6 @@
 import { ProviderModelFields } from '@compallm/contract/provider'
 import { effortLevels } from '../../../components/effort-mapping'
-import type { ModelCapability, ModelDraft, ProviderModel, TextModelProtocol } from './types'
+import type { CreateProviderState, ModelCapability, ModelDraft, ProviderModel, TextModelProtocol } from './types'
 
 export const capabilityOptions = [
   { value: 'text', label: 'Text' },
@@ -115,4 +115,17 @@ export function modelDraftFingerprint(model: ModelDraft): string {
     prices: [model.inputPrice, model.outputPrice, model.cachedPrice],
     priceEnabled: [model.inputPriceEnabled ?? true, model.outputPriceEnabled ?? true, model.cachedPriceEnabled ?? true],
   })
+}
+
+export function modelSettingsIntent(
+  state: Pick<CreateProviderState, 'modelDraft' | 'models' | 'editingModelId'>,
+): 'new' | 'edit' {
+  const draft = state.modelDraft
+  if (
+    draft?.catalogRef ||
+    state.models.some((model) => model.id === draft?.id && !!model.catalogRef) ||
+    (state.editingModelId && !state.editingModelId.startsWith('draft:'))
+  )
+    return 'edit'
+  return 'new'
 }

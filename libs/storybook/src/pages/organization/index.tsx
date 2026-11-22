@@ -1,3 +1,4 @@
+import { List } from '../../components/list'
 import { LoadingFallback } from '../../components/loading'
 import { PermissionRequest, usePermission } from '../../components/permission'
 import { useContext, type ReactNode } from 'react'
@@ -70,6 +71,7 @@ function LoadedDestinations() {
   const providerCreate = usePermission({ actions: ['provider.create'] })
   const modelCreate = usePermission({ actions: ['model.create'] })
   const providers = useOrganizationState((state) => state.providers)
+  const providersLoading = useOrganizationState((state) => state.providersLoading)
   const models = useOrganizationState((state) => state.models)
   const links = useOrganizationState((state) => state.links)
   const layout = useOrganizationState((state) => state.sidebarLayout)
@@ -97,9 +99,15 @@ function LoadedDestinations() {
                             onAdd={providerCreate.allowed ? controller.onCreateProvider : undefined}
                             addLabel="Add provider"
                           >
-                            {providers.map((entry) => (
-                              <Destination key={entry.id} item={entry} icon={<HardDrivesIcon />} />
-                            ))}
+                            {providersLoading && !providers.length ? (
+                              <SidebarLoading rows={2} />
+                            ) : (
+                              <List.Root>
+                                <List.Items items={providers} getKey={(entry) => entry.id}>
+                                  {(entry) => <Destination item={entry} icon={<HardDrivesIcon />} />}
+                                </List.Items>
+                              </List.Root>
+                            )}
                           </SidebarFolder>
                         ) : null
                       }

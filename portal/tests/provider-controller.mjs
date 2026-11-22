@@ -15,9 +15,19 @@ const { createStore } = await server.ssrLoadModule('zustand/vanilla')
 const tick = () => new Promise((resolve) => setTimeout(resolve, 20))
 function setup() {
   const store = createStore(() => ({ pathname: '/workspace/providers', search: '', hash: '' }))
+  const history = []
   const url = {
     store,
+    back(fallback, options = {}) {
+      const target = history.splice(Math.max(0, history.length - (options.steps ?? 1)))[0]
+      if (target) store.setState(target)
+      else {
+        const next = new URL(fallback, 'http://localhost')
+        store.setState({ pathname: next.pathname, search: next.search, hash: next.hash })
+      }
+    },
     update(patch, options = {}) {
+      if (options.replace === false) history.push({ ...store.getState() })
       const q = new URLSearchParams(store.getState().search)
       for (const [k, v] of Object.entries(patch)) {
         if (v === null) q.delete(k)
@@ -38,7 +48,7 @@ const row = (id) => ({ id, name: id, baseUrl: 'https://example.com/v1', logoUrl:
 const list = (ids, more = false) =>
   Response.json({
     data: {
-      providerTemplates: {
+      effectiveProviderTemplates: {
         edges: ids.map((id) => ({ node: row(id) })),
         pageInfo: { endCursor: 'cursor-' + ids.at(-1), hasNextPage: more },
       },
@@ -79,6 +89,8 @@ function model(id) {
     id,
     name: id,
     providerTemplateId: 'a',
+    origin: 'GLOBAL',
+    customFields: [],
     displayName: id,
     description: null,
     serviceKind: 'TEXT',
@@ -210,7 +222,7 @@ test('provider/model navigation uses catalog detail, handles reload and cancels 
   await tick()
   c.onSelectProvider('a')
   await tick()
-  requests.at(-1).resolve(Response.json({ data: { providerTemplate: { node: provider('a') } } }))
+  requests.at(-1).resolve(Response.json({ data: { effectiveProviderTemplate: { node: provider('a') } } }))
   await tick()
   assert.equal(c.store.getState().models[0].inputPrice, '')
   assert.equal(c.store.getState().models[0].catalogPriceLabels[0], 'Tiered')
@@ -222,15 +234,19 @@ test('provider/model navigation uses catalog detail, handles reload and cancels 
   await tick()
   assert.equal(pending.signal.aborted, true)
   assert.equal(c.loading.model.store.getState().loading, false)
-  pending.resolve(Response.json({ data: { modelTemplate: { node: model('model-a') } } }))
+  pending.resolve(Response.json({ data: { effectiveModelTemplate: { node: model('model-a') } } }))
   await tick()
   assert.equal(c.store.getState().modelDraft, null)
-  requests.at(-1).resolve(Response.json({ data: { providerTemplate: { node: provider('b') } } }))
+  requests.at(-1).resolve(Response.json({ data: { effectiveProviderTemplate: { node: provider('b') } } }))
   await tick()
   c.onEditModel('model-b')
   await tick()
-  for (const request of requests.filter((r) => r.body.query.includes('modelTemplate') && !r.signal.aborted))
-    request.resolve(Response.json({ data: { modelTemplate: { node: model('model-b') } } }))
+  for (const request of requests.filter((r) => /[mM]odelTemplate/.test(r.body.query) && !r.signal.aborted))
+    request.resolve(
+      Response.json({
+        data: { effectiveModelTemplate: { node: model('model-b') }, modelTemplate: { node: model('model-b') } },
+      }),
+    )
   await tick()
   const draft = c.store.getState().modelDraft
   assert.equal(draft.name, 'model-b')
@@ -240,14 +256,13 @@ test('provider/model navigation uses catalog detail, handles reload and cancels 
   assert.equal(draft.bodyDefaults[0].value, '0.7')
   c.onModelDraftChanged({ maxContextTokens: '64000' })
   assert.equal(c.store.getState().modelDraft.maxContextTokens, '64000')
-  c.onSaveModel(c.store.getState().modelDraft)
   assert.ok(requests.every((r) => !r.body.query.includes('mutation')))
   assert.ok(url.store.getState().search.includes('model=model-b'))
   assert.ok(!url.store.getState().search.includes('models='))
   assert.ok(!url.store.getState().search.includes('minimal'))
   c.onCancelModel()
   c.onModelDraftChanged({ name: 'late change' })
-  assert.equal(c.onSaveModel(draft), false)
+  assert.equal(await c.onSaveModel(draft), false)
   assert.equal(c.store.getState().modelDraft, null)
   assert.equal(c.store.getState().editingModelId, null)
   assert.ok(!url.store.getState().search.includes('model='))
@@ -255,8 +270,8 @@ test('provider/model navigation uses catalog detail, handles reload and cancels 
   c.stop()
   c.start()
   await tick()
-  assert.ok(requests.at(-1).body.query.includes('providerTemplate'))
-  requests.at(-1).resolve(Response.json({ data: { providerTemplate: { node: provider('b') } } }))
+  assert.ok(requests.at(-1).body.query.includes('effectiveProviderTemplate'))
+  requests.at(-1).resolve(Response.json({ data: { effectiveProviderTemplate: { node: provider('b') } } }))
   await tick()
   assert.ok(requests.at(-1).body.query.includes('modelTemplate'))
   const last = requests.at(-1)

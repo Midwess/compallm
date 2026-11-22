@@ -89,6 +89,16 @@ export class UrlController implements Contract {
       .catch((error: unknown) => notify.error(error))
     return true
   }
+  back = (fallbackHref: string, options: { steps?: number } = {}) => {
+    if (!this.router) throw new Error('URL controller is not connected.')
+    const index = window.history?.state?.idx
+    const steps = Math.max(1, Math.trunc(options.steps ?? 1))
+    if (typeof index === 'number' && index >= steps) {
+      void this.router.navigate(-steps).catch((error: unknown) => notify.error(error))
+      return true
+    }
+    return this.navigate(fallbackHref, { replace: true })
+  }
   update = (patch: Record<string, string | null>, options: { pathname?: string; replace?: boolean } = {}) => {
     const target = new URL(this.intended ?? window.location.href)
     if (options.pathname) target.pathname = options.pathname

@@ -648,6 +648,7 @@ type ModelTemplate {
   cachedPrice: String
   capabilities: [ProviderModelCapability!]!
   connections: [ModelConnection!]!
+  customFields: [String!]!
   description: String
   displayName: String!
   effortMapping: [ThinkingEffort!]!
@@ -660,6 +661,7 @@ type ModelTemplate {
   maxOutputTokens: ContextTokens
   name: String!
   operations: [ModelOperation!]!
+  origin: ModelTemplateOrigin!
   outputPrice: String
   pdf: PdfSupport!
   pricingMode: PricingMode!
@@ -681,9 +683,33 @@ type ModelTemplateConnection {
   pageInfo: PageInfo!
 }
 
+input ModelTemplateCreateInput {
+  configuration: ModelTemplateCustomizeInput!
+}
+
+input ModelTemplateCustomizeInput {
+  bodyDefaults: [ProviderBodyDefault!]
+  cachedPrice: ModelTemplatePriceInput
+  capabilities: [ProviderModelCapability!]
+  effortMapping: ProviderEffortMapping
+  headers: [ProviderHeader!]
+  inputPrice: ModelTemplatePriceInput
+  limits: ModelTemplateLimitsInput
+  name: String
+  outputPrice: ModelTemplatePriceInput
+  path: String
+  protocol: TextModelProtocol
+}
+
 type ModelTemplateEdge {
   cursor: String!
   node: ModelTemplate!
+}
+
+input ModelTemplateEffectiveLimitsInput {
+  context: ContextTokens
+  input: ContextTokens
+  output: ContextTokens
 }
 
 input ModelTemplateFilterInput {
@@ -693,14 +719,31 @@ input ModelTemplateFilterInput {
   or: [ModelTemplateMatchInput!]
 }
 
+input ModelTemplateLimitsInput {
+  context: ContextTokens
+  input: ContextTokens
+  output: ContextTokens
+}
+
 input ModelTemplateMatchInput {
   displayName: StringFilter
   id: StringFilter
   name: StringFilter
 }
 
+enum ModelTemplateOrigin {
+  CUSTOM
+  GLOBAL
+  OVERRIDE
+}
+
 type ModelTemplatePayload {
   node: ModelTemplate!
+}
+
+input ModelTemplatePriceInput {
+  enabled: Boolean!
+  value: String
 }
 
 type Mutation {
@@ -745,6 +788,17 @@ type Mutation {
     input: InvitationBatchCreateInput!
   ): InvitationIssuedConnection!
   invitationRevoke(id: ID!): InvitationPayload!
+  modelTemplateCreate(
+    input: ModelTemplateCreateInput!
+    providerTemplateId: ID!
+  ): ModelTemplatePayload!
+  modelTemplateCustomize(
+    id: ID!
+    input: ModelTemplateCustomizeInput!
+    providerTemplateId: ID!
+  ): ModelTemplatePayload!
+  modelTemplateDelete(id: ID!, providerTemplateId: ID!): BooleanPayload!
+  modelTemplateReset(id: ID!, providerTemplateId: ID!): ModelTemplatePayload!
   onboardingAdvance(back: Boolean! = false): OnboardingContextPayload!
   onboardingComplete: OnboardingContextPayload!
   onboardingPresent(manual: Boolean! = false): OnboardingContextPayload!
@@ -770,6 +824,8 @@ type Mutation {
     id: ID!
     input: PasskeyRegistrationInput!
   ): PasskeySummaryPayload!
+  providerCreate(input: ProviderCreateFromTemplateInput!): ProviderPayload!
+  providerLogoUpload(input: ImageUploadInput!): ProviderLogoUploadPayload!
   roleAssign(id: ID!, memberId: ID!): RolePayload!
 
   """
@@ -1188,6 +1244,28 @@ input ProfileUpdateInput {
   username: String
 }
 
+type Provider {
+  connection: ConnectionConfiguration!
+  description: String
+
+  """
+  Stable provider identity, serialized as a string.
+  """
+  id: ID!
+  logoUrl: String
+  models: [ProviderModel!]!
+
+  """
+  Provider display name within its organization.
+  """
+  name: String!
+
+  """
+  Owning organization; a supplied identifier never grants access.
+  """
+  organizationId: ID!
+}
+
 """
 Catalog connection family hint; each configured model selects its own operation.
 """
@@ -1210,6 +1288,22 @@ input ProviderCatalogRef {
   provider: String!
 }
 
+type ProviderConnection {
+  edges: [ProviderEdge!]!
+  pageInfo: PageInfo!
+}
+
+input ProviderCreateFromTemplateInput {
+  apiKey: String!
+  baseUrl: String!
+  headers: [ProviderHeader!]!
+  logoUploadId: String
+  logoUrl: String
+  models: [ProviderTemplateModelInput!]!
+  name: String!
+  providerTemplateId: String!
+}
+
 """
 New connection definition; credentials and header values are write-only.
 """
@@ -1219,6 +1313,11 @@ input ProviderCreateInput {
   headers: [ProviderHeader!]!
   models: [ProviderModelWrite!]!
   name: String!
+}
+
+type ProviderEdge {
+  cursor: String!
+  node: Provider!
 }
 
 """
@@ -1251,6 +1350,51 @@ input ProviderHeaderUpdate {
   Omit to preserve the saved value for this header name. New names require a value.
   """
   value: String
+}
+
+type ProviderLogoUpload {
+  id: String!
+  upload: AvatarUpload!
+}
+
+type ProviderLogoUploadPayload {
+  node: ProviderLogoUpload!
+}
+
+type ProviderModel {
+  cachedPrice: String
+  capabilities: [ProviderModelCapability!]!
+  connection: ConnectionConfiguration!
+  contextTokens: ContextTokens
+
+  """
+  Configured availability; this flag alone does not authorize invocation.
+  """
+  enabled: Boolean!
+
+  """
+  Stable configured-model identity, serialized as a string.
+  """
+  id: ID!
+  inputPrice: String
+
+  """
+  Configured upstream model name.
+  """
+  name: String!
+
+  """
+  Owning organization identity.
+  """
+  organizationId: ID!
+  outputPrice: String
+  protocol: UpstreamProtocol!
+
+  """
+  Owning provider identity.
+  """
+  providerId: ID!
+  text: TextCapabilities!
 }
 
 """
@@ -1325,6 +1469,10 @@ input ProviderPatchInput {
   name: String
 }
 
+type ProviderPayload {
+  node: Provider!
+}
+
 """
 Full non-secret replacement. Omitting apiKey preserves the saved credential.
 """
@@ -1373,6 +1521,11 @@ input ProviderTemplateMatchInput {
   name: StringFilter
 }
 
+input ProviderTemplateModelInput {
+  id: String!
+  protocol: TextModelProtocol!
+}
+
 input ProviderTemplateOrderInput {
   id: OrderByDirection
   name: OrderByDirection
@@ -1391,6 +1544,13 @@ input ProvidersCreateInput {
 
 type Query {
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
+  effectiveModelTemplate(id: ID!, providerTemplateId: ID!): ModelTemplatePayload
+  effectiveProviderTemplate(id: ID!): ProviderTemplatePayload
+  effectiveProviderTemplates(
+    after: String
+    first: Int
+    search: String
+  ): ProviderTemplateConnection!
 
   """
   Find visible group metadata in the active organization.
@@ -1433,6 +1593,7 @@ type Query {
   organizationPolicyActions: PolicyActionConnection!
   organizationProfile(id: ID!): OrganizationPayload
   passkeys: PasskeySummaryConnection!
+  provider(id: ID!): ProviderPayload
 
   """
   Public provider defaults with a complete, unpaginated collection of database-ready models.
@@ -1452,6 +1613,7 @@ type Query {
     orderBy: [ProviderTemplateOrderInput!]
     search: String
   ): ProviderTemplateConnection!
+  providers(after: String, first: Int): ProviderConnection!
 
   """
   Find visible role metadata in the active organization.
@@ -1896,6 +2058,12 @@ input UserProfileUpdateInput {
   avatarUploaded: Boolean = false
   displayName: String
   username: String
+}
+
+type ValidationIssue {
+  code: String!
+  message: String!
+  path: [String!]!
 }
 
 type VideoConfiguration {

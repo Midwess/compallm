@@ -71,6 +71,64 @@ impl Query {
         super::provider::catalog::query::model(provider_template_id, id, repository).await
     }
 
+    async fn providers(
+        first: Option<i32>,
+        after: Option<String>,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)]
+        repository: &compallm_postgres::repository::provider::ProviderRepository,
+    ) -> Result<Collection<super::provider::Provider>, Error> {
+        super::provider::query::list(
+            compallm_query::Pagination {
+                first: Some(first.unwrap_or(20)),
+                after: after.map(compallm_query::Cursor),
+                ..Default::default()
+            },
+            authority,
+            repository,
+        )
+        .await
+    }
+    async fn provider(
+        id: ID,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)]
+        repository: &compallm_postgres::repository::provider::ProviderRepository,
+    ) -> Result<Option<Payload<super::provider::Provider>>, Error> {
+        super::provider::query::get(id, authority, repository).await
+    }
+    async fn effective_provider_templates(
+        search: Option<String>,
+        first: Option<i32>,
+        after: Option<String>,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+    ) -> Result<Collection<super::provider::catalog::ProviderTemplate>, Error> {
+        super::provider::catalog::query::effective_list(search, first, after, authority, repository)
+            .await
+    }
+    async fn effective_provider_template(
+        id: ID,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+    ) -> Result<Option<Payload<super::provider::catalog::ProviderTemplate>>, Error> {
+        super::provider::catalog::query::effective_get(id, authority, repository).await
+    }
+    async fn effective_model_template(
+        provider_template_id: ID,
+        id: ID,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+    ) -> Result<Option<Payload<super::provider::catalog::ModelTemplate>>, Error> {
+        super::provider::catalog::query::effective_model(
+            provider_template_id,
+            id,
+            authority,
+            repository,
+        )
+        .await
+    }
+
     async fn passkeys(
         #[graphql(context)] user: &UserContext,
         #[graphql(context)] identity: &AuthenticationContext,
@@ -294,6 +352,74 @@ pub struct Mutation;
 
 #[graphql_object(context = GraphqlContext, scalar = DefaultScalarValue)]
 impl Mutation {
+    async fn provider_logo_upload(
+        input: super::user::input::ImageUploadInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] storage: &Option<std::sync::Arc<compallm_storage::S3Storage>>,
+    ) -> Result<Payload<super::provider::mutation::ProviderLogoUpload>, Error> {
+        super::provider::mutation::logo(input, authority, storage).await
+    }
+
+    async fn provider_create(
+        input: super::provider::input::ProviderCreateFromTemplateInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] catalog: &compallm_postgres::catalog::repository::CatalogRepository,
+        #[graphql(context)] service: &compallm_core::provider::CreationService<'static>,
+        #[graphql(context)] cipher: &Option<compallm_core::provider::ProviderCredentialCipher>,
+        #[graphql(context)] storage: &Option<std::sync::Arc<compallm_storage::S3Storage>>,
+    ) -> Result<Payload<super::provider::Provider>, Error> {
+        super::provider::mutation::create(input, authority, catalog, service, cipher, storage).await
+    }
+
+    async fn model_template_customize(
+        provider_template_id: ID,
+        id: ID,
+        input: super::provider::catalog::input::ModelTemplateCustomizeInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+    ) -> Result<Payload<super::provider::catalog::ModelTemplate>, Error> {
+        super::provider::catalog::mutation::customize(
+            provider_template_id,
+            id,
+            input,
+            authority,
+            repository,
+        )
+        .await
+    }
+    async fn model_template_create(
+        provider_template_id: ID,
+        input: super::provider::catalog::input::ModelTemplateCreateInput,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+    ) -> Result<Payload<super::provider::catalog::ModelTemplate>, Error> {
+        super::provider::catalog::mutation::create(
+            provider_template_id,
+            input,
+            authority,
+            repository,
+        )
+        .await
+    }
+    async fn model_template_reset(
+        provider_template_id: ID,
+        id: ID,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+    ) -> Result<Payload<super::provider::catalog::ModelTemplate>, Error> {
+        super::provider::catalog::mutation::reset(provider_template_id, id, authority, repository)
+            .await
+    }
+    async fn model_template_delete(
+        provider_template_id: ID,
+        id: ID,
+        #[graphql(context)] authority: &AuthorizationContext,
+        #[graphql(context)] repository: &compallm_postgres::catalog::repository::CatalogRepository,
+    ) -> Result<Payload<bool>, Error> {
+        super::provider::catalog::mutation::delete(provider_template_id, id, authority, repository)
+            .await
+    }
+
     async fn passkey_registration_start(
         #[graphql(context)] identity: &AuthenticationContext,
         #[graphql(context)] user: &UserContext,
@@ -645,6 +771,9 @@ impl GraphQLType for RegisteredQuery {
             authentication,
             provider::{catalog, input},
         };
+        registry.get_type::<super::error::ValidationIssue>(&());
+        registry
+            .get_type::<super::provider::catalog::input::ModelTemplateEffectiveLimitsInput>(&());
         registry.get_type::<authentication::input::EmailInput>(&());
         registry.get_type::<authentication::input::EmailCodeInput>(&());
         registry.get_type::<input::ProvidersCreateInput>(&());
@@ -701,6 +830,10 @@ impl GraphQLValueAsync for RegisteredQuery {
 #[derive(JsonSchema)]
 #[allow(dead_code)]
 struct Inputs {
+    provider_create_from_template: super::provider::input::ProviderCreateFromTemplateInput,
+    effective_model_limits: super::provider::catalog::input::ModelTemplateEffectiveLimitsInput,
+    model_template_create: super::provider::catalog::input::ModelTemplateCreateInput,
+    model_template_customize: super::provider::catalog::input::ModelTemplateCustomizeInput,
     model_template_filter: super::provider::catalog::input::ModelTemplateFilterInput,
     provider_template_filter: super::provider::catalog::input::ProviderTemplateFilterInput,
     provider_template_order: super::provider::catalog::input::ProviderTemplateOrderInput,

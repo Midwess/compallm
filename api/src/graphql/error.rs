@@ -9,6 +9,7 @@ use juniper::{FieldError, IntoFieldError, ScalarValue, graphql_value};
 
 /// Safe operation failure, with no submitted values or internal diagnostics.
 pub struct Error {
+    issues: Vec<ValidationIssue>,
     code: &'static str,
     status: i32,
     message: std::borrow::Cow<'static, str>,
@@ -100,6 +101,7 @@ impl From<AuthError> for Error {
             _ => ("INTERNAL_SERVER_ERROR", 500, "Request failed"),
         };
         Self {
+            issues: vec![],
             code,
             status,
             message: message.into(),
@@ -132,6 +134,7 @@ impl From<RequestError> for Error {
             RequestError::Internal => ("INTERNAL_SERVER_ERROR", 500, "Request failed"),
         };
         Self {
+            issues: vec![],
             code,
             status,
             message: message.into(),
@@ -141,7 +144,43 @@ impl From<RequestError> for Error {
 
 impl From<validify::ValidationErrors> for Error {
     fn from(errors: validify::ValidationErrors) -> Self {
+        let issues = errors
+            .errors()
+            .iter()
+            .filter_map(|error| {
+                error.message().map(|message| {
+                    let mut path: Vec<String> = error
+                        .location()
+                        .split('/')
+                        .filter(|v| !v.is_empty())
+                        .map(|v| {
+                            let mut parts = v.split('_');
+                            let mut value = parts.next().unwrap_or_default().to_owned();
+                            for part in parts {
+                                let mut chars = part.chars();
+                                if let Some(c) = chars.next() {
+                                    value.extend(c.to_uppercase());
+                                    value.extend(chars);
+                                }
+                            }
+                            value
+                        })
+                        .collect();
+                    if path.is_empty()
+                        && let Some(field) = error.field_name()
+                    {
+                        path.push(field.into());
+                    }
+                    ValidationIssue {
+                        path,
+                        code: error.code(),
+                        message,
+                    }
+                })
+            })
+            .collect();
         Self {
+            issues,
             code: "BAD_USER_INPUT",
             status: 400,
             message: errors
@@ -158,14 +197,23 @@ impl<S: ScalarValue> IntoFieldError<S> for Error {
     fn into_field_error(self) -> FieldError<S> {
         FieldError::new(
             self.message,
-            graphql_value!({"code": self.code, "status": self.status}),
+            graphql_value!({"code": self.code, "status": self.status, "validation": juniper::Value::list(self.issues.into_iter().map(|v|graphql_value!({"path":juniper::Value::list(v.path.into_iter().map(juniper::Value::scalar).collect()),"message":v.message,"code":v.code})).collect::<Vec<juniper::Value<S>>>())}),
         )
     }
 }
 
 impl Error {
+    pub(crate) fn message(message: &'static str) -> Self {
+        Self {
+            issues: vec![],
+            code: "BAD_USER_INPUT",
+            status: 400,
+            message: message.into(),
+        }
+    }
     pub(crate) fn invalid_input() -> Self {
         Self {
+            issues: vec![],
             code: "BAD_USER_INPUT",
             status: 400,
             message: "Invalid request fields".into(),
@@ -178,6 +226,7 @@ impl From<crate::http::authorization::AuthorizationError> for Error {
         match error {
             crate::http::authorization::AuthorizationError::Authentication(error) => error.into(),
             crate::http::authorization::AuthorizationError::InvalidAuthority => Self {
+                issues: vec![],
                 code: "INVALID_AUTHORIZATION_STATE",
                 status: 401,
                 message: "Authorization state is invalid. Please sign in again.".into(),
@@ -190,20 +239,20 @@ impl From<compallm_core::authorization::error::AuthorizationError> for Error {
     fn from(error: compallm_core::authorization::error::AuthorizationError) -> Self {
         match error {
             E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::InvalidQuery) => Self::invalid_input(),
-            E::GroupDeletion(_) => Self { code: "GROUP_ASSIGNED", status: 409, message: "Remove all members from this group before deleting it".into() },
-            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::Conflict) => Self { code: "CONFLICT", status: 409, message: "Assignments changed; reload and retry".into() },
-            E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::Assigned) => Self { code: "ROLE_ASSIGNED", status: 409, message: "Remove all members and groups assigned to this role before deleting it".into() },
-            E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::OwnerRole) => Self { code: "FORBIDDEN", status: 403, message: "The owner role cannot be deleted".into() },
-            E::Membership(compallm_core::organization::member::MembershipAssignmentError::SelfRoleChange) => Self { code: "SELF_ROLE_CHANGE", status: 403, message: "You cannot change your own role".into() },
-            E::Membership(compallm_core::organization::member::MembershipAssignmentError::OwnerChangeDenied) => Self { code: "FORBIDDEN", status: 403, message: "Permission denied".into() },
-            E::Membership(compallm_core::organization::member::MembershipAssignmentError::OwnerRole) => Self { code: "LAST_OWNER", status: 409, message: "The last active owner cannot be unassigned".into() },
+            E::GroupDeletion(_) => Self { issues:vec![], code: "GROUP_ASSIGNED", status: 409, message: "Remove all members from this group before deleting it".into() },
+            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::Conflict) => Self { issues:vec![], code: "CONFLICT", status: 409, message: "Assignments changed; reload and retry".into() },
+            E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::Assigned) => Self { issues:vec![], code: "ROLE_ASSIGNED", status: 409, message: "Remove all members and groups assigned to this role before deleting it".into() },
+            E::RoleDeletion(compallm_core::organization::role::RoleDeletionError::OwnerRole) => Self { issues:vec![], code: "FORBIDDEN", status: 403, message: "The owner role cannot be deleted".into() },
+            E::Membership(compallm_core::organization::member::MembershipAssignmentError::SelfRoleChange) => Self { issues:vec![], code: "SELF_ROLE_CHANGE", status: 403, message: "You cannot change your own role".into() },
+            E::Membership(compallm_core::organization::member::MembershipAssignmentError::OwnerChangeDenied) => Self { issues:vec![], code: "FORBIDDEN", status: 403, message: "Permission denied".into() },
+            E::Membership(compallm_core::organization::member::MembershipAssignmentError::OwnerRole) => Self { issues:vec![], code: "LAST_OWNER", status: 409, message: "The last active owner cannot be unassigned".into() },
             E::Membership(compallm_core::organization::member::MembershipAssignmentError::ForeignOrganization) => Self::invalid_input(),
-            E::Permission(MemberPermissionError::Denied) => Self { code: "FORBIDDEN", status: 403, message: "Permission denied".into() },
-            E::Group(compallm_core::organization::group::GroupCreationError::IdGeneration(_)) | E::Role(compallm_core::organization::role::RoleCreationError::IdGeneration(_)) => Self { code: "SERVICE_UNAVAILABLE", status: 503, message: "Authorization operation is temporarily unavailable".into() },
+            E::Permission(MemberPermissionError::Denied) => Self { issues:vec![], code: "FORBIDDEN", status: 403, message: "Permission denied".into() },
+            E::Group(compallm_core::organization::group::GroupCreationError::IdGeneration(_)) | E::Role(compallm_core::organization::role::RoleCreationError::IdGeneration(_)) => Self { issues:vec![], code: "SERVICE_UNAVAILABLE", status: 503, message: "Authorization operation is temporarily unavailable".into() },
             E::Group(_) | E::Role(_) | E::UnsupportedPolicy => Self::invalid_input(),
-            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::NameAlreadyExists) => Self { code: "CONFLICT", status: 409, message: "Name already exists in this organization".into() },
-            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::NotFound) => Self { code: "NOT_FOUND", status: 404, message: "Resource not found".into() },
-            _ => Self { code: "SERVICE_UNAVAILABLE", status: 503, message: "Authorization operation is temporarily unavailable".into() },
+            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::NameAlreadyExists) => Self { issues:vec![], code: "CONFLICT", status: 409, message: "Name already exists in this organization".into() },
+            E::Persistence(compallm_core::persistent::organization::OrganizationRepositoryError::NotFound) => Self { issues:vec![], code: "NOT_FOUND", status: 404, message: "Resource not found".into() },
+            _ => Self { issues:vec![], code: "SERVICE_UNAVAILABLE", status: 503, message: "Authorization operation is temporarily unavailable".into() },
         }
     }
 }
@@ -211,6 +260,7 @@ impl From<compallm_core::authorization::error::AuthorizationError> for Error {
 impl Error {
     pub(super) fn internal() -> Self {
         Self {
+            issues: vec![],
             code: "INTERNAL_SERVER_ERROR",
             status: 500,
             message: "Request failed".into(),
@@ -227,6 +277,7 @@ impl From<compallm_core::preference::UserPreferenceError> for Error {
             }
             UserPreferenceError::Authentication(error) => error.into(),
             UserPreferenceError::Persistence(_) => Self {
+                issues: vec![],
                 code: "SERVICE_UNAVAILABLE",
                 status: 503,
                 message: "Preference state is temporarily unavailable".into(),
@@ -244,23 +295,27 @@ impl From<compallm_core::user::ProfileError> for Error {
             ProfileError::Invalid(errors) => errors.into(),
             ProfileError::InvalidOperation => Self::invalid_input(),
             ProfileError::Persistence(UserRepositoryError::UsernameAlreadyExists) => Self {
+                issues: vec![],
                 code: "USERNAME_TAKEN",
                 status: 409,
                 message: "Username is already in use".into(),
             },
             ProfileError::Denied | ProfileError::Persistence(UserRepositoryError::NotFound) => {
                 Self {
+                    issues: vec![],
                     code: "FORBIDDEN",
                     status: 403,
                     message: "Profile operation denied".into(),
                 }
             }
             ProfileError::Storage(StorageError::NotFound) => Self {
+                issues: vec![],
                 code: "AVATAR_NOT_UPLOADED",
                 status: 409,
                 message: "Upload the avatar before saving the profile".into(),
             },
             _ => Self {
+                issues: vec![],
                 code: "SERVICE_UNAVAILABLE",
                 status: 503,
                 message: "Profile operation is temporarily unavailable".into(),
@@ -278,6 +333,7 @@ impl From<compallm_core::organization::profile_service::ProfileError> for Error 
         };
         match error {
             ProfileError::Permission(MemberPermissionError::Denied) => Self {
+                issues: vec![],
                 code: "FORBIDDEN",
                 status: 403,
                 message: "Organization profile update denied".into(),
@@ -286,16 +342,19 @@ impl From<compallm_core::organization::profile_service::ProfileError> for Error 
                 Self::invalid_input()
             }
             ProfileError::Persistence(OrganizationRepositoryError::NotFound) => Self {
+                issues: vec![],
                 code: "NOT_FOUND",
                 status: 404,
                 message: "Organization not found".into(),
             },
             ProfileError::Storage(StorageError::NotFound) => Self {
+                issues: vec![],
                 code: "AVATAR_NOT_UPLOADED",
                 status: 409,
                 message: "Upload the organization avatar before saving".into(),
             },
             _ => Self {
+                issues: vec![],
                 code: "SERVICE_UNAVAILABLE",
                 status: 503,
                 message: "Organization profile is temporarily unavailable".into(),
@@ -311,6 +370,7 @@ impl From<compallm_core::analytics::AnalyticsError> for Error {
             E::Invalid(e) => e.into(),
             E::Authentication(e) => e.into(),
             E::Persistence(_) => Self {
+                issues: vec![],
                 code: "SERVICE_UNAVAILABLE",
                 status: 503,
                 message: "Analytics is temporarily unavailable".into(),
@@ -328,16 +388,19 @@ impl From<compallm_core::onboarding::OnboardingError> for Error {
                 compallm_core::authorization::error::AuthorizationError::from(e).into()
             }
             E::Requirements => Self {
+                issues: vec![],
                 code: "ONBOARDING_REQUIREMENTS",
                 status: 422,
                 message: "Complete the required profile fields before continuing".into(),
             },
             E::Transition => Self {
+                issues: vec![],
                 code: "ONBOARDING_CONFLICT",
                 status: 409,
                 message: "Reload onboarding before continuing".into(),
             },
             _ => Self {
+                issues: vec![],
                 code: "SERVICE_UNAVAILABLE",
                 status: 503,
                 message: "Onboarding is temporarily unavailable".into(),
@@ -350,4 +413,11 @@ impl From<compallm_core::persistent::ConnectionError> for Error {
     fn from(_: compallm_core::persistent::ConnectionError) -> Self {
         Self::internal()
     }
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize, juniper::GraphQLObject)]
+pub struct ValidationIssue {
+    pub path: Vec<String>,
+    pub code: String,
+    pub message: String,
 }

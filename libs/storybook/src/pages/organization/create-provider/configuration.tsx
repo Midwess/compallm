@@ -55,7 +55,8 @@ function ConnectionFields() {
     enabled: editing && !!providerId,
   })
   const loading = useProvider((s) => s.providerLoading && !s.providerLoaded)
-  const busy = submitting || !!loading || (editing && !edit.allowed)
+  const readOnly = useProvider((state) => state.readOnly)
+  const busy = !!readOnly || submitting || !!loading || (editing && !edit.allowed)
   const selected = useProvider((state) => state.selectedProviderId)
   const avatarUrl = useProvider((state) => state.avatarUrl, ['avatarUrl'])
   return (
@@ -82,57 +83,59 @@ function ConnectionFields() {
           />
           <FormError name="baseUrl" />
         </FormField.Root>
-        <FormField.Root>
-          <div className="flex items-center gap-1">
-            <FormField.Label>API key</FormField.Label>
-            <FieldHelp label="About API keys">
-              An API key is a secret credential from your provider that lets Compallm send requests to its models on your
-              behalf. Create one in your provider’s dashboard and keep it private. Up to{' '}
-              {ProviderFieldsConstraints.apiKey.maxLength} characters, without whitespace. When editing, leave this field empty
-              to keep the current key.
-            </FieldHelp>
-          </div>
-          <div className="relative min-w-0">
-            <PermissionRequest
-              actions={[editing ? 'provider.credential.replace' : 'provider.create']}
-              resource={editing ? { type: 'Provider', id: providerId } : undefined}
-              enabled={!editing || !!providerId}
-            >
-              {(allowed) => (
-                <DisabledTooltip disabled={!allowed && !preview} reason="You do not have permission to perform this action.">
-                  <FormField.Input
-                    disabled={!allowed && !preview}
-                    type={keyVisible ? 'text' : 'password'}
-                    className="pr-9"
-                    autoComplete="off"
-                    required={!editing}
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    name="apiKey"
-                    placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
-                  />
-                </DisabledTooltip>
-              )}
-            </PermissionRequest>
-            <FormError name="apiKey" />
-            <button
-              type="button"
-              aria-label={keyVisible ? 'Hide API key' : 'Show API key'}
-              aria-pressed={keyVisible}
-              className={`
+        {!readOnly ? (
+          <FormField.Root>
+            <div className="flex items-center gap-1">
+              <FormField.Label>API key</FormField.Label>
+              <FieldHelp label="About API keys">
+                An API key is a secret credential from your provider that lets Compallm send requests to its models on your
+                behalf. Create one in your provider’s dashboard and keep it private. Up to{' '}
+                {ProviderFieldsConstraints.apiKey.maxLength} characters, without whitespace. When editing, leave this field
+                empty to keep the current key.
+              </FieldHelp>
+            </div>
+            <div className="relative min-w-0">
+              <PermissionRequest
+                actions={[editing ? 'provider.credential.replace' : 'provider.create']}
+                resource={editing ? { type: 'Provider', id: providerId } : undefined}
+                enabled={!editing || !!providerId}
+              >
+                {(allowed) => (
+                  <DisabledTooltip disabled={!allowed && !preview} reason="You do not have permission to perform this action.">
+                    <FormField.Input
+                      disabled={!allowed && !preview}
+                      type={keyVisible ? 'text' : 'password'}
+                      className="pr-9"
+                      autoComplete="off"
+                      required={!editing}
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      name="apiKey"
+                      placeholder={editing ? 'Leave empty to keep current key' : 'Enter your API key'}
+                    />
+                  </DisabledTooltip>
+                )}
+              </PermissionRequest>
+              <FormError name="apiKey" />
+              <button
+                type="button"
+                aria-label={keyVisible ? 'Hide API key' : 'Show API key'}
+                aria-pressed={keyVisible}
+                className={`
 absolute inset-y-0 right-0 flex w-8 items-center justify-center rounded-lg text-muted-foreground
 hover:text-foreground focus-visible:outline-muted-foreground
 `}
-              onClick={() => setKeyVisible((visible) => !visible)}
-            >
-              {keyVisible ? (
-                <EyeSlashIcon aria-hidden="true" className="size-4" />
-              ) : (
-                <EyeIcon aria-hidden="true" className="size-4" />
-              )}
-            </button>
-          </div>
-        </FormField.Root>
+                onClick={() => setKeyVisible((visible) => !visible)}
+              >
+                {keyVisible ? (
+                  <EyeSlashIcon aria-hidden="true" className="size-4" />
+                ) : (
+                  <EyeIcon aria-hidden="true" className="size-4" />
+                )}
+              </button>
+            </div>
+          </FormField.Root>
+        ) : null}
       </fieldset>
       <KeyValueEditor.Root
         name="headers"
@@ -192,6 +195,11 @@ function TestConnection() {
 export function ProviderConfiguration() {
   const controller = useController()
   const intent = useProvider((state) => state.intent)
+  const readOnly = useProvider((state) => state.readOnly)
+  const create = usePermission({
+    actions: ['provider.create', 'provider.read'],
+    enabled: !!controller.store.getState().creationEnabled,
+  })
   const submitting = useProvider((state) => state.submitting)
   const providerId = useProvider((state) => state.savedProvider?.id)
   const edit = usePermission({
@@ -200,19 +208,20 @@ export function ProviderConfiguration() {
     enabled: intent === 'edit' && !!providerId,
   })
   const loading = useProvider((s) => s.providerLoading && !s.providerLoaded)
-  const busy = submitting || !!loading || (intent === 'edit' && !edit.allowed)
+  const busy = !!readOnly || submitting || !!loading || (intent === 'edit' && !edit.allowed)
   const error = useProvider((state) => state.error)
   const form = controller.store.form
   const templatePreview = useProvider((state) => state.templatePreview)
+  const creationEnabled = useProvider((state) => state.creationEnabled)
   const ready = useProvider((state) => !state.templatePreview || !!state.providerLoaded)
   return (
     <Form.Root model={form} className={`${providerPageLayout} gap-6`}>
       <div className="grid gap-1 px-4">
         <h2 className="text-2xl font-medium">Configure</h2>
-        {templatePreview ? <p className="text-xsm text-muted-foreground">Changes stay on this page.</p> : null}
+        {creationEnabled ? <p className="text-xsm text-muted-foreground">Create uses saved model configurations.</p> : null}
       </div>
       {templatePreview ? <CatalogStatus /> : null}
-      {intent === 'edit' && !edit.allowed ? (
+      {intent === 'edit' && !edit.allowed && !readOnly ? (
         <p className="text-xs text-muted-foreground">You do not have permission to edit this provider configuration.</p>
       ) : null}
       <LoadingRegion
@@ -233,7 +242,7 @@ export function ProviderConfiguration() {
             <FormSection.Heading>{templatePreview ? 'Available models' : 'Enabled models'}</FormSection.Heading>
             <ProviderModels />
           </FormSection.Root>
-          {!templatePreview ? (
+          {!templatePreview && !readOnly ? (
             <FormSection.Root>
               <FormSection.Marker>3</FormSection.Marker>
               <FormSection.Heading>Test connection</FormSection.Heading>
@@ -245,16 +254,27 @@ export function ProviderConfiguration() {
               <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
             </div>
           ) : null}
-          {!templatePreview ? (
+          {!readOnly && (!templatePreview || creationEnabled) ? (
             <div className="flex justify-end gap-2">
-              {intent !== 'create' ? (
+              {intent !== 'create' || creationEnabled ? (
                 <Button className="h-7 px-4 text-xs" disabled={busy} onClick={controller.onCancelProvider}>
                   Cancel
                 </Button>
               ) : null}
-              <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
-                {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
-              </Button>
+              <DisabledTooltip
+                disabled={!!creationEnabled && !create.allowed}
+                reason="You need permission to create and view providers."
+              >
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="h-7 px-4 text-xs"
+                  disabled={busy || (creationEnabled && !create.allowed)}
+                  loading={busy}
+                >
+                  {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Create'}
+                </Button>
+              </DisabledTooltip>
             </div>
           ) : null}
         </fieldset>
@@ -305,7 +325,8 @@ export function useProviderForm() {
             })
         },
         parse: (values, names) => {
-          if (controller.store.getState().templatePreview) return { values }
+          if (controller.store.getState().templatePreview && !controller.store.getState().creationEnabled) return { values }
+          if (controller.store.getState().creationEnabled) return parseProvider({ ...controller.store.getState(), ...values })
           if (values.avatarFile) {
             const image = avatarInput(values.avatarFile)
             if (!image.success) return { issues: image.error.issues.map((issue) => ({ ...issue, path: ['avatarFile'] })) }

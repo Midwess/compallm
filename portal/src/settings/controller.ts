@@ -50,7 +50,7 @@ export class SettingsController implements Controller {
   readonly pages: ReturnType<typeof createSettingsPages>
   readonly role: ReturnType<typeof createSettingsPages>['role']
   readonly group: ReturnType<typeof createSettingsPages>['group']
-  private readonly url: Pick<UrlController, 'navigate'> & Partial<Pick<UrlController, 'store'>>
+  private readonly url: Pick<UrlController, 'navigate' | 'back'> & Partial<Pick<UrlController, 'store'>>
   private readonly auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>
   private readonly initialName: string
   private stopOrganization?: () => void
@@ -216,7 +216,7 @@ export class SettingsController implements Controller {
 
   constructor(
     organizationName: string,
-    url: Pick<UrlController, 'navigate'> & Partial<Pick<UrlController, 'store'>>,
+    url: Pick<UrlController, 'navigate' | 'back'> & Partial<Pick<UrlController, 'store'>>,
     auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>,
     page: SettingsDestination,
     preferences: UserPreferenceController,
@@ -525,7 +525,7 @@ export class SettingsController implements Controller {
   signOut = () => {
     void this.auth.signOut()
   }
-  leaveSettings = () => this.url.navigate(`${this.base}/chat`)
+  leaveSettings = () => this.url.back(`${this.base}/chat`)
   apiError = (error: unknown, retry?: () => void) => {
     if (retry) notify.apiError(error, retry)
     else notify.error(error)

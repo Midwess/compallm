@@ -69,6 +69,9 @@ struct Settings {
 
 /// Own all application dependencies in one permanent container.
 pub struct Di {
+    providers: compallm_postgres::repository::provider::ProviderRepository,
+    provider_cipher: Option<compallm_core::provider::ProviderCredentialCipher>,
+    provider_creation: OnceLock<Box<compallm_core::provider::CreationService<'static>>>,
     catalog: compallm_postgres::catalog::repository::CatalogRepository,
     db: Box<DbContext>,
     storage: Option<Box<dyn compallm_core::persistent::storage::user_space::UserStorageSpace>>,
@@ -161,6 +164,11 @@ impl Di {
             compallm_postgres::repository::dictionary::DictionaryRepository::new(db.clone())
                 .expect("application dictionary connection must be committed");
         Self {
+            providers: Default::default(),
+            provider_cipher: std::env::var("PROVIDER_CREDENTIAL_SECRET")
+                .ok()
+                .and_then(|v| compallm_core::provider::ProviderCredentialCipher::new(&v).ok()),
+            provider_creation: OnceLock::new(),
             catalog: Default::default(),
             db: Box::new(db),
             storage: None,
@@ -217,6 +225,11 @@ impl Di {
     }
 
     pub fn initialize_services(&'static self) -> Result<(), AuthError> {
+        self.provider_creation.get_or_init(|| {
+            Box::new(compallm_core::provider::CreationService::new(
+                &self.providers,
+            ))
+        });
         self.analytics_service();
         self.onboarding_service();
         self.profile_service();
@@ -665,5 +678,24 @@ impl juniper::FromContext<Di> for Box<dyn SessionRepository> {
 impl juniper::FromContext<Di> for compallm_postgres::catalog::repository::CatalogRepository {
     fn from(context: &Di) -> &Self {
         &context.catalog
+    }
+}
+
+impl juniper::FromContext<Di> for compallm_core::provider::CreationService<'static> {
+    fn from(context: &Di) -> &Self {
+        context
+            .provider_creation
+            .get()
+            .expect("provider creation initialized")
+    }
+}
+impl juniper::FromContext<Di> for Option<compallm_core::provider::ProviderCredentialCipher> {
+    fn from(context: &Di) -> &Self {
+        &context.provider_cipher
+    }
+}
+impl juniper::FromContext<Di> for compallm_postgres::repository::provider::ProviderRepository {
+    fn from(context: &Di) -> &Self {
+        &context.providers
     }
 }

@@ -6805,11 +6805,16 @@ async fn graphql_template_reads_are_public_and_return_complete_model_defaults() 
     );
     let mut conditional = None;
     for candidate in broader {
-        let row =
-            Templates::find_by_id((candidate.provider_template_id.clone(), candidate.id.clone()))
-                .one(inspection.as_ref())
-                .await?
-                .unwrap();
+        let row = Templates::find()
+            .filter(
+                <<Templates as EntityTrait>::Column>::ProviderTemplateId
+                    .eq(&candidate.provider_template_id),
+            )
+            .filter(<<Templates as EntityTrait>::Column>::Id.eq(&candidate.id))
+            .filter(<<Templates as EntityTrait>::Column>::UserId.is_null())
+            .one(inspection.as_ref())
+            .await?
+            .unwrap();
         if row.text["input"]["pricing"]["configuration"]
             .get("tiered_token")
             .is_some()

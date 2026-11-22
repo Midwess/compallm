@@ -9,6 +9,7 @@ publish = false
 workspace = true
 
 [dependencies]
+uuid.workspace = true
 compallm-core.workspace = true
 hero = { workspace = true, features = ["s3", "cancellation"] }
 aws-sdk-s3 = "=1.142.0"

@@ -9,11 +9,22 @@ export interface RangeSliderProps {
   max: number
   onValueChange(value: number): void
   onBlur?(): void
+  onValueCommit?(): void
   onTickFeedback?(value: number): void
   className?: string
 }
 
-export function RangeSlider({ label, value, min, max, onValueChange, onBlur, onTickFeedback, className }: RangeSliderProps) {
+export function RangeSlider({
+  label,
+  value,
+  min,
+  max,
+  onValueChange,
+  onBlur,
+  onValueCommit,
+  onTickFeedback,
+  className,
+}: RangeSliderProps) {
   const id = useId()
   const ratio = Math.max(0, Math.min(1, Math.log(Math.max(min, value) / min) / Math.log(max / min)))
   const tickCount = 50
@@ -60,6 +71,11 @@ export function RangeSlider({ label, value, min, max, onValueChange, onBlur, onT
           step={1}
           value={Math.round(ratio * 1000)}
           onChange={(event) => change(Number(event.target.value))}
+          onPointerUp={onValueCommit}
+          onKeyUp={(event) => {
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key))
+              onValueCommit?.()
+          }}
           onBlur={onBlur}
           className="absolute inset-0 h-full w-full cursor-ew-resize appearance-none bg-transparent text-inherit
           focus-visible:rounded focus-visible:outline-2 focus-visible:outline-ring

@@ -17,7 +17,7 @@ export function MainPage({ sidebar, children, contentLabel = 'Workspace content'
       <div className="min-h-0 min-w-0 flex-1 pt-4 pr-4 pb-2">
         <main
           aria-label={contentLabel}
-          className="h-full min-h-0 min-w-0 overflow-x-auto overflow-y-scroll overscroll-none rounded-xl
+          className="h-full min-h-0 min-w-0 overflow-x-auto overflow-y-scroll overscroll-y-none rounded-xl
 border-(length:--border-hairline) border-divider bg-surface"
         >
           {children}

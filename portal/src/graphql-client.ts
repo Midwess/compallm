@@ -1,4 +1,4 @@
-import { createClient } from '@compallm/contract/graphql'
+import { createClient, type ValidationIssue } from '@compallm/contract/graphql'
 import { beginRequest } from './request-activity'
 
 let invalidAuthorizationHandler: (() => void) | undefined
@@ -11,10 +11,12 @@ export function onInvalidAuthorization(handler: () => void) {
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
+  readonly validation: ValidationIssue[]
   readonly info: { message: string }
 
-  constructor(message: string, status: number, code: string) {
+  constructor(message: string, status: number, code: string, validation: ValidationIssue[] = []) {
     super(message)
+    this.validation = validation
     this.status = status
     this.code = code
     this.info = { message }
@@ -56,6 +58,16 @@ const request = async (operation: Parameters<GraphqlFetcher>[0], signal?: AbortS
         message,
         status,
         typeof failure?.extensions?.code === 'string' ? failure.extensions.code : 'REQUEST_FAILED',
+        Array.isArray(failure?.extensions?.validation)
+          ? failure.extensions.validation.filter(
+              (issue: ValidationIssue) =>
+                issue &&
+                Array.isArray(issue.path) &&
+                issue.path.every((part) => typeof part === 'string') &&
+                typeof issue.message === 'string' &&
+                typeof issue.code === 'string',
+            )
+          : [],
       )
     }
     if (!payload || typeof payload !== 'object' || Array.isArray(payload) || !Object.hasOwn(payload, 'data'))

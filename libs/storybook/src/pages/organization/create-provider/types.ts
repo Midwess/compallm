@@ -27,6 +27,7 @@ export type ProviderPreset = Pick<ProviderTemplate, 'id' | 'name'> & {
   logoPath?: NonNullable<ProviderTemplate['logoUrl']>
 }
 export interface ModelDraft {
+  origin?: 'GLOBAL' | 'OVERRIDE' | 'CUSTOM'
   catalogPriceLabels?: string[]
 
   /** Persisted API identity; UI draft IDs and catalog IDs never substitute for it. */
@@ -78,6 +79,8 @@ export interface CreateProviderState {
   providerLoaded?: boolean
   modelLoaded?: boolean
   templatePreview?: boolean
+  creationEnabled?: boolean
+  readOnly?: boolean
   providersLoading?: boolean
   providersHasMore?: boolean
   providersLoadError?: string | null
@@ -144,7 +147,10 @@ export interface CreateProviderController {
   onClearModelFilters?(): void
   onEditModel(id: string): void
   onModelDraftChanged(patch: Partial<ModelDraft>): void
-  onSaveModel(draft: ModelDraft): ModelDraft | false
+  validateModel?(draft: ModelDraft, fields?: string[]): { path: PropertyKey[]; message: string }[] | undefined
+  onResetModel?(): Promise<void>
+  onDeleteModel?(): Promise<void>
+  onSaveModel(draft: ModelDraft, fields?: string[]): ModelDraft | false | Promise<ModelDraft | false>
   onCancelModel(): void
   onTestConnection(): void | Promise<void>
   onCreateProvider(

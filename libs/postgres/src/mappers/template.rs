@@ -30,6 +30,7 @@ impl TryFrom<crate::ProviderModelTemplateSchema> for ModelTemplate {
     fn try_from(v: crate::ProviderModelTemplateSchema) -> Result<Self, Self::Error> {
         Ok(Self {
             id: v.id,
+            custom_fields: decode(v.custom_fields)?,
             research_id: v.research_id,
             provider_template_id: v.provider_template_id,
             name: v.name,

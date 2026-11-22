@@ -92,7 +92,7 @@ export function Sidebar({
     >
       <nav
         aria-label={navigationLabel}
-        className="-mx-0.5 flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-none px-0.5"
+        className="-mx-0.5 flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-y-none px-0.5"
       >
         {children}
       </nav>

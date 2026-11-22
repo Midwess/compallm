@@ -128,7 +128,7 @@ function SelectContent({ className, children, ...props }: ComponentPropsWithRef<
         >
           <BaseSelect.List
             className="max-h-[min(--spacing(80),var(--available-height))] overflow-y-auto
-            overscroll-none p-1"
+            overscroll-y-none p-1"
           >
             {children}
           </BaseSelect.List>

@@ -68,3 +68,49 @@ export function providerReplaceRequest(state: CreateProviderState): ReturnType<t
     models,
   })
 }
+
+export function templateCustomization(model: import('./types').ModelDraft, baseline?: import('./types').ModelDraft) {
+  const changed = (keys: (keyof import('./types').ModelDraft)[]) =>
+    !baseline || keys.some((key) => JSON.stringify(model[key]) !== JSON.stringify(baseline[key]))
+  const enabledNumber = (enabled: boolean | undefined, value: string | undefined) =>
+    enabled ? Number(value || Number.NaN) : null
+  const prices = (['inputPrice', 'outputPrice', 'cachedPrice'] as const).flatMap((key) => {
+    const enabledKey = `${key}Enabled` as 'inputPriceEnabled' | 'outputPriceEnabled' | 'cachedPriceEnabled'
+    return changed([key, enabledKey])
+      ? [[key, { enabled: !!model[enabledKey], value: model[enabledKey] ? model[key] : null }]]
+      : []
+  })
+  return {
+    ...(changed(['name']) ? { name: model.name } : {}),
+    ...(changed(['path', 'protocol'])
+      ? { path: modelPath(model), protocol: TextModelProtocol.parse(modelProtocol(model).toUpperCase()) }
+      : {}),
+    ...(changed([
+      'maxContextTokens',
+      'maxInputTokens',
+      'maxOutputTokens',
+      'contextLimitEnabled',
+      'inputLimitEnabled',
+      'outputLimitEnabled',
+    ])
+      ? {
+          limits: {
+            context: enabledNumber(model.contextLimitEnabled, model.maxContextTokens),
+            input: enabledNumber(model.inputLimitEnabled, model.maxInputTokens),
+            output: enabledNumber(model.outputLimitEnabled, model.maxOutputTokens),
+          },
+        }
+      : {}),
+    ...Object.fromEntries(prices),
+    ...(changed(['capabilities'])
+      ? { capabilities: (model.capabilities ?? []).map((value) => ProviderModelCapability.parse(value.toUpperCase())) }
+      : {}),
+    ...(changed(['effortMapping', 'thinkingLevels'])
+      ? { effortMapping: Object.fromEntries(Object.entries(model.effortMapping ?? {}).filter(([, value]) => !!value)) }
+      : {}),
+    ...(changed(['headers']) ? { headers: (model.headers ?? []).map(({ key, value }) => ({ key, value })) } : {}),
+    ...(changed(['bodyDefaults'])
+      ? { bodyDefaults: (model.bodyDefaults ?? []).map(({ key, value }) => ({ key, value })) }
+      : {}),
+  }
+}

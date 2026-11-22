@@ -128,6 +128,12 @@ enum ModelServiceKind {
   STT
 }
 
+enum ModelTemplateOrigin {
+  GLOBAL
+  OVERRIDE
+  CUSTOM
+}
+
 enum OAuthFlow {
   AUTHORIZATION_CODE
   DEVICE_CODE
@@ -476,6 +482,30 @@ input MessageCompositionPatchInput {
   sendShortcut: PreferenceKeyCombination
 }
 
+input ModelTemplateCreateInput {
+  configuration: ModelTemplateCustomizeInput!
+}
+
+input ModelTemplateCustomizeInput {
+  name: String
+  protocol: TextModelProtocol
+  path: String
+  limits: ModelTemplateLimitsInput
+  inputPrice: ModelTemplatePriceInput
+  outputPrice: ModelTemplatePriceInput
+  cachedPrice: ModelTemplatePriceInput
+  capabilities: [ProviderModelCapability!]
+  effortMapping: ProviderEffortMapping
+  headers: [ProviderHeader!]
+  bodyDefaults: [ProviderBodyDefault!]
+}
+
+input ModelTemplateEffectiveLimitsInput {
+  context: ContextTokens
+  input: ContextTokens
+  output: ContextTokens
+}
+
 input ModelTemplateFilterInput {
   id: StringFilter
   name: StringFilter
@@ -483,10 +513,21 @@ input ModelTemplateFilterInput {
   or: [ModelTemplateMatchInput!]
 }
 
+input ModelTemplateLimitsInput {
+  context: ContextTokens
+  input: ContextTokens
+  output: ContextTokens
+}
+
 input ModelTemplateMatchInput {
   id: StringFilter
   name: StringFilter
   displayName: StringFilter
+}
+
+input ModelTemplatePriceInput {
+  enabled: Boolean!
+  value: String
 }
 
 input NavigationPatchInput {
@@ -558,6 +599,17 @@ input ProviderBodyDefault {
 input ProviderCatalogRef {
   provider: String!
   model: String!
+}
+
+input ProviderCreateFromTemplateInput {
+  name: String!
+  providerTemplateId: String!
+  baseUrl: String!
+  apiKey: String!
+  headers: [ProviderHeader!]!
+  models: [ProviderTemplateModelInput!]!
+  logoUrl: String
+  logoUploadId: String
 }
 
 "New connection definition; credentials and header values are write-only."
@@ -651,6 +703,11 @@ input ProviderTemplateFilterInput {
 input ProviderTemplateMatchInput {
   id: StringFilter
   name: StringFilter
+}
+
+input ProviderTemplateModelInput {
+  id: String!
+  protocol: TextModelProtocol!
 }
 
 input ProviderTemplateOrderInput {
@@ -1107,6 +1164,8 @@ type ModelOperation {
 }
 
 type ModelTemplate {
+  customFields: [String!]!
+  origin: ModelTemplateOrigin!
   id: ID!
   providerTemplateId: ID!
   upstreamModelId: String!
@@ -1158,6 +1217,12 @@ type ModelTemplatePayload {
 }
 
 type Mutation {
+  providerLogoUpload(input: ImageUploadInput!): ProviderLogoUploadPayload!
+  providerCreate(input: ProviderCreateFromTemplateInput!): ProviderPayload!
+  modelTemplateCustomize(providerTemplateId: ID!, id: ID!, input: ModelTemplateCustomizeInput!): ModelTemplatePayload!
+  modelTemplateCreate(providerTemplateId: ID!, input: ModelTemplateCreateInput!): ModelTemplatePayload!
+  modelTemplateReset(providerTemplateId: ID!, id: ID!): ModelTemplatePayload!
+  modelTemplateDelete(providerTemplateId: ID!, id: ID!): BooleanPayload!
   passkeyRegistrationStart: PasskeyCeremonyPayload!
   passkeyRegistrationFinish(input: PasskeyFinishInput!, name: PasskeyRegistrationInput!): PasskeySummaryPayload!
   passkeyUpdate(id: ID!, input: PasskeyRegistrationInput!): PasskeySummaryPayload!
@@ -1355,6 +1420,63 @@ type PolicyActionEdge {
   node: PolicyAction!
 }
 
+type Provider {
+  logoUrl: String
+  description: String
+  connection: ConnectionConfiguration!
+  models: [ProviderModel!]!
+  "Stable provider identity, serialized as a string."
+  id: ID!
+  "Owning organization; a supplied identifier never grants access."
+  organizationId: ID!
+  "Provider display name within its organization."
+  name: String!
+}
+
+type ProviderConnection {
+  edges: [ProviderEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ProviderEdge {
+  cursor: String!
+  node: Provider!
+}
+
+type ProviderLogoUpload {
+  id: String!
+  upload: AvatarUpload!
+}
+
+type ProviderLogoUploadPayload {
+  node: ProviderLogoUpload!
+}
+
+type ProviderModel {
+  capabilities: [ProviderModelCapability!]!
+  inputPrice: String
+  outputPrice: String
+  cachedPrice: String
+  protocol: UpstreamProtocol!
+  connection: ConnectionConfiguration!
+  text: TextCapabilities!
+  contextTokens: ContextTokens
+  "Stable configured-model identity, serialized as a string."
+  id: ID!
+  "Owning organization identity."
+  organizationId: ID!
+  "Owning provider identity."
+  providerId: ID!
+  "Configured upstream model name."
+  name: String!
+  "Configured availability; this flag alone does not authorize invocation."
+  enabled: Boolean!
+}
+
+type ProviderPayload {
+  node: Provider!
+}
+
 type ProviderTemplate {
   id: ID!
   name: String!
@@ -1389,6 +1511,11 @@ type Query {
   providerTemplate(id: ID!): ProviderTemplatePayload
   "Public configuration defaults for one database-ready model, identified within its provider."
   modelTemplate(providerTemplateId: ID!, id: ID!): ModelTemplatePayload
+  providers(first: Int, after: String): ProviderConnection!
+  provider(id: ID!): ProviderPayload
+  effectiveProviderTemplates(search: String, first: Int, after: String): ProviderTemplateConnection!
+  effectiveProviderTemplate(id: ID!): ProviderTemplatePayload
+  effectiveModelTemplate(providerTemplateId: ID!, id: ID!): ModelTemplatePayload
   passkeys: PasskeySummaryConnection!
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
   onboardingContext: OnboardingContextPayload
@@ -1665,6 +1792,12 @@ type UserPreferences {
 
 type UserPreferencesPayload {
   node: UserPreferences!
+}
+
+type ValidationIssue {
+  path: [String!]!
+  code: String!
+  message: String!
 }
 
 type VideoConfiguration {

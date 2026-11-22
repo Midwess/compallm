@@ -15,6 +15,7 @@ import { motion, useReducedMotion, type HTMLMotionProps } from 'motion/react'
 
 export const animation = {
   skeleton: { delayMs: 180, minimumVisibleMs: 180 },
+  skeletonShimmer: { duration: 3.2, ease: 'linear', repeat: Infinity },
   progress: { minimumVisible: 500, grace: 0, finish: 100, fade: 180, ease: [0.333333, 0, 0.666667, 1] },
   textEntrance: { duration: 1.1, ease: [0.12, 1, 0.18, 1], stagger: 0.1, delay: 0.3, distance: 20 },
   cascade: { duration: 1.5, ease: [0.12, 1, 0.18, 1], stagger: 0.14, delay: 0.3, distance: 128 },
@@ -74,6 +75,28 @@ export function transition(
 export function useTransition(preset: Parameters<typeof transition>[0]) {
   const reduced = useReducedMotion()
   return reduced ? { duration: 0 } : animation[preset]
+}
+
+export function useSkeletonMotion(ref: RefObject<HTMLElement | null>, active: boolean) {
+  useEffect(() => {
+    const node = ref.current
+    if (!active || !node) return
+    const previous = node.style.backgroundPosition
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let controls: ReturnType<typeof animate> | undefined
+    const update = () => {
+      controls?.stop()
+      if (preference.matches) node.style.backgroundPosition = '50% 50%'
+      else controls = animate(node, { backgroundPosition: ['-200% 50%', '300% 50%'] }, animation.skeletonShimmer)
+    }
+    update()
+    preference.addEventListener('change', update)
+    return () => {
+      preference.removeEventListener('change', update)
+      controls?.stop()
+      node.style.backgroundPosition = previous
+    }
+  }, [ref, active])
 }
 
 export function LoadingMotion({ children }: { children: React.ReactNode }) {

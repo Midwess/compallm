@@ -49,11 +49,12 @@ export function modelsObject(value: { entries: Array<{ name: string }> }): boole
   return value.entries.length > 0 && new Set(value.entries.map((model) => model.name)).size === value.entries.length
 }
 
-function modelPrice(value: string): boolean {
+function modelPrice(value: string, constraints:StringConstraints): boolean {
   const [whole = '', fraction = ''] = value.split('.')
   if (!/^[0-9]+$/.test(whole)) return false
   const integer = BigInt(whole)
-  return integer < 10000n || (integer === 10000n && /^0*$/.test(fraction))
+  const maximum=BigInt(constraints.maximum ?? 0)
+  return integer < maximum || (integer === maximum && /^0*$/.test(fraction))
 }
 
 const formats: Record<string, (value: string, constraints: StringConstraints) => boolean> = {
@@ -88,6 +89,10 @@ const formats: Record<string, (value: string, constraints: StringConstraints) =>
 }
 
 export interface StringConstraints {
+  minimum?:number
+  maximum?:number
+  minItems?:number
+  maxItems?:number
   messages?: Record<string, string>
   minLength?: number
   maxLength?: number
@@ -115,8 +120,8 @@ export function authorizationInput(value: string): boolean {
   return credentials === '' || token68.test(credentials)
 }
 
-const inputFormats: Record<string, (value: string) => boolean> = {
-  modelPrice: (value) => modelPrice(value.startsWith('.') ? `0${value}` : value),
+const inputFormats: Record<string, (value: string, constraints:StringConstraints) => boolean> = {
+  modelPrice: (value,constraints) => modelPrice(value.startsWith('.') ? `0${value}` : value,constraints),
   bodyDefaultKey: (value) => /^[A-Za-z0-9_.-]*$/.test(value),
   jsonValue: () => true,
   resourceId: (value) => /^[1-9][0-9]*$/.test(value) && BigInt(value) <= 18446744073709551615n,
@@ -139,7 +144,7 @@ export function stringInput(constraints: StringConstraints) {
       (constraints.maxLength === undefined ||
         [...(constraints.cedarCompact ? compactCedarSource(value) : value)].length <= constraints.maxLength) &&
       (!pattern || pattern.test(value)) &&
-      (!format || format(value)))
+      (!format || format(value,constraints)))
 }
 
 export function integerInput(constraints: { minimum?: number; maximum?: number }) {
@@ -262,3 +267,11 @@ export function bodyDefaultObject(value: { key: string; value: string }): boolea
       return true
   }
 }
+
+export function templateLimitsObject(value: {context?: number | null; input?: number | null; output?: number | null}): boolean {
+ return value.context == null || [value.input,value.output].every(cap => cap == null || cap <= value.context!)
+}
+
+export function templatePriceObject(value:{enabled:boolean;value?:string|null}):boolean{return !value.enabled || value.value!=null}
+
+export function modelCapabilitiesArray(values:string[]):boolean{return values.includes('TEXT') && (!values.includes('FORCED_TOOL_CHOICE')||values.includes('TOOL_CALL'))}

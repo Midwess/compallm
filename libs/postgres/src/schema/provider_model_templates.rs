@@ -5,9 +5,16 @@ use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(schema_name = "public", table_name = "provider_model_templates")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub row_id: Uuid,
+    pub organization_id: Option<i64>,
+    pub user_id: Option<i64>,
+    pub base_row_id: Option<Uuid>,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub custom_fields: Json,
+    #[sea_orm(column_type = "Text")]
     pub provider_template_id: String,
-    #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
+    #[sea_orm(column_type = "Text")]
     pub id: String,
     #[sea_orm(column_type = "Text")]
     pub name: String,
@@ -42,7 +49,7 @@ pub struct Model {
     pub limits: Json,
     #[sea_orm(column_type = "JsonBinary")]
     pub billing: Option<Json>,
-    pub research_id: String,
+    pub research_id: Option<String>,
     #[sea_orm(column_type = "JsonBinary")]
     pub body_defaults: Json,
     #[sea_orm(column_type = "JsonBinary", nullable)]

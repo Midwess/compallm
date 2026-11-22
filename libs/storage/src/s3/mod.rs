@@ -6,3 +6,5 @@ pub mod user;
 pub use client::S3Storage;
 
 pub mod org;
+
+pub mod provider;

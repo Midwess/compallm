@@ -633,7 +633,7 @@ export class CreateProviderController implements Controller {
       }))
       if (!reference) {
         this.localModelIds.set(response.id, draft.id)
-        this.url.update({ model: response.id }, { replace: true })
+        if (this.model === draft.id) this.url.update({ model: response.id }, { replace: true })
       }
       return saved
     })()

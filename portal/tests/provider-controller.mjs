@@ -278,3 +278,38 @@ test('provider/model navigation uses catalog detail, handles reload and cancels 
   c.stop()
   assert.equal(last.signal.aborted, true)
 })
+
+test('a new model save finishing after Back does not reopen its configuration page', async (t) => {
+  const requests = []
+  t.mock.method(
+    globalThis,
+    'fetch',
+    (_url, init) => new Promise((resolve) => requests.push({ body: JSON.parse(init.body), resolve })),
+  )
+  const { controller: c, url } = setup()
+  t.after(c.stop)
+  c.start()
+  await tick()
+  requests.at(-1).resolve(list(['a']))
+  await tick()
+  c.onSelectProvider('a')
+  await tick()
+  requests.at(-1).resolve(Response.json({ data: { effectiveProviderTemplate: { node: provider('a') } } }))
+  await tick()
+  c.onAddModel('openai_chat_completions')
+  c.onModelDraftChanged({ name: 'new-text', maxContextTokens: '128000', inputPrice: '0.1', outputPrice: '0.2' })
+  const saved = c.onSaveModel(c.store.getState().modelDraft)
+  await tick()
+  const pending = requests.at(-1)
+  c.onCancelModel()
+  assert.equal(new URLSearchParams(url.store.getState().search).has('model'), false)
+  pending.resolve(
+    Response.json({
+      data: { modelTemplateCreate: { node: { ...model('custom:saved'), origin: 'CUSTOM', name: 'new-text' } } },
+    }),
+  )
+  await saved
+  assert.equal(new URLSearchParams(url.store.getState().search).has('model'), false)
+  assert.equal(c.store.getState().editingModelId, null)
+  assert.ok(c.store.getState().models.some((row) => row.name === 'new-text'))
+})

@@ -1,42 +1,30 @@
-use super::Decoded;
 use crate::llm::text::component::Stop;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_with::DeserializeAs;
 
-impl<'de> Deserialize<'de> for Decoded<Stop> {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        use serde::de::Error;
-        CompatibleOpenAIStop::deserialize(deserializer)?
-            .try_into()
-            .map(Self)
-            .map_err(D::Error::custom)
-    }
-}
-
-#[derive(serde::Deserialize)]
-#[serde(untagged)]
-pub(super) enum CompatibleOpenAIStop {
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "Stop", untagged)]
+pub(crate) enum StopWire {
     Null,
     Text(String),
     Array(Vec<String>),
 }
 
-impl TryFrom<CompatibleOpenAIStop> for Stop {
-    type Error = &'static str;
-
-    fn try_from(value: CompatibleOpenAIStop) -> Result<Self, Self::Error> {
-        match value {
-            CompatibleOpenAIStop::Null => Ok(Self::Null),
-            CompatibleOpenAIStop::Text(text) if !text.is_empty() && text.len() <= 4096 => {
-                Ok(Self::Text(text))
+impl<'de> DeserializeAs<'de, Stop> for StopWire {
+    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Stop, D::Error> {
+        let value = Self::deserialize(deserializer)?;
+        let valid = match &value {
+            Stop::Null => true,
+            Stop::Text(text) => !text.is_empty() && text.len() <= 4096,
+            Stop::Array(values) => {
+                values.len() <= 4
+                    && values.iter().all(|v| !v.is_empty())
+                    && values.iter().map(String::len).sum::<usize>() <= 4096
             }
-            CompatibleOpenAIStop::Array(stops)
-                if stops.len() <= 4
-                    && stops.iter().all(|text| !text.is_empty())
-                    && stops.iter().map(String::len).sum::<usize>() <= 4096 =>
-            {
-                Ok(Self::Array(stops))
-            }
-            _ => Err("invalid stop sequences"),
+        };
+        if !valid {
+            return Err(serde::de::Error::custom("invalid stop sequences"));
         }
+        Ok(value)
     }
 }

@@ -1,7 +1,8 @@
 use serde::{Deserialize, Deserializer};
 use serde_json::value::RawValue;
 
-pub(super) fn nonempty<'de, D: Deserializer<'de>, S: Deserialize<'de> + AsRef<str>>(
+/// Deserializes a string-like value and rejects empty text without trimming it.
+pub fn nonempty<'de, D: Deserializer<'de>, S: Deserialize<'de> + AsRef<str>>(
     deserializer: D,
 ) -> Result<S, D::Error> {
     let value = S::deserialize(deserializer)?;
@@ -11,7 +12,9 @@ pub(super) fn nonempty<'de, D: Deserializer<'de>, S: Deserialize<'de> + AsRef<st
     Ok(value)
 }
 
-pub(super) fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+/// Wraps a supplied field in `Some`; pair with `#[serde(default)]` for missing fields.
+/// Explicit null is accepted only if `T` itself accepts null.
+pub fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
     deserializer: D,
 ) -> Result<Option<T>, D::Error> {
     T::deserialize(deserializer).map(Some)
@@ -25,13 +28,14 @@ fn schema_text<E: serde::de::Error>(value: Box<RawValue>) -> Result<String, E> {
     }
 }
 
-pub(super) fn schema<'de, D: Deserializer<'de>, S: From<String>>(
-    deserializer: D,
-) -> Result<S, D::Error> {
+/// Captures a JSON object as text or decodes a JSON string without validating its contents.
+/// Other JSON shapes, including null, are rejected.
+pub fn schema<'de, D: Deserializer<'de>, S: From<String>>(deserializer: D) -> Result<S, D::Error> {
     schema_text(Box::<RawValue>::deserialize(deserializer)?).map(Into::into)
 }
 
-pub(super) fn optional_schema<'de, D: Deserializer<'de>, S: From<String>>(
+/// Applies [`schema`] to non-null values; explicit null becomes `None`.
+pub fn optional_schema<'de, D: Deserializer<'de>, S: From<String>>(
     deserializer: D,
 ) -> Result<Option<S>, D::Error> {
     Option::<Box<RawValue>>::deserialize(deserializer)?

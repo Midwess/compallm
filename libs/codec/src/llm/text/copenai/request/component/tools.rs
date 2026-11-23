@@ -1,5 +1,5 @@
-use super::{deserialize, serialize};
 use crate::llm::text::component::{FunctionDefinition, ToolDefinition, ToolType};
+use compallm_serde_rules::{deserialize, serialize};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{DeserializeAs, SerializeAs};
 

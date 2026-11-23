@@ -1,5 +1,6 @@
-use super::{deserialize, tools::ToolTypeWire};
+use super::tools::ToolTypeWire;
 use crate::llm::text::component::{ToolChoice, ToolType};
+use compallm_serde_rules::deserialize;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{DeserializeAs, SerializeAs};
 

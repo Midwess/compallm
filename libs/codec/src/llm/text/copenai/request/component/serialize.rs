@@ -3,8 +3,7 @@ use super::{
     ToolWire,
 };
 use crate::llm::text::component::*;
-use serde::{Serialize, Serializer};
-use serde_json::value::RawValue;
+use serde::Serialize;
 use serde_with::serde_as;
 
 #[derive(Serialize)]
@@ -30,24 +29,4 @@ enum RequestWire {
     Provider(#[serde(with = "ProviderWire")] Provider),
     Stream(bool),
     StreamOptions(#[serde_as(as = "Option<StreamOptionsWire>")] Option<StreamOptions>),
-}
-
-pub(super) fn serialize_raw<T: AsRef<str>, S: Serializer>(
-    value: &T,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let raw: &RawValue = serde_json::from_str(value.as_ref()).map_err(serde::ser::Error::custom)?;
-    raw.serialize(serializer)
-}
-
-pub(super) fn optional_raw<T: AsRef<str>, S: Serializer>(
-    value: &Option<T>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    value
-        .as_ref()
-        .map(|value| serde_json::from_str::<&RawValue>(value.as_ref()))
-        .transpose()
-        .map_err(serde::ser::Error::custom)?
-        .serialize(serializer)
 }

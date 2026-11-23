@@ -1,4 +1,3 @@
-mod deserialize;
 mod message;
 mod provider;
 mod response_format;

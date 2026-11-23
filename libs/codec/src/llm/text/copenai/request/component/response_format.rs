@@ -1,5 +1,5 @@
-use super::{deserialize, serialize};
 use crate::llm::text::component::{JsonSchema, ResponseFormat};
+use compallm_serde_rules::{deserialize, serialize};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DeserializeAs, de::DeserializeAsWrap};
 

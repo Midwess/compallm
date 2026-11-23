@@ -1,6 +1,6 @@
 use super::{
-    MessageWire, ProviderWire, ResponseFormatWire, StopWire, StreamOptionsWire, ToolChoiceWire,
-    ToolWire,
+    MessageWire, ProviderWire, ReasoningWire, ResponseFormatWire, StopWire, StreamOptionsWire,
+    ToolChoiceWire, ToolWire,
 };
 use crate::llm::text::component::*;
 use serde::Serialize;
@@ -21,7 +21,8 @@ enum RequestWire {
     Tools(#[serde_as(as = "Vec<ToolWire>")] Vec<ToolDefinition>),
     ToolChoice(#[serde_as(as = "ToolChoiceWire")] ToolChoice),
     ParallelToolCalls(bool),
-    MaxCompletionTokens(u32),
+    MaxTokens(u32),
+    Reasoning(#[serde(with = "ReasoningWire")] Reasoning),
     TopP(f64),
     TopK(u32),
     Stop(#[serde(with = "StopWire")] Stop),

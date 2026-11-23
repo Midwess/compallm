@@ -1,4 +1,4 @@
-use super::component::Request;
+use super::component::{ConfiguredReasoning, Request, validate_reasoning};
 use crate::encoder::{Encoder, EncoderStatus};
 use crate::json::{JsonEncodeError, JsonEncoder, JsonToken};
 use crate::llm::text::component::TextRequestComponent;
@@ -11,6 +11,11 @@ pub enum RequestEncodeError {
     InvalidState,
     #[error("model and messages are required")]
     Incomplete,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CompatibleOpenAIRequestEncoderConfiguration {
+    pub reasoning_effort: Option<crate::llm::text::component::ReasoningEffort>,
 }
 
 #[derive(Debug)]
@@ -26,10 +31,16 @@ pub struct CompatibleOpenAIRequestEncoder {
     closed: bool,
     finished: bool,
     failed: bool,
+    reasoning: Option<crate::llm::text::component::Reasoning>,
+    reasoning_effort: Option<crate::llm::text::component::ReasoningEffort>,
+    reasoning_written: bool,
 }
 
 impl CompatibleOpenAIRequestEncoder {
-    pub fn new(json: JsonEncoder) -> Self {
+    pub fn new(
+        json: JsonEncoder,
+        configuration: CompatibleOpenAIRequestEncoderConfiguration,
+    ) -> Self {
         Self {
             json,
             started: false,
@@ -42,6 +53,9 @@ impl CompatibleOpenAIRequestEncoder {
             closed: false,
             finished: false,
             failed: false,
+            reasoning: None,
+            reasoning_effort: configuration.reasoning_effort,
+            reasoning_written: false,
         }
     }
 
@@ -75,7 +89,7 @@ impl CompatibleOpenAIRequestEncoder {
                     }
                     self.has_model = true;
                 }
-                TextRequestComponent::MaxCompletionTokens(0) => {
+                TextRequestComponent::MaxTokens(0) => {
                     return Err(RequestEncodeError::InvalidState);
                 }
                 TextRequestComponent::TopP(value)
@@ -84,6 +98,12 @@ impl CompatibleOpenAIRequestEncoder {
                     return Err(RequestEncodeError::InvalidState);
                 }
                 _ => {}
+            }
+            if let TextRequestComponent::Reasoning(value) = component {
+                let mut value = *value;
+                value.effort = None;
+                validate_reasoning(&value).map_err(|_| RequestEncodeError::InvalidState)?;
+                self.reasoning = Some(value);
             }
             self.field = Some(Field::from(component));
         }
@@ -102,6 +122,38 @@ impl CompatibleOpenAIRequestEncoder {
             } else if message && !self.messages_open {
                 JsonToken::ArrayStart(Some("messages"))
             } else if let Some(component) = component.as_deref() {
+                if self.field == Some(Field::Reasoning) {
+                    let reasoning = self.reasoning.ok_or(RequestEncodeError::InvalidState)?;
+                    let status = self.json.serialize_next(
+                        Some("reasoning"),
+                        &ConfiguredReasoning {
+                            enabled: reasoning.enabled,
+                            effort: self.reasoning_effort,
+                            max_tokens: self
+                                .reasoning_effort
+                                .is_none()
+                                .then_some(reasoning.max_tokens)
+                                .flatten(),
+                            exclude: reasoning.exclude,
+                        },
+                        &mut output[written..],
+                    )?;
+                    return match status {
+                        EncoderStatus::ComponentFinished { written: count } => {
+                            self.field = None;
+                            self.reasoning_written = true;
+                            Ok(EncoderStatus::ComponentFinished {
+                                written: written + count,
+                            })
+                        }
+                        EncoderStatus::NeedOutput { written: count } => {
+                            Ok(EncoderStatus::NeedOutput {
+                                written: written + count,
+                            })
+                        }
+                        EncoderStatus::Finished { .. } => Err(RequestEncodeError::InvalidState),
+                    };
+                }
                 let key = self.field.ok_or(RequestEncodeError::InvalidState)?.key();
                 let status =
                     self.json
@@ -118,6 +170,37 @@ impl CompatibleOpenAIRequestEncoder {
                     }),
                     _ => Err(RequestEncodeError::InvalidState),
                 };
+            } else if !self.reasoning_written
+                && (self.reasoning.is_some() || self.reasoning_effort.is_some())
+            {
+                let reasoning = self.reasoning.unwrap_or_default();
+                let status = self.json.serialize_next(
+                    Some("reasoning"),
+                    &ConfiguredReasoning {
+                        enabled: reasoning.enabled,
+                        effort: self.reasoning_effort,
+                        max_tokens: self
+                            .reasoning_effort
+                            .is_none()
+                            .then_some(reasoning.max_tokens)
+                            .flatten(),
+                        exclude: reasoning.exclude,
+                    },
+                    &mut output[written..],
+                )?;
+                match status {
+                    EncoderStatus::NeedOutput { written: count } => {
+                        return Ok(EncoderStatus::NeedOutput {
+                            written: written + count,
+                        });
+                    }
+                    EncoderStatus::ComponentFinished { written: count } => {
+                        written += count;
+                        self.reasoning_written = true;
+                        continue;
+                    }
+                    EncoderStatus::Finished { .. } => return Err(RequestEncodeError::InvalidState),
+                }
             } else if !self.closed {
                 JsonToken::ObjectEnd
             } else {
@@ -188,7 +271,8 @@ enum Field {
     Tools,
     ToolChoice,
     ParallelToolCalls,
-    MaxCompletionTokens,
+    MaxTokens,
+    Reasoning,
     TopP,
     TopK,
     Stop,
@@ -207,7 +291,8 @@ impl From<&TextRequestComponent> for Field {
             C::Tools(_) => Self::Tools,
             C::ToolChoice(_) => Self::ToolChoice,
             C::ParallelToolCalls(_) => Self::ParallelToolCalls,
-            C::MaxCompletionTokens(_) => Self::MaxCompletionTokens,
+            C::MaxTokens(_) => Self::MaxTokens,
+            C::Reasoning(_) => Self::Reasoning,
             C::TopP(_) => Self::TopP,
             C::TopK(_) => Self::TopK,
             C::Stop(_) => Self::Stop,
@@ -227,7 +312,8 @@ impl Field {
             Self::Tools => "tools",
             Self::ToolChoice => "tool_choice",
             Self::ParallelToolCalls => "parallel_tool_calls",
-            Self::MaxCompletionTokens => "max_completion_tokens",
+            Self::MaxTokens => "max_tokens",
+            Self::Reasoning => "reasoning",
             Self::TopP => "top_p",
             Self::TopK => "top_k",
             Self::Stop => "stop",

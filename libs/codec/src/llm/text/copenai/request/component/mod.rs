@@ -1,5 +1,6 @@
 mod message;
 mod provider;
+mod reasoning;
 mod response_format;
 mod serialize;
 mod stop;
@@ -9,6 +10,7 @@ mod tools;
 
 pub(super) use message::MessageWire;
 pub(super) use provider::ProviderWire;
+pub(super) use reasoning::{ConfiguredReasoning, ReasoningWire, validate as validate_reasoning};
 pub(super) use response_format::ResponseFormatWire;
 pub(super) use serde_with::de::DeserializeAsWrap as Input;
 pub(super) use serialize::Request;

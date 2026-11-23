@@ -1,12 +1,12 @@
 use super::component::{
-    Input, MessageWire, ProviderWire, ResponseFormatWire, StopWire, StreamOptionsWire,
-    ToolChoiceWire, ToolWire,
+    Input, MessageWire, ProviderWire, ReasoningWire, ResponseFormatWire, StopWire,
+    StreamOptionsWire, ToolChoiceWire, ToolWire,
 };
 use crate::decoder::{Decoder, DecoderError, DecoderStatus};
 use crate::json::{JsonContainer, JsonDecoder, JsonToken};
 use crate::llm::text::component::{
-    Message, Provider, ResponseFormat, Stop, StreamOptions, TextRequestComponent, ToolChoice,
-    ToolDefinition,
+    Message, Provider, Reasoning, ResponseFormat, Stop, StreamOptions, TextRequestComponent,
+    ToolChoice, ToolDefinition,
 };
 type RequestJson = JsonContainer;
 
@@ -26,6 +26,7 @@ impl<T, A> From<DecodedField<T, A>> for DecoderStatus<TextRequestComponent> {
 enum Field {
     Messages,
     Provider,
+    Reasoning,
     ResponseFormat,
     StreamOptions,
     ToolChoice,
@@ -82,7 +83,7 @@ impl CompatibleOpenAIRequestDecoder {
                 if limit == 0 {
                     return Err(DecoderError::InvalidInput("invalid token limit"));
                 }
-                C::MaxCompletionTokens(limit)
+                C::MaxTokens(limit)
             }
             JsonToken::ValueNumber(Some("top_p"), value) => {
                 let value = value
@@ -152,6 +153,9 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
                     Field::Provider => json
                         .parse_next::<Input<Provider, ProviderWire>>(input, eof)
                         .map(|status| DecodedField(status, TextRequestComponent::Provider).into()),
+                    Field::Reasoning => json
+                        .parse_next::<Input<Reasoning, ReasoningWire>>(input, eof)
+                        .map(|status| DecodedField(status, TextRequestComponent::Reasoning).into()),
                     Field::ResponseFormat => json
                         .parse_next::<Input<ResponseFormat, ResponseFormatWire>>(input, eof)
                         .map(|status| {
@@ -220,6 +224,7 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
                 Ok(DecoderStatus::Component(JsonToken::ObjectStart(Some(key)))) => {
                     let field = match key {
                         "provider" => Field::Provider,
+                        "reasoning" => Field::Reasoning,
                         "response_format" => Field::ResponseFormat,
                         "stream_options" => Field::StreamOptions,
                         "tool_choice" => Field::ToolChoice,

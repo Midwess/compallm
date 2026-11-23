@@ -119,6 +119,10 @@ const REQUEST: &str = r#"{
       "content": "Can you check the weather and analyze the reasoning?"
     },
     {
+      "role": "system",
+      "content": "Use Fahrenheit for temperatures in the weather response."
+    },
+    {
       "role": "assistant",
       "content": "Let me check the weather for you.",
       "tool_calls": [
@@ -171,7 +175,12 @@ const REQUEST: &str = r#"{
   ],
   "tool_choice": "auto",
   "parallel_tool_calls": true,
-  "max_completion_tokens": 1500,
+  "max_tokens": 1500,
+  "reasoning": {
+    "enabled": true,
+    "max_tokens": 1024,
+    "exclude": false
+  },
   "top_p": 1.0,
   "top_k": 50,
   "stop": ["<|endoftext|>", "User:"],
@@ -212,14 +221,14 @@ fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {
     let json_encoder = codec::json::JsonEncoder::new();
     let json_encoder_construction = measurement.snapshot().since(before);
     let before = measurement.snapshot();
-    let mut encoder = CompatibleOpenAIRequestEncoder::new(json_encoder);
+    let mut encoder = CompatibleOpenAIRequestEncoder::new(json_encoder, Default::default());
     let request_encoder_construction = measurement.snapshot().since(before);
     let construction = measurement.snapshot();
     let mut component_count = 0;
     let mut decoding = AllocationCount::default();
     let mut encoding = AllocationCount::default();
     let mut pending_decode = AllocationCount::default();
-    let mut per_component = [(AllocationCount::default(), AllocationCount::default()); 16];
+    let mut per_component = [(AllocationCount::default(), AllocationCount::default()); 18];
 
     for chunk in REQUEST.as_bytes().chunks(BUFFER_SIZE) {
         let mut input = chunk;
@@ -322,6 +331,8 @@ fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {
 #[test]
 fn decodes_full_request_with_16_byte_input_buffer() {
     assert_eq!(decode_request(REQUEST.as_bytes()), request_components());
+    let alias = REQUEST.replacen("\"max_tokens\": 1500", "\"max_completion_tokens\": 1500", 1);
+    assert_eq!(decode_request(alias.as_bytes()), request_components());
 }
 
 fn decode_request(request: &[u8]) -> Vec<TextRequestComponent> {
@@ -409,6 +420,7 @@ fn request_components() -> Vec<TextRequestComponent> {
         TextRequestComponent::Model("gpt-4o".into()),
         TextRequestComponent::Message(message(Role::System, "You are a helpful assistant.")),
         TextRequestComponent::Message(message(Role::User, "Can you check the weather and analyze the reasoning?")),
+        TextRequestComponent::Message(message(Role::System, "Use Fahrenheit for temperatures in the weather response.")),
         TextRequestComponent::Message(assistant),
         TextRequestComponent::Message(result),
         TextRequestComponent::Tools(vec![ToolDefinition {
@@ -422,7 +434,13 @@ fn request_components() -> Vec<TextRequestComponent> {
         }]),
         TextRequestComponent::ToolChoice(ToolChoice::Auto),
         TextRequestComponent::ParallelToolCalls(true),
-        TextRequestComponent::MaxCompletionTokens(1500),
+        TextRequestComponent::MaxTokens(1500),
+        TextRequestComponent::Reasoning(Reasoning {
+            enabled: Some(true),
+            effort: None,
+            max_tokens: Some(1024),
+            exclude: Some(false),
+        }),
         TextRequestComponent::TopP(1.0),
         TextRequestComponent::TopK(50),
         TextRequestComponent::Stop(Stop::Array(vec!["<|endoftext|>".into(), "User:".into()])),
@@ -441,46 +459,102 @@ fn request_components() -> Vec<TextRequestComponent> {
 #[test]
 fn encodes_full_request_across_output_buffer_sizes() {
     for size in [1, 16, 16 * 1024] {
-        let mut encoder = CompatibleOpenAIRequestEncoder::new(codec::json::JsonEncoder::new());
-        let mut components = request_components();
-        let mut output = vec![0_u8; size];
-        let mut encoded = Vec::new();
-        for component in &mut components {
+        let reasoning_configurations = [
+            Reasoning::default(),
+            Reasoning {
+                enabled: Some(false),
+                exclude: Some(true),
+                ..Reasoning::default()
+            },
+            Reasoning {
+                enabled: Some(true),
+                max_tokens: Some(1024),
+                exclude: Some(false),
+                ..Reasoning::default()
+            },
+        ]
+        .into_iter()
+        .chain(
+            [
+                ReasoningEffort::None,
+                ReasoningEffort::Minimal,
+                ReasoningEffort::Low,
+                ReasoningEffort::Medium,
+                ReasoningEffort::High,
+                ReasoningEffort::XHigh,
+                ReasoningEffort::Max,
+            ]
+            .into_iter()
+            .map(|effort| Reasoning {
+                effort: Some(effort),
+                ..Reasoning::default()
+            }),
+        );
+        for reasoning in reasoning_configurations {
+            let mut encoder = CompatibleOpenAIRequestEncoder::new(
+                codec::json::JsonEncoder::new(),
+                codec::llm::text::copenai::request::encoder::CompatibleOpenAIRequestEncoderConfiguration {
+                    reasoning_effort: reasoning.effort,
+                },
+            );
+            let mut components = request_components();
+            for component in &mut components {
+                if let TextRequestComponent::Reasoning(value) = component {
+                    *value = Reasoning {
+                        effort: None,
+                        ..reasoning
+                    };
+                }
+            }
+            let mut output = vec![0_u8; size];
+            let mut encoded = Vec::new();
+            for component in &mut components {
+                loop {
+                    match encoder
+                        .next(Some(component), &mut output)
+                        .expect("encode component")
+                    {
+                        EncoderStatus::NeedOutput { written } => {
+                            assert!(written > 0);
+                            encoded.extend_from_slice(&output[..written]);
+                        }
+                        EncoderStatus::ComponentFinished { written } => {
+                            encoded.extend_from_slice(&output[..written]);
+                            break;
+                        }
+                        EncoderStatus::Finished { .. } => panic!("finished before finalization"),
+                    }
+                }
+            }
             loop {
-                match encoder
-                    .next(Some(component), &mut output)
-                    .expect("encode component")
-                {
+                match encoder.next(None, &mut output).expect("finalize request") {
                     EncoderStatus::NeedOutput { written } => {
                         assert!(written > 0);
                         encoded.extend_from_slice(&output[..written]);
                     }
-                    EncoderStatus::ComponentFinished { written } => {
+                    EncoderStatus::Finished { written } => {
                         encoded.extend_from_slice(&output[..written]);
                         break;
                     }
-                    EncoderStatus::Finished { .. } => panic!("finished before finalization"),
+                    EncoderStatus::ComponentFinished { .. } => {
+                        panic!("component during finalization")
+                    }
                 }
             }
-        }
-        loop {
-            match encoder.next(None, &mut output).expect("finalize request") {
-                EncoderStatus::NeedOutput { written } => {
-                    assert!(written > 0);
-                    encoded.extend_from_slice(&output[..written]);
+            encoder.finish().expect("complete encoder");
+            for component in &mut components {
+                if let TextRequestComponent::Reasoning(value) = component {
+                    value.effort = reasoning.effort;
+                    if reasoning.effort.is_some() {
+                        value.max_tokens = None;
+                    }
                 }
-                EncoderStatus::Finished { written } => {
-                    encoded.extend_from_slice(&output[..written]);
-                    break;
-                }
-                EncoderStatus::ComponentFinished { .. } => panic!("component during finalization"),
             }
+            assert_eq!(
+                decode_request(&encoded),
+                components,
+                "output buffer size {size}"
+            );
         }
-        encoder.finish().expect("complete encoder");
-        assert_eq!(
-            decode_request(&encoded),
-            components,
-            "output buffer size {size}"
-        );
     }
 }

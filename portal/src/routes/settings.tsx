@@ -1,5 +1,5 @@
 import { passkeyController } from '../passkey/instance'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useLayoutEffect, useState } from 'react'
 import { redirect, type LoaderFunctionArgs } from 'react-router'
 import { useLoaderData } from 'react-router'
 import { OnboardingControllerContext, SettingsControllerContext } from '@compallm/storybook/context'
@@ -45,7 +45,7 @@ export function Component() {
       stop?.()
     }
   }, [controller])
-  useEffect(() => controller.setPage(page, id), [controller, page, id])
+  useLayoutEffect(() => controller.setPage(page, id), [controller, page, id])
   useEffect(() => (page === 'security' ? passkeyController.startView() : undefined), [page])
   return (
     <SettingsControllerContext value={controller}>

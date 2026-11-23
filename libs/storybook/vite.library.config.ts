@@ -5,6 +5,7 @@ import { defineConfig } from 'vite'
 
 const source = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.meta.url))
 const families = [
+  'loading',
   'buttons',
   'permission',
   'form',
@@ -34,7 +35,6 @@ const families = [
   'page-progress',
   'app-loading-overlay',
   'sidebar',
-  'scroll',
   'selection',
   'surfaces',
   'settings',

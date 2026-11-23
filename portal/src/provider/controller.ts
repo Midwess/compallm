@@ -1,3 +1,4 @@
+import type { AppController, AppLoadingTask } from '@compallm/storybook'
 import {
   createCreateProviderStore,
   type CreateProviderController as Controller,
@@ -13,6 +14,8 @@ import { providerRow, modelRow, modelDraft } from './presentation'
 
 export class CreateProviderController implements Controller {
   readonly store = createCreateProviderStore({ templatePreview: true, protocol: 'provider_specific' })
+  readonly loading: NonNullable<Controller['loading']>
+  private loadingTasks = new Map<string, AppLoadingTask>()
   private owner?: AbortController
   private listRequest?: AbortController
   private providerRequest?: AbortController
@@ -29,7 +32,13 @@ export class CreateProviderController implements Controller {
   constructor(
     url: Pick<UrlController, 'store' | 'update'>,
     organization: Pick<OrganizationController, 'getCurrentOrganization'>,
+    app: Pick<AppController, 'createLoadingScope'>,
   ) {
+    this.loading = {
+      providers: app.createLoadingScope(),
+      provider: app.createLoadingScope(),
+      model: app.createLoadingScope(),
+    }
     this.url = url
     this.organization = organization
   }
@@ -45,6 +54,8 @@ export class CreateProviderController implements Controller {
     return this.stop
   }
   stop = () => {
+    for (const task of this.loadingTasks.values()) task.cancel()
+    this.loadingTasks.clear()
     this.owner?.abort()
     this.listRequest?.abort()
     this.providerRequest?.abort()
@@ -74,8 +85,12 @@ export class CreateProviderController implements Controller {
       this.loadedProvider = undefined
       this.providerRequest?.abort()
       this.modelRequest?.abort()
+      this.loadingTasks.get('provider')?.cancel()
+      this.loadingTasks.get('model')?.cancel()
       this.model = undefined
       this.store.setState({
+        providerLoaded: false,
+        modelLoaded: false,
         models: [],
         modelDraft: null,
         editingModelId: null,
@@ -95,7 +110,29 @@ export class CreateProviderController implements Controller {
     if (this.model !== model) {
       this.model = model
       this.modelRequest?.abort()
-      if (!model) this.store.setState({ modelDraft: null, editingModelId: null, modelLoading: false, catalogError: null })
+      this.loadingTasks.get('model')?.cancel()
+      if (model && this.loadedProvider !== provider) {
+        this.store.setState({
+          editingModelId: model,
+          modelDraft: {
+            id: model,
+            name: model,
+            maxContextTokens: '',
+            thinkingLevels: [],
+            inputPrice: '',
+            outputPrice: '',
+            cachedPrice: '',
+          },
+        })
+      }
+      if (!model)
+        this.store.setState({
+          modelDraft: null,
+          editingModelId: null,
+          modelLoading: false,
+          modelLoaded: false,
+          catalogError: null,
+        })
       else if (this.loadedProvider === provider) void this.loadModel(model)
     }
   }
@@ -128,6 +165,9 @@ export class CreateProviderController implements Controller {
     this.listRequest?.abort()
     const request = new AbortController()
     this.listRequest = request
+    this.loadingTasks.get('providers')?.cancel()
+    const loading = this.loading.providers.beginLoading('providers')
+    this.loadingTasks.set('providers', loading)
     const query = this.query ?? ''
     if (!append) this.cursor = undefined
     this.appendFailed = append
@@ -141,12 +181,19 @@ export class CreateProviderController implements Controller {
         for (const { node } of data.edges) {
           if (!rows.has(node.id)) rows.set(node.id, providerRow(node))
         }
-        return { providers: [...rows.values()], providersHasMore: data.pageInfo.hasNextPage, providersLoadError: null }
+        return {
+          providersLoaded: true,
+          providers: [...rows.values()],
+          providersHasMore: data.pageInfo.hasNextPage,
+          providersLoadError: null,
+        }
       })
     } catch {
       if (!owner.signal.aborted && !request.signal.aborted && this.listRequest === request)
         this.store.setState({ providersLoadError: 'Could not load provider templates. Try again.' })
     } finally {
+      loading.complete()
+
       if (this.listRequest === request) this.store.setState({ providersLoading: false })
     }
   }
@@ -158,6 +205,9 @@ export class CreateProviderController implements Controller {
     this.providerRequest?.abort()
     const request = new AbortController()
     this.providerRequest = request
+    this.loadingTasks.get('provider')?.cancel()
+    const loading = this.loading.provider.beginLoading('provider')
+    this.loadingTasks.set('provider', loading)
     this.store.setState({ providerLoading: true, catalogError: null })
     try {
       const signal = AbortSignal.any([owner.signal, request.signal])
@@ -171,6 +221,7 @@ export class CreateProviderController implements Controller {
       this.store.setState({
         name: value.name,
         baseUrl: value.connection.baseUrl ?? '',
+        providerLoaded: true,
         avatarUrl: value.logoUrl ?? null,
         headers: value.headers.map((v, index) => ({ id: String(index), ...v })),
         models,
@@ -185,6 +236,8 @@ export class CreateProviderController implements Controller {
       if (!owner.signal.aborted && !request.signal.aborted && this.providerRequest === request)
         this.store.setState({ catalogError: 'Could not load this provider template. Try again.' })
     } finally {
+      loading.complete()
+
       if (this.providerRequest === request) {
         this.store.setState({ providerLoading: false })
       }
@@ -204,19 +257,26 @@ export class CreateProviderController implements Controller {
     this.modelRequest?.abort()
     const request = new AbortController()
     this.modelRequest = request
-    const summary = this.store.getState().models.find((v) => v.id === id)
-    const pending: ModelDraft = summary ?? {
-      id,
-      name: id,
-      maxContextTokens: '',
-      thinkingLevels: [],
-      inputPrice: '',
-      outputPrice: '',
-      cachedPrice: '',
-    }
+    this.loadingTasks.get('model')?.cancel()
+    const loading = this.loading.model.beginLoading('model')
+    this.loadingTasks.set('model', loading)
+    const state = this.store.getState()
+    const retained = state.modelLoaded && state.modelDraft?.id === id ? state.modelDraft : null
+    const summary = state.models.find((v) => v.id === id)
+    const pending: ModelDraft = retained ??
+      summary ?? {
+        id,
+        name: id,
+        maxContextTokens: '',
+        thinkingLevels: [],
+        inputPrice: '',
+        outputPrice: '',
+        cachedPrice: '',
+      }
     this.store.setState({
       modelDraft: { ...pending },
       editingModelId: id,
+      modelLoaded: !!retained,
       modelLoading: true,
       catalogError: null,
     })
@@ -225,13 +285,17 @@ export class CreateProviderController implements Controller {
       const value = await getModel(provider, id, signal)
       if (signal.aborted || this.modelRequest !== request || this.provider !== provider || this.model !== id) return
       if (!value) throw new Error('missing model')
-      this.store.setState({ modelDraft: modelDraft(value), catalogError: null })
+      this.store.setState(
+        retained ? { catalogError: null } : { modelDraft: modelDraft(value), modelLoaded: true, catalogError: null },
+      )
     } catch {
       if (!owner.signal.aborted && !request.signal.aborted && this.modelRequest === request) {
         request.abort()
         this.store.setState({ catalogError: 'Could not load this model template. It may no longer be available. Try again.' })
       }
     } finally {
+      loading.complete()
+
       if (this.modelRequest === request) this.store.setState({ modelLoading: false })
     }
   }

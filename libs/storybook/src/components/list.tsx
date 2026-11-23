@@ -1,3 +1,4 @@
+import { Skeleton, useInitialLoading } from './loading'
 import { memo, type ComponentPropsWithRef, type ReactNode } from 'react'
 import { CollectionContext } from '../context'
 import { CollectionRecord, useCollectionOwner, useCollectionRows, useCollectionLoadMore } from './collection'
@@ -24,22 +25,31 @@ function Items<T>({
   children(item: T): ReactNode
   paging?: CollectionPaging
 }) {
+  const initial = useInitialLoading()
   const collection = useCollectionRows(items, getKey)
   const loadMoreRef = useCollectionLoadMore(paging, collection.scrollElement)
   return (
     <>
       <ul {...props}>
-        {collection.rows.map((row) => (
-          <ListRecord
-            key={row.key}
-            item={row.item}
-            render={children}
-            rowKey={row.key}
-            index={row.index}
-            count={items.length}
-            forms={collection.forms!}
-          />
-        ))}
+        {initial
+          ? Array.from({ length: 4 }, (_, index) => (
+              <li key={index} aria-hidden="true" className="flex h-16 items-center px-4">
+                <Skeleton loading>
+                  <span className="h-4 w-3/4 rounded-md" />
+                </Skeleton>
+              </li>
+            ))
+          : collection.rows.map((row) => (
+              <ListRecord
+                key={row.key}
+                item={row.item}
+                render={children}
+                rowKey={row.key}
+                index={row.index}
+                count={items.length}
+                forms={collection.forms!}
+              />
+            ))}
       </ul>
       {paging ? (
         <div ref={loadMoreRef} className="min-h-0.5">

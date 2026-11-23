@@ -1,3 +1,4 @@
+import { LoadingRegion } from '../../components/loading'
 import { CollectionRowContext } from '../../context'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
 import { ArrowDownLeftIcon } from '@phosphor-icons/react/dist/csr/ArrowDownLeft'
@@ -142,15 +143,17 @@ function Invitations() {
   const confirmed = useSettings((s) => s.invitations)
   const invitations = useMemo(() => confirmed.filter((invitation) => invitation.status === 'pending'), [confirmed])
   const loading = useSettings((s) => s.invitationsLoading)
+  const ready = useSettings((s) => s.invitationsLoaded !== false)
   const more = useSettings((s) => s.invitationsHasNextPage)
   const failed = useSettings((s) => s.invitationsLoadError ?? false)
   const busy = useSettings((s) => s.invitationBusy)
-  if (!invitations.length) return null
+  if (!invitations.length && ready) return null
   return (
     <Table.Category
+      initialLoading={!ready}
       variant="directory"
       label="Invited"
-      count={`${invitations.length}${more ? ' shown' : ''}`}
+      count={ready ? `${invitations.length}${more ? ' shown' : ''}` : undefined}
       columns={6}
       open={open}
       onOpenChange={setOpen}
@@ -708,6 +711,7 @@ export function MembersSettings() {
   const members = useSettings((s) => s.members)
   const query = useSettings((s) => s.query)
   const order = useSettings((s) => s.memberOrder)
+  const ready = useSettings((s) => s.membersLoaded ?? !s.membersLoading)
   const loading = useSettings((s) => s.membersLoading)
   const next = useSettings((s) => s.membersHasNextPage)
   const failed = useSettings((s) => s.membersLoadError ?? false)
@@ -743,9 +747,10 @@ export function MembersSettings() {
           </PermissionRequest>
         ) : null}
       </div>
-      <Table.Root
-        forms={c.pages.members.forms}
-        className="overflow-visible
+      <LoadingRegion ready={ready} pending={loading} label="Loading members" className="contents">
+        <Table.Root
+          forms={c.pages.members.forms}
+          className="overflow-visible
 [&_[data-slot=table-category-header]>td]:rounded-none [&_[data-slot=table-category-header]>td]:bg-transparent
 [&_[data-slot=table-category-header]>td]:before:pointer-events-none
 [&_[data-slot=table-category-header]>td]:before:absolute [&_[data-slot=table-category-header]>td]:before:inset-y-0
@@ -753,65 +758,66 @@ export function MembersSettings() {
 [&_[data-slot=table-category-header]>td]:before:rounded-lg
 [&_[data-slot=table-category-header]>td]:before:bg-inset [&_[data-slot=table-category-header]>td]:before:content-['']
 [&_[data-slot=table-category-header]_button]:relative"
-      >
-        <Table.Content
-          className="border-separate border-spacing-0"
-          aria-label="Organization members"
-          aria-busy={loading}
-          columns={memberColumns}
         >
-          <Table.Header className="sticky top-0 z-20 bg-surface">
-            <Table.Row className="border-0">
-              <Table.Head column="name" className="pl-0" aria-sort={descending ? 'descending' : 'ascending'}>
-                <Button
-                  variant="ghost"
-                  className="h-8 gap-0.5 rounded-none p-0 text-xs font-normal text-muted-foreground"
-                  onClick={() => c.pages.members.setOrder?.(descending ? 'ASC_NULLS_LAST' : 'DESC_NULLS_LAST')}
-                >
-                  Name
-                  <span aria-hidden="true">{descending ? '↑' : '↓'}</span>
-                </Button>
-              </Table.Head>
-              <Table.Head column="email">Email</Table.Head>
-              <Table.Head column="role" className="px-2">
-                Role
-              </Table.Head>
-              <Table.Head column="groups">Groups</Table.Head>
-              <Table.Head column="joined">Time</Table.Head>
-              <Table.Head column="actions">
-                <span className="sr-only">Actions</span>
-              </Table.Head>
-            </Table.Row>
-          </Table.Header>
-          <Invitations />
-          {active.length || !inactive.length ? (
-            <MemberRows
-              label="Active"
-              members={active}
-              complete={complete}
-              open={activeOpen}
-              onOpenChange={setActiveOpen}
-              paging={{
-                hasMore: next && !inactive.length,
-                loading,
-                error: failed,
-                onLoadMore: () => c.pages.members.loadMore?.(),
-              }}
-            />
-          ) : null}
-          {inactive.length ? (
-            <MemberRows
-              label="Inactive"
-              members={inactive}
-              complete={complete}
-              open={inactiveOpen}
-              onOpenChange={setInactiveOpen}
-              paging={{ hasMore: next, loading, error: failed, onLoadMore: () => c.pages.members.loadMore?.() }}
-            />
-          ) : null}
-        </Table.Content>
-      </Table.Root>
-      {!members.length && !loading ? <Table.Empty>No members match your search.</Table.Empty> : null}
+          <Table.Content
+            className="border-separate border-spacing-0"
+            aria-label="Organization members"
+            aria-busy={loading}
+            columns={memberColumns}
+          >
+            <Table.Header className="sticky top-0 z-20 bg-surface">
+              <Table.Row className="border-0">
+                <Table.Head column="name" className="pl-0" aria-sort={descending ? 'descending' : 'ascending'}>
+                  <Button
+                    variant="ghost"
+                    className="h-8 gap-0.5 rounded-none p-0 text-xs font-normal text-muted-foreground"
+                    onClick={() => c.pages.members.setOrder?.(descending ? 'ASC_NULLS_LAST' : 'DESC_NULLS_LAST')}
+                  >
+                    Name
+                    <span aria-hidden="true">{descending ? '↑' : '↓'}</span>
+                  </Button>
+                </Table.Head>
+                <Table.Head column="email">Email</Table.Head>
+                <Table.Head column="role" className="px-2">
+                  Role
+                </Table.Head>
+                <Table.Head column="groups">Groups</Table.Head>
+                <Table.Head column="joined">Time</Table.Head>
+                <Table.Head column="actions">
+                  <span className="sr-only">Actions</span>
+                </Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Invitations />
+            {active.length || !inactive.length ? (
+              <MemberRows
+                label="Active"
+                members={active}
+                complete={complete}
+                open={activeOpen}
+                onOpenChange={setActiveOpen}
+                paging={{
+                  hasMore: next && !inactive.length,
+                  loading,
+                  error: failed,
+                  onLoadMore: () => c.pages.members.loadMore?.(),
+                }}
+              />
+            ) : null}
+            {inactive.length ? (
+              <MemberRows
+                label="Inactive"
+                members={inactive}
+                complete={complete}
+                open={inactiveOpen}
+                onOpenChange={setInactiveOpen}
+                paging={{ hasMore: next, loading, error: failed, onLoadMore: () => c.pages.members.loadMore?.() }}
+              />
+            ) : null}
+          </Table.Content>
+        </Table.Root>
+      </LoadingRegion>
+      {ready && !failed && !members.length && !loading ? <Table.Empty>No members match your search.</Table.Empty> : null}
     </SettingsContent>
   )
 }

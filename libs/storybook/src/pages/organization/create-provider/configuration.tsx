@@ -1,3 +1,5 @@
+import { LoadingRegion } from '../../../components/loading'
+import { providerPageLayout } from './layout'
 import { CatalogStatus } from './catalog-status'
 import { ImageUploadInput } from '@compallm/contract/validation'
 import { DisabledTooltip } from '../../../components/feedback'
@@ -52,7 +54,7 @@ function ConnectionFields() {
     resource: { type: 'Provider', id: providerId },
     enabled: editing && !!providerId,
   })
-  const loading = useProvider((s) => s.providerLoading)
+  const loading = useProvider((s) => s.providerLoading && !s.providerLoaded)
   const busy = submitting || !!loading || (editing && !edit.allowed)
   const selected = useProvider((state) => state.selectedProviderId)
   const avatarUrl = useProvider((state) => state.avatarUrl, ['avatarUrl'])
@@ -197,58 +199,66 @@ export function ProviderConfiguration() {
     resource: { type: 'Provider', id: providerId },
     enabled: intent === 'edit' && !!providerId,
   })
-  const loading = useProvider((s) => s.providerLoading)
+  const loading = useProvider((s) => s.providerLoading && !s.providerLoaded)
   const busy = submitting || !!loading || (intent === 'edit' && !edit.allowed)
   const error = useProvider((state) => state.error)
   const form = controller.store.form
   const templatePreview = useProvider((state) => state.templatePreview)
+  const ready = useProvider((state) => !state.templatePreview || !!state.providerLoaded)
   return (
-    <Form.Root model={form} className="mx-auto grid min-w-0 w-full max-w-4xl gap-6 px-4 py-8">
-      {templatePreview ? (
-        <>
-          <p className="px-4 text-xs text-muted-foreground">Template preview · Changes stay in this page</p>
-          <CatalogStatus />
-        </>
-      ) : null}
+    <Form.Root model={form} className={`${providerPageLayout} gap-6`}>
+      <div className="grid gap-1 px-4">
+        <h2 className="text-2xl font-medium">Configure</h2>
+        {templatePreview ? <p className="text-xsm text-muted-foreground">Changes stay on this page.</p> : null}
+      </div>
+      {templatePreview ? <CatalogStatus /> : null}
       {intent === 'edit' && !edit.allowed ? (
         <p className="text-xs text-muted-foreground">You do not have permission to edit this provider configuration.</p>
       ) : null}
-      <fieldset disabled={busy} className="contents">
-        <FormSection.Root>
-          <FormSection.Marker>1</FormSection.Marker>
-          <FormSection.Heading>Connection</FormSection.Heading>
-          <ConnectionFields />
-        </FormSection.Root>
-        <FormSection.Root>
-          <FormSection.Marker>2</FormSection.Marker>
-          <FormSection.Heading>{templatePreview ? 'Available models' : 'Enabled models'}</FormSection.Heading>
-          <ProviderModels />
-        </FormSection.Root>
-        {!templatePreview ? (
+      <LoadingRegion
+        className="contents"
+        ready={ready}
+        pending={loading}
+        controller={controller.loading?.provider}
+        label="Loading provider configuration"
+      >
+        <fieldset disabled={busy} className="contents">
           <FormSection.Root>
-            <FormSection.Marker>3</FormSection.Marker>
-            <FormSection.Heading>Test connection</FormSection.Heading>
-            <TestConnection />
+            <FormSection.Marker>1</FormSection.Marker>
+            <FormSection.Heading>Connection</FormSection.Heading>
+            <ConnectionFields />
           </FormSection.Root>
-        ) : null}
-        {error ? (
-          <div className="fixed right-6 bottom-6 z-50">
-            <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
-          </div>
-        ) : null}
-        {!templatePreview ? (
-          <div className="flex justify-end gap-2">
-            {intent !== 'create' ? (
-              <Button className="h-7 px-4 text-xs" disabled={busy} onClick={controller.onCancelProvider}>
-                Cancel
+          <FormSection.Root>
+            <FormSection.Marker>2</FormSection.Marker>
+            <FormSection.Heading>{templatePreview ? 'Available models' : 'Enabled models'}</FormSection.Heading>
+            <ProviderModels />
+          </FormSection.Root>
+          {!templatePreview ? (
+            <FormSection.Root>
+              <FormSection.Marker>3</FormSection.Marker>
+              <FormSection.Heading>Test connection</FormSection.Heading>
+              <TestConnection />
+            </FormSection.Root>
+          ) : null}
+          {error ? (
+            <div className="fixed right-6 bottom-6 z-50">
+              <Toast tone="error" message={error} onDismiss={() => controller.store.setState({ error: null })} />
+            </div>
+          ) : null}
+          {!templatePreview ? (
+            <div className="flex justify-end gap-2">
+              {intent !== 'create' ? (
+                <Button className="h-7 px-4 text-xs" disabled={busy} onClick={controller.onCancelProvider}>
+                  Cancel
+                </Button>
+              ) : null}
+              <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
+                {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
               </Button>
-            ) : null}
-            <Button type="submit" variant="primary" className="h-7 w-32 text-xs" disabled={busy} loading={busy}>
-              {intent === 'edit' ? 'Save changes' : intent === 'clone' ? 'Create provider' : 'Add provider'}
-            </Button>
-          </div>
-        ) : null}
-      </fieldset>
+            </div>
+          ) : null}
+        </fieldset>
+      </LoadingRegion>
     </Form.Root>
   )
 }

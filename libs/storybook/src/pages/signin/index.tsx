@@ -14,3 +14,5 @@ export type SigninStore = ReturnType<typeof createSigninStore>
 export function SigninPage() {
   return <AccessLoginPage />
 }
+
+export { AccessLayout, AccessPanel } from '../auth/access-panel'

@@ -1,6 +1,7 @@
 import type { StoreApi } from 'zustand/vanilla'
 import type { PasskeySummary } from '@compallm/contract/graphql'
 export interface PasskeyState {
+  loaded?: boolean
   records: Pick<PasskeySummary, 'id' | 'name' | 'registeredAt' | 'lastUsedAt'>[]
   status: 'loading' | 'ready' | 'denied' | 'error'
   dialog: { kind: 'verify' } | { kind: 'add' } | { kind: 'remove'; id: string } | null

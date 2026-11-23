@@ -1,3 +1,4 @@
+import { Skeleton } from '../../../components/loading'
 import { useId, type ReactNode } from 'react'
 import { TrashIcon } from '@phosphor-icons/react/dist/csr/Trash'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
@@ -118,32 +119,34 @@ function ContextExample() {
   const free = Math.max(0, total - input - output)
   return (
     <div className="grid min-w-0 gap-2.5 px-1">
-      <svg viewBox="0 0 608 12" preserveAspectRatio="none" aria-hidden="true" className="h-3 w-full rounded-sm">
-        <defs>
-          <pattern id={`${id}-dots`} width="10" height="5" patternUnits="userSpaceOnUse">
-            <circle cx="2" cy="2" r="0.5" className="fill-muted-foreground/50" />
-          </pattern>
-          <pattern id={`${id}-hatch`} width="5" height="12" patternUnits="userSpaceOnUse">
-            <path d="M0 12 6 0" fill="none" stroke="currentColor" strokeWidth="1" />
-          </pattern>
-        </defs>
-        <rect width="608" height="12" className="fill-foreground/10" />
-        <rect width={(608 * input) / total} height="12" className="fill-muted-foreground/55" />
-        <rect x={(608 * input) / total} width={(608 * free) / total} height="12" fill={`url(#${id}-dots)`} />
-        <rect
-          x={(608 * (input + free)) / total}
-          width={(608 * output) / total}
-          height="12"
-          className="fill-muted-foreground/20"
-        />
-        <rect
-          x={(608 * (input + free)) / total}
-          width={(608 * output) / total}
-          height="12"
-          fill={`url(#${id}-hatch)`}
-          className="text-muted-foreground/65"
-        />
-      </svg>
+      <Skeleton>
+        <svg viewBox="0 0 608 12" preserveAspectRatio="none" aria-hidden="true" className="h-3 w-full rounded-sm">
+          <defs>
+            <pattern id={`${id}-dots`} width="10" height="5" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="0.5" className="fill-muted-foreground/50" />
+            </pattern>
+            <pattern id={`${id}-hatch`} width="5" height="12" patternUnits="userSpaceOnUse">
+              <path d="M0 12 6 0" fill="none" stroke="currentColor" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="608" height="12" className="fill-foreground/10" />
+          <rect width={(608 * input) / total} height="12" className="fill-muted-foreground/55" />
+          <rect x={(608 * input) / total} width={(608 * free) / total} height="12" fill={`url(#${id}-dots)`} />
+          <rect
+            x={(608 * (input + free)) / total}
+            width={(608 * output) / total}
+            height="12"
+            className="fill-muted-foreground/20"
+          />
+          <rect
+            x={(608 * (input + free)) / total}
+            width={(608 * output) / total}
+            height="12"
+            fill={`url(#${id}-hatch)`}
+            className="text-muted-foreground/65"
+          />
+        </svg>
+      </Skeleton>
       <div className="grid grid-cols-3 gap-2 text-ui-11 tabular-nums">
         <span className={modelTones.input}>Input · {input.toLocaleString()}</span>
         <span className="text-muted-foreground">Available · {free.toLocaleString()}</span>

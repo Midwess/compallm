@@ -26,6 +26,7 @@
     "@hookform/resolvers": "^7.0.6",
     "@paper-design/shaders-react": "^0.0.82",
     "@phosphor-icons/react": "2.1.10",
+    "@radix-ui/themes": "^3.3.0",
     "@tsparticles/confetti": "^4.6.0",
     "bowser": "^2.15.0",
     "dompurify": "^3.4.17",

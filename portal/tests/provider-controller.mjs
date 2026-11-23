@@ -10,6 +10,7 @@ const server = await createServer({
 })
 after(() => server.close())
 const { CreateProviderController } = await server.ssrLoadModule('/src/provider/controller.ts')
+const { AppController } = await server.ssrLoadModule('/src/app/controller.ts')
 const { createStore } = await server.ssrLoadModule('zustand/vanilla')
 const tick = () => new Promise((resolve) => setTimeout(resolve, 20))
 function setup() {
@@ -26,7 +27,11 @@ function setup() {
       return true
     },
   }
-  const controller = new CreateProviderController(url, { getCurrentOrganization: () => ({ id: 'org', name: 'workspace' }) })
+  const controller = new CreateProviderController(
+    url,
+    { getCurrentOrganization: () => ({ id: 'org', name: 'workspace' }) },
+    new AppController(),
+  )
   return { controller, url }
 }
 const row = (id) => ({ id, name: id, baseUrl: 'https://example.com/v1', logoUrl: '/assets/' + id + '.svg' })
@@ -134,6 +139,8 @@ test('provider search and paging use the API, ignore stale results and retain ro
   await tick()
   requests[0].resolve(list(['a'], true))
   await tick()
+  assert.equal(c.store.getState().providersLoaded, true)
+  assert.equal(c.loading.providers.store.getState().loading, false)
   const retained = c.store.getState().providers[0]
   c.onLoadMoreProviders()
   c.onLoadMoreProviders()
@@ -214,6 +221,7 @@ test('provider/model navigation uses catalog detail, handles reload and cancels 
   c.onSelectProvider('b')
   await tick()
   assert.equal(pending.signal.aborted, true)
+  assert.equal(c.loading.model.store.getState().loading, false)
   pending.resolve(Response.json({ data: { modelTemplate: { node: model('model-a') } } }))
   await tick()
   assert.equal(c.store.getState().modelDraft, null)

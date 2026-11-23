@@ -176,6 +176,14 @@ export interface SettingsSession {
 }
 
 export interface SettingsState {
+  navigationLoaded?: boolean
+  navigationLoading?: boolean
+  navigationLoadError?: boolean
+  membersLoaded?: boolean
+  invitationsLoaded?: boolean
+  sessionsLoaded?: boolean
+  profileLoaded?: boolean
+  organizationProfileLoaded?: boolean
   sessionLocation: { sessionId: string; ipAddress: string; location: string } | null
   actorIsOwner?: boolean
   ownerMemberIds?: string[]
@@ -245,6 +253,7 @@ export interface SettingsController {
   pages: SettingsPageControllers
   navigate(page: SettingsDestination, id?: string): void
   setNavigationQuery(value: string): void
+  reloadNavigation?(): void
   loadMoreSessions?(): void
   reloadSessions?(): void
   revokeSession?(id: string): void

@@ -1,3 +1,4 @@
+import { LoadingRegion } from '../../components/loading'
 import { OrganizationOnboardingEditor } from './onboarding/page'
 import { usePermission } from '../../components/permission'
 import { FormError } from '../../components/form'
@@ -23,19 +24,18 @@ export function OrganizationSettings() {
   const organizationUrl = path && origin ? new URL(path, origin).href : path
   const permission = usePermission({ actions: ['organization.settings.update'] })
   const canUpdate = canUpdateProfile && permission.allowed
-  if (status !== 'ready')
+  const ready = useSettings((s) => s.organizationProfileLoaded ?? s.organizationProfileStatus === 'ready')
+  if (status === 'denied' || status === 'missing' || (status === 'error' && !ready))
     return (
       <SettingsContent>
         <Heading>Organization</Heading>
         <Empty
           title={
-            status === 'loading'
-              ? 'Loading organization…'
-              : status === 'missing'
-                ? 'Organization not found'
-                : status === 'denied'
-                  ? 'Organization access denied'
-                  : 'Couldn’t load organization'
+            status === 'missing'
+              ? 'Organization not found'
+              : status === 'denied'
+                ? 'Organization access denied'
+                : 'Couldn’t load organization'
           }
           action={
             status === 'error' && c.pages.organization.reload ? (
@@ -50,10 +50,10 @@ export function OrganizationSettings() {
   return (
     <SettingsContent>
       <Heading>Organization</Heading>
-      {!canUpdate ? (
+      {!canUpdate && ready && !permission.pending ? (
         <p className="mb-4 px-4 text-xsm text-muted-foreground">You do not have permission to update this organization.</p>
       ) : null}
-      <div className="grid gap-12">
+      <LoadingRegion ready={ready} pending={status === 'loading'} label="Loading organization" className="grid gap-12">
         <Section title="Organization details" description="Your shared workspace identity.">
           <Rows>
             <Row label="Logo" description="Recommended size is 256×256px">
@@ -95,7 +95,7 @@ export function OrganizationSettings() {
             Audit log →
           </Button>
         </div>
-      </div>
+      </LoadingRegion>
     </SettingsContent>
   )
 }

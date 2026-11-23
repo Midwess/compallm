@@ -1,3 +1,4 @@
+import { Skeleton, useInitialLoading } from '../../../components/loading'
 import { PermissionRequest, usePermissionChecks } from '../../../components/permission'
 import { Table } from '../../../components/table'
 import { SectionSurface } from '../../../components/surfaces'
@@ -15,6 +16,7 @@ function price(value: string) {
   return value === '' ? 'Review rates' : `$${value}`
 }
 export function ProviderModels() {
+  const initial = useInitialLoading()
   const controller = useController()
   const templatePreview = useProvider((state) => state.templatePreview)
   const models = useProvider((state) => state.models, ['models'])
@@ -85,7 +87,7 @@ export function ProviderModels() {
           className="w-full table-auto text-xs"
           aria-label="Provider models"
           columns={[
-            { id: 'name', className: 'w-0' },
+            { id: 'name', className: 'w-0', loadingWidthClassName: 'w-40 sm:w-44' },
             { id: 'capabilities', visibilityClassName: 'hidden xl:table-cell' },
             { id: 'context', className: 'w-20', visibilityClassName: 'hidden lg:table-cell' },
             { id: 'input', className: 'w-20', visibilityClassName: 'hidden md:table-cell' },
@@ -183,7 +185,7 @@ disabled:opacity-50"
             )}
           </Table.Body>
         </Table.Content>
-        {!visible.length ? (
+        {!initial && !visible.length ? (
           <Table.Empty>
             <p>
               {query || status !== 'all' || protocol !== 'all' || capabilities.length > 0
@@ -194,9 +196,11 @@ disabled:opacity-50"
         ) : null}
       </Table.Root>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          {templatePreview ? `${models.length} models available` : `${enabled} ${enabled === 1 ? 'model' : 'models'} enabled`}
-        </p>
+        <Skeleton>
+          <p className="text-xs text-muted-foreground">
+            {templatePreview ? `${models.length} models available` : `${enabled} ${enabled === 1 ? 'model' : 'models'} enabled`}
+          </p>
+        </Skeleton>
         {!templatePreview ? (
           <PermissionRequest
             actions={[intent === 'edit' ? 'provider.model.create' : 'provider.create']}

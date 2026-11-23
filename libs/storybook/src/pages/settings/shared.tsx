@@ -1,3 +1,4 @@
+import { LoadingRegion, Skeleton } from '../../components/loading'
 import { useEffect, useState } from 'react'
 import { FormError, useFormValue } from '../../components/form'
 import { FileField } from '../../components/fields'
@@ -95,12 +96,14 @@ export function Row({
         className="gap-4 bg-transparent p-4 @max-[22rem]:flex-col @max-[22rem]:items-stretch"
       >
         {children ? (
-          <div
-            className="min-w-0 max-w-[65%] shrink @max-[22rem]:flex @max-[22rem]:w-full @max-[22rem]:max-w-full
+          <Skeleton>
+            <div
+              className="min-w-0 max-w-[65%] shrink @max-[22rem]:flex @max-[22rem]:w-full @max-[22rem]:max-w-full
 @max-[22rem]:justify-end @max-[22rem]:[&>input]:w-full @max-[22rem]:*:data-[ui=dropdown]:w-full"
-          >
-            {children}
-          </div>
+            >
+              {children}
+            </div>
+          </Skeleton>
         ) : null}
       </SettingsRow>
       {/* eslint-disable-next-line design/spacing -- Align the 0.5px divider with the preceding row. */}
@@ -203,5 +206,39 @@ text-on-overlay [@media(hover:none)]:opacity-100!"
       />
       <FormError name={field} />
     </motion.label>
+  )
+}
+
+export function SettingsDetailLoading({
+  title,
+  sections,
+  wide = false,
+}: {
+  title: string
+  sections: string[]
+  wide?: boolean
+}) {
+  return (
+    <SettingsContent wide={wide} className={cx('flex flex-col pb-6', wide ? 'pt-16' : 'pt-14')}>
+      <Heading className="mb-8 shrink-0">{title}</Heading>
+      <LoadingRegion ready={false} pending label={`Loading ${title.toLowerCase()}`} className="grid gap-6">
+        {sections.map((section) => (
+          <Section key={section} title={section}>
+            <Rows>
+              {Array.from({ length: section === 'Permissions' ? 8 : 2 }, (_, index) => (
+                <div key={index} className="flex min-h-16 items-center justify-between gap-4 px-4 py-3">
+                  <Skeleton>
+                    <span className="h-4 w-24 rounded-md" />
+                  </Skeleton>
+                  <Skeleton>
+                    <span className="h-8 w-70 max-w-full rounded-lg" />
+                  </Skeleton>
+                </div>
+              ))}
+            </Rows>
+          </Section>
+        ))}
+      </LoadingRegion>
+    </SettingsContent>
   )
 }

@@ -18,17 +18,16 @@ import { RoleEditorSettings } from './role'
 import { UsageLimitSettings, MemberLimitSettings, UsageExplorerSettings, AuditSettings } from './usage'
 import { useSettings, useSettingsController } from './controller'
 import { cx } from '../../components/shared'
-import { Empty, SettingsContent } from './shared'
+import { Empty, SettingsContent, SettingsDetailLoading } from './shared'
 
 function SettingsScreen() {
   const page = useSettings((s) => s.location.page),
     status = useSettings((s) => s.status)
+  if (status === 'loading') return <SettingsDetailLoading title="Settings" sections={['Settings']} />
   if (status !== 'ready')
     return (
       <SettingsContent>
-        <Empty title={status === 'loading' ? 'Loading settings…' : 'You do not have access'}>
-          {status === 'denied' ? 'Ask an authorized administrator for access.' : 'Loading the current organization settings.'}
-        </Empty>
+        <Empty title="You do not have access">Ask an authorized administrator for access.</Empty>
       </SettingsContent>
     )
   switch (page) {
@@ -83,9 +82,24 @@ function ProtectedSettingsScreen() {
       'new-group': 'group.create',
     } as Partial<Record<string, PermissionAction>>
   )[page]
+  const pendingTitle =
+    (
+      {
+        organization: 'Organization',
+        'organization-onboarding': 'Onboarding',
+        members: 'Members',
+        role: 'Role',
+        'new-role': 'New role',
+        group: 'Group',
+        'new-group': 'New group',
+      } as Record<string, string>
+    )[page] ?? 'Settings'
   if (!action) return <SettingsScreen />
   return (
-    <PermissionRequest actions={[action]}>
+    <PermissionRequest
+      actions={[action]}
+      pending={<SettingsDetailLoading title={pendingTitle} sections={[pendingTitle]} wide={page === 'members'} />}
+    >
       {(allowed) =>
         allowed ? (
           <SettingsScreen />
@@ -102,9 +116,13 @@ function SharedSettingsForm() {
   const c = useSettingsController()
   const page = useSettings((s) => s.location.page)
   const form = c.store.form
+  const ready = useSettings((s) =>
+    page === 'profile' ? s.profileLoaded !== false : page === 'organization' ? s.organizationProfileLoaded !== false : true,
+  )
   useEffect(() => {
+    if (!ready) return
     return configureSettingsForm(c)
-  }, [c, form, page])
+  }, [c, form, page, ready])
   if (['general', 'messaging', 'code'].includes(page))
     return (
       <UserPreferencePage>

@@ -1,5 +1,5 @@
 use crate::llm::text::component::*;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, ser::SerializeSeq};
 use serde_with::DeserializeAs;
 
 #[derive(Serialize)]
@@ -20,64 +20,48 @@ pub(crate) enum Block<'a> {
     },
     ToolResult {
         tool_use_id: &'a str,
-        content: Vec<Block<'a>>,
+        content: ContentBlocks<'a>,
     },
 }
 
-fn text_blocks(content: Option<&Content>) -> Vec<Block<'_>> {
-    match content {
-        Some(Content::Text(text)) => vec![Block::Text { text }],
-        Some(Content::Object(ObjectMessage::Text { text })) => vec![Block::Text { text }],
-        Some(Content::Array(parts)) => parts
-            .iter()
-            .map(|ObjectMessage::Text { text }| Block::Text { text })
-            .collect(),
-        _ => Vec::new(),
+#[derive(Clone, Copy)]
+pub(crate) struct ContentBlocks<'a>(Option<&'a Content>);
+
+impl Serialize for ContentBlocks<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let length = match self.0 {
+            Some(Content::Text(_) | Content::Object(_)) => 1,
+            Some(Content::Array(parts)) => parts.len(),
+            Some(Content::Null) | None => 0,
+        };
+        let mut sequence = serializer.serialize_seq(Some(length))?;
+        match self.0 {
+            Some(Content::Text(text) | Content::Object(ObjectMessage::Text { text })) => {
+                sequence.serialize_element(&Block::Text { text })?;
+            }
+            Some(Content::Array(parts)) => {
+                for ObjectMessage::Text { text } in parts {
+                    sequence.serialize_element(&Block::Text { text })?;
+                }
+            }
+            Some(Content::Null) | None => {}
+        }
+        sequence.end()
     }
 }
 
-pub(crate) fn system(message: &Message) -> Vec<Block<'_>> {
-    text_blocks(message.content.as_ref())
+pub(crate) fn system(message: &Message) -> ContentBlocks<'_> {
+    ContentBlocks(message.content.as_ref())
 }
 
 #[derive(Serialize)]
 pub(crate) struct MessageWire<'a> {
     role: &'static str,
-    content: Vec<Block<'a>>,
+    content: MessageBlocks<'a>,
 }
 
 impl<'a> From<&'a Message> for MessageWire<'a> {
     fn from(message: &'a Message) -> Self {
-        let mut content = Vec::new();
-        if message.role == Role::Assistant {
-            for detail in message.reasoning_details.iter().flatten() {
-                if let ReasoningDetailContent::Text {
-                    text,
-                    signature: Some(signature),
-                } = &detail.content
-                {
-                    content.push(Block::Thinking {
-                        thinking: text,
-                        signature,
-                    });
-                }
-            }
-        }
-        content.extend(text_blocks(message.content.as_ref()));
-        if message.role == Role::Tool {
-            content = vec![Block::ToolResult {
-                tool_use_id: message.tool_call_id.as_deref().unwrap_or(""),
-                content,
-            }];
-        } else if message.role == Role::Assistant {
-            for call in message.tool_calls.iter().flatten() {
-                content.push(Block::ToolUse {
-                    id: &call.id,
-                    name: &call.function.name,
-                    input: &call.function.arguments,
-                });
-            }
-        }
         Self {
             role: match message.role {
                 Role::Assistant => "assistant",
@@ -85,8 +69,89 @@ impl<'a> From<&'a Message> for MessageWire<'a> {
                 Role::Developer => "system",
                 _ => "user",
             },
-            content,
+            content: MessageBlocks(message),
         }
+    }
+}
+
+struct MessageBlocks<'a>(&'a Message);
+
+impl Serialize for MessageBlocks<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let message = self.0;
+        if message.role == Role::Tool {
+            let mut sequence = serializer.serialize_seq(Some(1))?;
+            sequence.serialize_element(&Block::ToolResult {
+                tool_use_id: message.tool_call_id.as_deref().unwrap_or(""),
+                content: ContentBlocks(message.content.as_ref()),
+            })?;
+            return sequence.end();
+        }
+
+        let thinking = if message.role == Role::Assistant {
+            message
+                .reasoning_details
+                .iter()
+                .flatten()
+                .filter(|detail| {
+                    matches!(
+                        detail.content,
+                        ReasoningDetailContent::Text {
+                            signature: Some(_),
+                            ..
+                        }
+                    )
+                })
+                .count()
+        } else {
+            0
+        };
+        let text = match message.content.as_ref() {
+            Some(Content::Text(_) | Content::Object(_)) => 1,
+            Some(Content::Array(parts)) => parts.len(),
+            Some(Content::Null) | None => 0,
+        };
+        let calls = if message.role == Role::Assistant {
+            message.tool_calls.as_ref().map_or(0, Vec::len)
+        } else {
+            0
+        };
+        let mut sequence = serializer.serialize_seq(Some(thinking + text + calls))?;
+        if message.role == Role::Assistant {
+            for detail in message.reasoning_details.iter().flatten() {
+                if let ReasoningDetailContent::Text {
+                    text,
+                    signature: Some(signature),
+                } = &detail.content
+                {
+                    sequence.serialize_element(&Block::Thinking {
+                        thinking: text,
+                        signature,
+                    })?;
+                }
+            }
+        }
+        match message.content.as_ref() {
+            Some(Content::Text(text) | Content::Object(ObjectMessage::Text { text })) => {
+                sequence.serialize_element(&Block::Text { text })?;
+            }
+            Some(Content::Array(parts)) => {
+                for ObjectMessage::Text { text } in parts {
+                    sequence.serialize_element(&Block::Text { text })?;
+                }
+            }
+            Some(Content::Null) | None => {}
+        }
+        if message.role == Role::Assistant {
+            for call in message.tool_calls.iter().flatten() {
+                sequence.serialize_element(&Block::ToolUse {
+                    id: &call.id,
+                    name: &call.function.name,
+                    input: &call.function.arguments,
+                })?;
+            }
+        }
+        sequence.end()
     }
 }
 

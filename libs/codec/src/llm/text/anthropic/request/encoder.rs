@@ -30,6 +30,7 @@ enum Field {
     TopK,
     StopSequences,
     Stream,
+    OutputConfig,
 }
 
 #[derive(Debug)]
@@ -44,7 +45,7 @@ pub struct AnthropicRequestEncoder {
     has_model: bool,
     max_tokens: u32,
     effort: Option<&'static str>,
-    schema: Option<String>,
+    effort_written: bool,
     active: Option<Field>,
     finalizing: bool,
     phase: u8,
@@ -64,7 +65,7 @@ impl AnthropicRequestEncoder {
             has_model: false,
             max_tokens: 32768,
             effort: configuration.reasoning_effort.and_then(effort),
-            schema: None,
+            effort_written: false,
             active: None,
             finalizing: false,
             phase: 0,
@@ -145,8 +146,11 @@ impl AnthropicRequestEncoder {
                 C::Stop(Stop::Text(_) | Stop::Array(_)) => Field::StopSequences,
                 C::Stream(_) => Field::Stream,
                 C::ResponseFormat(ResponseFormat::JsonSchema(schema)) => {
-                    self.schema = Some(schema.schema.clone());
-                    return Ok(EncoderStatus::ComponentFinished { written: 0 });
+                    if self.effort_written {
+                        return Err(RequestEncodeError::InvalidState);
+                    }
+                    let _ = schema;
+                    Field::OutputConfig
                 }
                 _ => return Ok(EncoderStatus::ComponentFinished { written: 0 }),
             };
@@ -192,11 +196,10 @@ impl AnthropicRequestEncoder {
                         self.json
                             .serialize_next(None, &MessageWire::from(value), output)
                     }
-                    (Some(Field::Tools), C::Tools(value)) => self.json.serialize_next(
-                        Some("tools"),
-                        &value.iter().map(ToolWire::from).collect::<Vec<_>>(),
-                        output,
-                    ),
+                    (Some(Field::Tools), C::Tools(value)) => {
+                        self.json
+                            .serialize_next(Some("tools"), &ToolsWire(value), output)
+                    }
                     (Some(Field::ToolChoice), C::ToolChoice(value)) => {
                         self.json
                             .serialize_next(Some("tool_choice"), &Choice::from(value), output)
@@ -224,6 +227,20 @@ impl AnthropicRequestEncoder {
                     (Some(Field::Stream), C::Stream(value)) => {
                         self.json.serialize_next(Some("stream"), value, output)
                     }
+                    (
+                        Some(Field::OutputConfig),
+                        C::ResponseFormat(ResponseFormat::JsonSchema(schema)),
+                    ) => self.json.serialize_next(
+                        Some("output_config"),
+                        &OutputConfig {
+                            effort: self.effort,
+                            format: Some(Format {
+                                r#type: "json_schema",
+                                schema: &schema.schema,
+                            }),
+                        },
+                        output,
+                    ),
                     _ => return Err(RequestEncodeError::InvalidState),
                 }?;
                 return match status {
@@ -233,6 +250,9 @@ impl AnthropicRequestEncoder {
                     EncoderStatus::ComponentFinished { written: n } => {
                         if self.active == Some(Field::System) {
                             self.system_written = true;
+                        }
+                        if self.active == Some(Field::OutputConfig) {
+                            self.effort_written = true;
                         }
                         self.active = None;
                         Ok(EncoderStatus::ComponentFinished {
@@ -248,15 +268,12 @@ impl AnthropicRequestEncoder {
                         &self.max_tokens,
                         &mut output[written..],
                     )?
-                } else if self.effort.is_some() || self.schema.is_some() {
+                } else if self.effort.is_some() && !self.effort_written {
                     self.json.serialize_next(
                         Some("output_config"),
                         &OutputConfig {
                             effort: self.effort,
-                            format: self.schema.as_deref().map(|schema| Format {
-                                r#type: "json_schema",
-                                schema,
-                            }),
+                            format: None,
                         },
                         &mut output[written..],
                     )?

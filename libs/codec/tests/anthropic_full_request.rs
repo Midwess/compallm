@@ -105,6 +105,47 @@ use codec::llm::text::anthropic::request::encoder::{
 use codec::llm::text::component::TextRequestComponent;
 use codec::llm::text::copenai::request::decoder::CompatibleOpenAIRequestDecoder;
 use serde_json::{Value, json};
+use std::alloc::{GlobalAlloc, Layout, System};
+use std::cell::Cell;
+
+struct CountingAllocator;
+
+thread_local! {
+    static ALLOCATIONS: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+#[global_allocator]
+static ALLOCATOR: CountingAllocator = CountingAllocator;
+
+unsafe impl GlobalAlloc for CountingAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let pointer = unsafe { System.alloc(layout) };
+        if !pointer.is_null() {
+            ALLOCATIONS.with(|count| count.set(count.get().map(|value| value + 1)));
+        }
+        pointer
+    }
+
+    unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
+        unsafe { System.dealloc(pointer, layout) }
+    }
+
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        let pointer = unsafe { System.alloc_zeroed(layout) };
+        if !pointer.is_null() {
+            ALLOCATIONS.with(|count| count.set(count.get().map(|value| value + 1)));
+        }
+        pointer
+    }
+
+    unsafe fn realloc(&self, pointer: *mut u8, layout: Layout, size: usize) -> *mut u8 {
+        let pointer = unsafe { System.realloc(pointer, layout, size) };
+        if !pointer.is_null() {
+            ALLOCATIONS.with(|count| count.set(count.get().map(|value| value + 1)));
+        }
+        pointer
+    }
+}
 
 const COMPATIBLE_REQUEST: &str = r#"{
   "model": "claude-sonnet-4-5-20250929",
@@ -286,6 +327,43 @@ fn round_trip_anthropic(request: &str, input_size: usize, output_size: usize) ->
     }
     encoder.finish().expect("finish Anthropic encoder");
     serde_json::from_slice(&encoded).expect("round-trip JSON")
+}
+
+#[test]
+fn measures_anthropic_request_encoding_allocations() {
+    let mut decoder = CompatibleOpenAIRequestDecoder::new(JsonDecoder::new());
+    let mut components = Vec::new();
+    let mut input = COMPATIBLE_REQUEST.as_bytes();
+    loop {
+        match decoder.next(&mut input, true).expect("decode components") {
+            DecoderStatus::Component(component) => components.push(component),
+            DecoderStatus::Finished => break,
+            DecoderStatus::NeedInput => panic!("complete input needs more bytes"),
+        }
+    }
+    decoder.finish().expect("finish decoder");
+
+    let mut output = [0_u8; 16 * 1024];
+    ALLOCATIONS.with(|count| count.set(Some(0)));
+    let mut encoder = AnthropicRequestEncoder::new(
+        JsonEncoder::new(),
+        AnthropicRequestEncoderConfiguration::default(),
+    );
+    for component in &mut components {
+        assert!(matches!(
+            encoder
+                .next(Some(component), &mut output)
+                .expect("encode component"),
+            EncoderStatus::ComponentFinished { .. }
+        ));
+    }
+    assert!(matches!(
+        encoder.next(None, &mut output).expect("finalize request"),
+        EncoderStatus::Finished { .. }
+    ));
+    encoder.finish().expect("finish encoder");
+    let allocations = ALLOCATIONS.with(|count| count.replace(None).expect("measurement"));
+    assert_eq!(allocations, 2, "unexpected Anthropic encoding allocations");
 }
 
 #[test]

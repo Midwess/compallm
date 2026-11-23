@@ -367,6 +367,145 @@ fn measures_anthropic_request_encoding_allocations() {
 }
 
 #[test]
+fn measures_compatible_to_anthropic_allocations() {
+    measure_compatible_to_anthropic_allocations::<16>();
+    measure_compatible_to_anthropic_allocations::<{ 16 * 1024 }>();
+}
+
+fn measure_compatible_to_anthropic_allocations<const BUFFER_SIZE: usize>() {
+    let mut input_buffer = [0_u8; BUFFER_SIZE];
+    let mut output = [0_u8; BUFFER_SIZE];
+    ALLOCATIONS.with(|count| count.set(Some(0)));
+    let mut decoder = CompatibleOpenAIRequestDecoder::new(JsonDecoder::new());
+    let mut encoder = AnthropicRequestEncoder::new(
+        JsonEncoder::new(),
+        AnthropicRequestEncoderConfiguration::default(),
+    );
+    let construction_allocations = ALLOCATIONS.with(|count| count.get().expect("measurement"));
+    let mut components = 0;
+    let mut encoded_bytes = 0;
+    let mut pending_decode_allocations = 0;
+    let mut rows = [None; 32];
+
+    for chunk in COMPATIBLE_REQUEST.as_bytes().chunks(BUFFER_SIZE) {
+        input_buffer[..chunk.len()].copy_from_slice(chunk);
+        let mut input = &input_buffer[..chunk.len()];
+        loop {
+            let before = ALLOCATIONS.with(|count| count.get().expect("measurement"));
+            let status = decoder.next(&mut input, false).expect("decode component");
+            let after = ALLOCATIONS.with(|count| count.get().expect("measurement"));
+            pending_decode_allocations += after - before;
+            match status {
+                DecoderStatus::Component(mut component) => {
+                    components += 1;
+                    let name = component_name(&component);
+                    let before = ALLOCATIONS.with(|count| count.get().expect("measurement"));
+                    loop {
+                        match encoder
+                            .next(Some(&mut component), &mut output)
+                            .expect("encode component")
+                        {
+                            EncoderStatus::NeedOutput { written } => encoded_bytes += written,
+                            EncoderStatus::ComponentFinished { written } => {
+                                encoded_bytes += written;
+                                break;
+                            }
+                            EncoderStatus::Finished { .. } => {
+                                panic!("encoder finished before source EOF")
+                            }
+                        }
+                    }
+                    let after = ALLOCATIONS.with(|count| count.get().expect("measurement"));
+                    rows[components - 1] = Some((name, pending_decode_allocations, after - before));
+                    pending_decode_allocations = 0;
+                }
+                DecoderStatus::NeedInput => break,
+                DecoderStatus::Finished => panic!("decoder finished before source EOF"),
+            }
+        }
+    }
+    let mut input = &b""[..];
+    loop {
+        let before = ALLOCATIONS.with(|count| count.get().expect("measurement"));
+        let status = decoder.next(&mut input, true).expect("decode EOF");
+        let after = ALLOCATIONS.with(|count| count.get().expect("measurement"));
+        pending_decode_allocations += after - before;
+        match status {
+            DecoderStatus::Component(mut component) => {
+                components += 1;
+                let name = component_name(&component);
+                let before = ALLOCATIONS.with(|count| count.get().expect("measurement"));
+                loop {
+                    match encoder
+                        .next(Some(&mut component), &mut output)
+                        .expect("encode final component")
+                    {
+                        EncoderStatus::NeedOutput { written } => encoded_bytes += written,
+                        EncoderStatus::ComponentFinished { written } => {
+                            encoded_bytes += written;
+                            break;
+                        }
+                        EncoderStatus::Finished { .. } => {
+                            panic!("encoder finished before finalization")
+                        }
+                    }
+                }
+                let after = ALLOCATIONS.with(|count| count.get().expect("measurement"));
+                rows[components - 1] = Some((name, pending_decode_allocations, after - before));
+                pending_decode_allocations = 0;
+            }
+            DecoderStatus::Finished => break,
+            DecoderStatus::NeedInput => panic!("decoder needs input after EOF"),
+        }
+    }
+    decoder.finish().expect("finish decoder");
+    loop {
+        match encoder.next(None, &mut output).expect("finalize encoder") {
+            EncoderStatus::NeedOutput { written } => encoded_bytes += written,
+            EncoderStatus::Finished { written } => {
+                encoded_bytes += written;
+                break;
+            }
+            EncoderStatus::ComponentFinished { .. } => panic!("unexpected component"),
+        }
+    }
+    encoder.finish().expect("finish encoder");
+    let allocations = ALLOCATIONS.with(|count| count.replace(None).expect("measurement"));
+    println!(
+        "{BUFFER_SIZE}-byte buffers: {components} components, {encoded_bytes} encoded bytes, {allocations} allocations/reallocations"
+    );
+    println!("| # | Component | Decode | Encode |");
+    println!("|---:|---|---:|---:|");
+    println!("| - | construction | - | {construction_allocations} |");
+    for (index, row) in rows[..components].iter().enumerate() {
+        let (component, decode, encode) = row.expect("component allocation row");
+        println!("| {} | {component} | {decode} | {encode} |", index + 1);
+    }
+    println!("| - | trailing/finalization | {pending_decode_allocations} | - |");
+    assert!(components > 0);
+    assert!(encoded_bytes > 0);
+}
+
+fn component_name(component: &TextRequestComponent) -> &'static str {
+    match component {
+        TextRequestComponent::Model(_) => "Model",
+        TextRequestComponent::Message(_) => "Message",
+        TextRequestComponent::Tools(_) => "Tools",
+        TextRequestComponent::ToolChoice(_) => "ToolChoice",
+        TextRequestComponent::ParallelToolCalls(_) => "ParallelToolCalls",
+        TextRequestComponent::MaxTokens(_) => "MaxTokens",
+        TextRequestComponent::Reasoning(_) => "Reasoning",
+        TextRequestComponent::TopP(_) => "TopP",
+        TextRequestComponent::TopK(_) => "TopK",
+        TextRequestComponent::Stop(_) => "Stop",
+        TextRequestComponent::ResponseFormat(_) => "ResponseFormat",
+        TextRequestComponent::Provider(_) => "Provider",
+        TextRequestComponent::Stream(_) => "Stream",
+        TextRequestComponent::StreamOptions(_) => "StreamOptions",
+    }
+}
+
+#[test]
 fn decodes_and_reencodes_anthropic_request_across_buffer_sizes() {
     for input_size in [16 * 1024, 16, 1] {
         for output_size in [16 * 1024, 16, 1] {

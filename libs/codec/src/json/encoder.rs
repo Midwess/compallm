@@ -117,7 +117,7 @@ impl JsonEncoder {
             self.comma = false;
             self.phase = 3;
         } else {
-            let key = key(token);
+            let key = token.key();
             if self.depth == 0 {
                 if self.root || key.is_some() {
                     return Err(JsonEncodeError::InvalidState);
@@ -207,7 +207,7 @@ impl JsonEncoder {
                     self.comma.then_some(b',')
                 }
                 1 => {
-                    if let Some(key) = key(token)
+                    if let Some(key) = token.key()
                         && let Some(byte) = self.string_byte(key)
                     {
                         return Ok(Some(byte));
@@ -218,7 +218,7 @@ impl JsonEncoder {
                 }
                 2 => {
                     self.phase = 3;
-                    key(token).map(|_| b':')
+                    token.key().map(|_| b':')
                 }
                 3 => match token {
                     JsonToken::ValueString(_, value) => {
@@ -396,17 +396,5 @@ impl std::fmt::Write for NumberOutput<'_> {
         } else {
             Err(std::fmt::Error)
         }
-    }
-}
-
-fn key<'a>(token: &JsonToken<'a>) -> Option<&'a str> {
-    match token {
-        JsonToken::ObjectStart(key)
-        | JsonToken::ArrayStart(key)
-        | JsonToken::ValueString(key, _)
-        | JsonToken::ValueNumber(key, _)
-        | JsonToken::ValueBoolean(key, _)
-        | JsonToken::ValueNull(key) => *key,
-        JsonToken::ObjectEnd | JsonToken::ArrayEnd => None,
     }
 }

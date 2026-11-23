@@ -1,0 +1,9 @@
+mutation AuthEmailSignupConfirm($emailSignupConfirmInput: EmailCodeInput!) {
+  emailSignupConfirm(input: $emailSignupConfirmInput) {
+    node {
+      accessLifetime {
+        expiresInSeconds
+      }
+    }
+  }
+}

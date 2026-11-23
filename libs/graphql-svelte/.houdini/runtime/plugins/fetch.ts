@@ -1,0 +1,447 @@
+// @ts-nocheck
+import { getAuthUrl, valueAtPath } from 'houdini/runtime'
+import type { ClientPlugin, ClientPluginContext } from 'houdini/runtime/documentStore'
+import { ArtifactKind, DataSource } from 'houdini/runtime/types'
+import type { RequestPayload, FetchContext } from 'houdini/runtime/types'
+
+import { getCurrentConfig } from '../config.js'
+
+export const fetch = (target?: RequestHandler | string): ClientPlugin => {
+	return () => {
+		return {
+			async network(ctx, { client, initialValue, resolve, marshalVariables }) {
+				// there is no fetch for a fragment
+				if (ctx.artifact.kind === ArtifactKind.Fragment) {
+					return resolve(ctx, initialValue)
+				}
+
+				// figure out which fetch to use
+				const fetch = ctx.fetch ?? globalThis.fetch
+
+				// build up the params object
+				const fetchParams: FetchParams = {
+					name: ctx.name,
+					text: ctx.text,
+					hash: ctx.hash,
+					variables: { ...marshalVariables(ctx) },
+				}
+
+				// before we move onto the next plugin, we need to strip the variables as they go through
+				for (const variable of ctx.artifact.stripVariables) {
+					delete fetchParams.variables[variable]
+				}
+
+				let fetchFn = defaultFetch(client.url, ctx.fetchParams)
+				// the provided parameter either specifies the URL or is the entire function to
+				// use
+				if (target) {
+					if (typeof target === 'string') {
+						fetchFn = defaultFetch(target, ctx.fetchParams)
+					} else {
+						fetchFn = target
+					}
+				}
+
+				// a @session mutation against a REMOTE api has to go through Houdini's same-origin
+				// proxy so the server can sit in the request path and write the session cookie
+				// server-authoritatively. The app is remote exactly when `url` is set in the public
+				// config (with a local schema the mutation hits the local Yoga and the mint plugin
+				// signs inline). The proxy lives under the session endpoint. We override the URL but
+				// never a user-supplied custom fetch function (it owns transport).
+				const artifact = ctx.artifact as typeof ctx.artifact & { sessionPath?: string }
+				if (
+					getCurrentConfig().url &&
+					artifact.kind === ArtifactKind.Mutation &&
+					artifact.sessionPath &&
+					typeof target !== 'function'
+				) {
+					// tell the proxy which operation this is via a header so it never has to parse the
+					// (possibly multipart) body to find the session path. Must stay in sync with
+					// HOUDINI_OPERATION_HEADER in router/server.ts.
+					fetchFn = defaultFetch(getAuthUrl() + '/proxy', {
+						...ctx.fetchParams,
+						headers: { ...ctx.fetchParams?.headers, 'x-houdini-operation': ctx.name },
+					})
+				}
+
+				const result = await fetchFn({
+					// wrap the user's fetch function so we can identify SSR by checking
+					// the response.url
+					fetch: (url: URL | RequestInfo, args: RequestInit | undefined) => {
+						// figure out if we need to do something special for multipart uploads
+						const newArgs = handleMultipart(fetchParams, args) ?? args
+						// use the new args if they exist, otherwise the old ones are good
+						return fetch(url, {
+							...newArgs,
+							signal: ctx.abortController.signal,
+						})
+					},
+					metadata: ctx.metadata,
+					session: ctx.session || {},
+					...fetchParams,
+				})
+
+				// return the result
+				resolve(ctx, {
+					fetching: false,
+					variables: ctx.variables ?? {},
+					data: result.data,
+					errors: !result.errors || result.errors.length === 0 ? null : result.errors,
+					// surface response-level extensions (e.g. the @session mint
+					// token) so the runtime/hooks can read them off the result
+					extensions: result.extensions,
+					partial: false,
+					stale: false,
+					source: DataSource.Network,
+				})
+			},
+		}
+	}
+}
+
+const defaultFetch = (
+	url: string,
+	params?: Required<ClientPluginContext>['fetchParams']
+): RequestHandler => {
+	// if there is no configured url, we can't use this plugin
+	if (!url) {
+		throw new Error(
+			'Could not find configured client url. Please specify one in your HoudiniClient constructor.'
+		)
+	}
+
+	return async ({ fetch, name, text, variables }) => {
+		// regular fetch (Server & Client)
+		const result = await fetch(url, {
+			method: 'POST',
+			body: JSON.stringify({ operationName: name, query: text, variables }),
+			...params,
+			headers: {
+				// the GraphQL-over-HTTP spec requires clients to include
+				// application/graphql-response+json in the Accept header. application/json is
+				// included at a lower priority for legacy servers
+				Accept: 'application/graphql-response+json, application/json;q=0.9',
+				'Content-Type': 'application/json',
+				// a header a cross-origin <form>/simple request cannot set. The server
+				// requires it for CORS-simple POSTs to the graphql endpoint (uploads use
+				// multipart, which bypasses preflight) so it can't be a CSRF channel. Only
+				// sent same-origin: a remote api never reads it, and a custom header turns an
+				// otherwise-simple request into a preflighted one the api's CORS config has
+				// no reason to allow (#1738). Must stay in sync with HOUDINI_REQUEST_HEADER
+				// in router/server.ts.
+				...(isSameOrigin(url) ? { 'x-houdini-request': 'true' } : {}),
+				...params?.headers,
+			},
+		})
+
+		// a response served with a GraphQL media type is a well-formed GraphQL response
+		// regardless of status code (the spec sends request errors like validation
+		// failures as 4xx with the details in the errors list) so it always gets parsed.
+		// anything else that isn't a 2xx is a transport-level failure we can't interpret.
+		// only look at the content-type on failures: SvelteKit's SSR fetch throws when a
+		// header outside filterSerializedResponseHeaders is read, so the happy path must
+		// not touch headers
+		if (!result.ok) {
+			const contentType = result.headers.get('content-type') ?? ''
+			const isGraphQLResponse =
+				contentType.startsWith('application/graphql-response+json') ||
+				contentType.startsWith('application/json') ||
+				// some servers still use the withdrawn pre-spec media type
+				contentType.startsWith('application/graphql+json')
+			if (!isGraphQLResponse) {
+				throw new Error(
+					`Failed to fetch: server returned invalid response with error ${result.status}: ${result.statusText}`
+				)
+			}
+		}
+
+		let payload
+		try {
+			payload = await result.json()
+		} catch {
+			throw new Error(
+				`Failed to fetch: server returned a malformed response with status ${result.status}: ${result.statusText}`
+			)
+		}
+
+		// a JSON error response from an intermediary (a rate limiter, a gateway) parses fine
+		// but isn't a GraphQL response. If an error response has neither a data nor an errors
+		// entry there is nothing for the pipeline to surface, so treat it as a transport failure
+		const isGraphQLPayload =
+			payload !== null &&
+			typeof payload === 'object' &&
+			('data' in payload || 'errors' in payload)
+		if (!result.ok && !isGraphQLPayload) {
+			throw new Error(
+				`Failed to fetch: server returned invalid response with error ${result.status}: ${result.statusText}`
+			)
+		}
+
+		return payload
+	}
+}
+
+// the CSRF marker only matters on requests that reach Houdini's own server. A relative url
+// always targets it; an absolute one counts only in the browser when the origin matches.
+// Server-side there is no CORS and the endpoint never gates JSON bodies, so absolute urls
+// skip the header there.
+function isSameOrigin(url: string): boolean {
+	const location = globalThis.location
+	if (!location) {
+		return !/^https?:\/\//.test(url)
+	}
+	return new URL(url, location.href).origin === location.origin
+}
+
+/**
+ * ## Tip 👇
+ *
+ * To define types for your metadata, create a file `src/app.d.ts` containing the followingI:
+ *
+ * ```ts
+ * declare namespace App { *
+ * 	interface Metadata {}
+ * }
+ * ```
+ *
+ */
+export type RequestHandlerArgs = FetchContext & FetchParams
+
+export type RequestHandler<_Data = any> = (
+	args: RequestHandlerArgs
+) => Promise<RequestPayload<_Data>>
+
+export type FetchParams = {
+	name: string
+	text: string
+	hash: string
+	variables: { [key: string]: any }
+}
+
+function handleMultipart(
+	params: FetchParams,
+	args: RequestInit | undefined
+): RequestInit | undefined {
+	// process any files that could be included
+	const { clone, files } = extractFiles({
+		variables: params.variables,
+	})
+
+	// if there are files in the request
+	if (files.size) {
+		const req = args
+		let headers: Record<string, string> = {}
+
+		// filters `content-type: application/json` if received by client.ts
+		if (req?.headers) {
+			const filtered = Object.entries(req?.headers).filter(([key, value]) => {
+				return !(
+					key.toLowerCase() === 'content-type' &&
+					value.toLowerCase() === 'application/json'
+				)
+			})
+			headers = Object.fromEntries(filtered)
+		}
+
+		// See the GraphQL multipart request spec:
+		// https://github.com/jaydenseric/graphql-multipart-request-spec
+		const form = new FormData()
+
+		// files in the provided body were serialized to {}, but the spec and strict servers
+		// require null at each file path
+		if (typeof args?.body === 'string') {
+			form.set('operations', nullFilePaths(args.body, files))
+		} else {
+			form.set(
+				'operations',
+				JSON.stringify({
+					operationName: params.name,
+					query: params.text,
+					variables: clone.variables,
+				})
+			)
+		}
+
+		const map: Record<string, Array<string>> = {}
+
+		let i = 0
+		files.forEach((paths) => {
+			map[++i] = paths
+		})
+		form.set('map', JSON.stringify(map))
+
+		i = 0
+		files.forEach((_paths, file) => {
+			form.set(`${++i}`, file as Blob, (file as File).name)
+		})
+
+		return { ...req, headers, body: form as any }
+	}
+}
+
+// the file map's paths (e.g. variables.files.0) index straight into the parsed body.
+// A body that isn't JSON can't be patched, so it's sent as-is.
+function nullFilePaths(body: string, files: Map<unknown, string[]>): string {
+	let operations: unknown
+	try {
+		operations = JSON.parse(body)
+	} catch {
+		return body
+	}
+
+	for (const paths of files.values()) {
+		for (const path of paths) {
+			const keys = path.split('.')
+			const last = keys.pop()!
+			const target: unknown = valueAtPath(operations, keys)
+			// the container is an object or an array (for a file in a list)
+			if (typeof target === 'object' && target !== null && last in target) {
+				Reflect.set(target, last, null)
+			}
+		}
+	}
+
+	return JSON.stringify(operations)
+}
+
+/// This file contains a modified version of the functions found here: https://github.com/jaydenseric/extract-files/blob/master/extractFiles.mjs
+/// The associated license is at the end of the file (per the project's license agreement)
+
+export function isExtractableFile(value: any): value is ExtractableFile {
+	return (
+		(typeof File !== 'undefined' && value instanceof File) ||
+		(typeof Blob !== 'undefined' && value instanceof Blob)
+	)
+}
+
+type ExtractableFile = File | Blob
+
+/** @typedef {import("./isExtractableFile.mjs").default} isExtractableFile */
+
+export function extractFiles(value?: any) {
+	if (value === undefined) throw new TypeError('Argument 1 `value` is required.')
+
+	/**
+	 * Map of values recursed within the input value and their clones, for reusing
+	 * clones of values that are referenced multiple times within the input value.
+	 * @type {Map<Cloneable, Clone>}
+	 */
+	const clones = new Map()
+
+	/**
+	 * Extracted files and their object paths within the input value.
+	 * @type {Extraction<Extractable>["files"]}
+	 */
+	const files = new Map()
+
+	/**
+	 * Recursively clones the value, extracting files.
+	 */
+	function recurse(value: any, path: string | string[], recursed: Set<any>) {
+		if (isExtractableFile(value)) {
+			const filePaths = files.get(value)
+
+			// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+			filePaths ? filePaths.push(path) : files.set(value, [path])
+
+			return null
+		}
+
+		const valueIsList =
+			Array.isArray(value) || (typeof FileList !== 'undefined' && value instanceof FileList)
+		const valueIsPlainObject = isPlainObject(value)
+
+		if (valueIsList || valueIsPlainObject) {
+			let clone = clones.get(value)
+
+			const uncloned = !clone
+
+			if (uncloned) {
+				clone = valueIsList
+					? []
+					: // Replicate if the plain object is an `Object` instance.
+						value instanceof /** @type {any} */ Object
+						? {}
+						: Object.create(null)
+
+				clones.set(value, /** @type {Clone} */ clone)
+			}
+
+			if (!recursed.has(value)) {
+				const pathPrefix = path ? `${path}.` : ''
+				const recursedDeeper = new Set(recursed).add(value)
+
+				if (valueIsList) {
+					let index = 0
+
+					for (const item of value) {
+						const itemClone = recurse(item, pathPrefix + index++, recursedDeeper)
+
+						if (uncloned) /** @type {Array<unknown>} */ clone.push(itemClone)
+					}
+				} else
+					for (const key in value) {
+						const propertyClone = recurse(value[key], pathPrefix + key, recursedDeeper)
+
+						if (uncloned)
+							/** @type {Record<PropertyKey, unknown>} */ clone[key] = propertyClone
+					}
+			}
+
+			return clone
+		}
+
+		return value
+	}
+
+	return {
+		clone: recurse(value, '', new Set()),
+		files,
+	}
+}
+
+/**
+ * An extraction result.
+ * @template [Extractable=unknown] Extractable file type.
+ * @typedef {object} Extraction
+ * @prop {unknown} clone Clone of the original value with extracted files
+ *   recursively replaced with `null`.
+ * @prop {Map<Extractable, Array<ObjectPath>>} files Extracted files and their
+ *   object paths within the original value.
+ */
+
+/**
+ * String notation for the path to a node in an object tree.
+ * @typedef {string} ObjectPath
+ * @see [`object-path` on npm](https://npm.im/object-path).
+ * @example
+ * An object path for object property `a`, array index `0`, object property `b`:
+ *
+ * ```
+ * a.0.b
+ * ```
+ */
+
+function isPlainObject(value: any) {
+	if (typeof value !== 'object' || value === null) {
+		return false
+	}
+
+	const prototype = Object.getPrototypeOf(value)
+	return (
+		(prototype === null ||
+			prototype === Object.prototype ||
+			Object.getPrototypeOf(prototype) === null) &&
+		!(Symbol.toStringTag in value) &&
+		!(Symbol.iterator in value)
+	)
+}
+
+// MIT License
+// Copyright Jayden Seric
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

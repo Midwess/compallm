@@ -1,0 +1,14 @@
+mutation ProviderProviderLogoUpload($providerLogoUploadInput: ImageUploadInput!) {
+  providerLogoUpload(input: $providerLogoUploadInput) {
+    node {
+      id
+      upload {
+        url
+        fields {
+          name
+          value
+        }
+      }
+    }
+  }
+}

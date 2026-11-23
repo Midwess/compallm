@@ -1,0 +1,9 @@
+mutation ProviderProviderCreate($providerCreateInput: ProviderCreateFromTemplateInput!) {
+  providerCreate(input: $providerCreateInput) {
+    node {
+      id
+      name
+      logoUrl
+    }
+  }
+}

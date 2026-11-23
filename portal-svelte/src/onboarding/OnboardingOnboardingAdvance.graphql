@@ -1,0 +1,21 @@
+mutation OnboardingOnboardingAdvance($onboardingAdvanceBack: Boolean!) {
+  onboardingAdvance(back: $onboardingAdvanceBack) {
+    node {
+      required
+      hasBeenPresented
+      flow
+      step
+      settings {
+        welcome
+        links {
+          label
+          href
+        }
+        destination
+        artworkColor
+        requireFullName
+        requireAvatar
+      }
+    }
+  }
+}

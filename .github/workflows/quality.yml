@@ -86,16 +86,18 @@ jobs:
         run: cargo test -p compallm-test --test provider_personal_catalog --locked -- --ignored --test-threads=1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
           cache-dependency-path: portal/package-lock.json
       - name: Install shared form dependencies
         run: npm ci --prefix portal
+      - name: Install Houdini generator dependencies
+        run: npm ci --prefix libs/graphql-svelte
       - name: Regenerate Rust-owned GraphQL and validation contracts
         run: |
           cargo run --locked -p compallm-api -- generate
-          git diff --exit-code -- libs/contract
-          test -z "$(git ls-files --others --exclude-standard -- libs/contract)"
+          git diff --exit-code -- libs/contract libs/graphql-svelte/.houdini
+          test -z "$(git ls-files --others --exclude-standard -- libs/contract libs/graphql-svelte/.houdini)"
       - name: Check shared offline form contracts
         run: node --test test/tests/input_contract.mjs test/tests/provider_form_contract.mjs
 
@@ -129,19 +131,47 @@ jobs:
       - name: Build the frontend
         run: npm exec -- vite build
 
+  svelte:
+    name: Svelte scaffold checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "24"
+      - run: npm ci --prefix libs/contract
+      - run: npm --prefix libs/contract run build
+      - run: npm ci --prefix libs/graphql-svelte
+      - run: npm ci --prefix libs/storybook-svelte
+      - run: npm ci --prefix portal-svelte
+      - name: Check and build the parallel Svelte projects
+        run: |
+          npm --prefix libs/graphql-svelte run lint:check
+          npm --prefix libs/graphql-svelte run check:coverage
+          npm --prefix libs/storybook-svelte run lint:check
+          npm --prefix libs/storybook-svelte run check
+          npm --prefix libs/storybook-svelte run build
+          npm --prefix libs/storybook-svelte run build:storybook
+          npm --prefix portal-svelte run lint:check
+          npm --prefix portal-svelte run check
+          npm --prefix portal-svelte run build
+
   quality:
     name: Quality gate
     if: ${{ always() }}
-    needs: [format, rust, portal]
+    needs: [format, rust, portal, svelte]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       FORMAT_RESULT: ${{ needs.format.result }}
       RUST_RESULT: ${{ needs.rust.result }}
       PORTAL_RESULT: ${{ needs.portal.result }}
+      SVELTE_RESULT: ${{ needs.svelte.result }}
     steps:
       - name: Require every quality check to pass
         run: |
           test "$FORMAT_RESULT" = success
           test "$RUST_RESULT" = success
           test "$PORTAL_RESULT" = success
+          test "$SVELTE_RESULT" = success

@@ -1,0 +1,17 @@
+mutation SettingsOnboardingOrganizationOnboardingSettingsUpdate(
+  $organizationOnboardingSettingsUpdateInput: OrganizationOnboardingSettingsInput!
+) {
+  organizationOnboardingSettingsUpdate(input: $organizationOnboardingSettingsUpdateInput) {
+    node {
+      welcome
+      links {
+        label
+        href
+      }
+      destination
+      artworkColor
+      requireFullName
+      requireAvatar
+    }
+  }
+}

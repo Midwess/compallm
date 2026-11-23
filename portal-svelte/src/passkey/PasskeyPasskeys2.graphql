@@ -1,0 +1,13 @@
+query PasskeyPasskeys2 {
+  passkeys {
+    edges {
+      node {
+        credentialId
+        id
+        name
+        registeredAt
+        lastUsedAt
+      }
+    }
+  }
+}

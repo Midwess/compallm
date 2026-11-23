@@ -1,0 +1,5 @@
+mutation PasskeyPasskeyRemove($passkeyRemoveId: ID!) {
+  passkeyRemove(id: $passkeyRemoveId) {
+    node
+  }
+}

@@ -1,0 +1,15 @@
+mutation SettingsMembersInvitationCreate($invitationCreateInput: InvitationCreateInput!) {
+  invitationCreate(input: $invitationCreateInput) {
+    node {
+      invitation {
+        id
+        email
+        status
+        expiresAt
+        issuedAt
+      }
+      url
+      emailAdmitted
+    }
+  }
+}

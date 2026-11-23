@@ -1,0 +1,9 @@
+mutation AuthPasskeyAuthenticationFinish2($passkeyAuthenticationFinishInput: PasskeyFinishInput!) {
+  passkeyAuthenticationFinish(input: $passkeyAuthenticationFinishInput) {
+    node {
+      accessLifetime {
+        expiresInSeconds
+      }
+    }
+  }
+}

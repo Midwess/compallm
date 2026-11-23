@@ -1,0 +1,17 @@
+query SettingsSessions($sessionsAfter: String) {
+  sessions(first: 20, after: $sessionsAfter) {
+    edges {
+      node {
+        id
+        ipAddress
+        userAgent
+        signedInAt
+        lastSeenAt
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

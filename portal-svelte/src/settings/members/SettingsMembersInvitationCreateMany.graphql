@@ -1,0 +1,17 @@
+mutation SettingsMembersInvitationCreateMany($invitationCreateManyInput: InvitationBatchCreateInput!) {
+  invitationCreateMany(input: $invitationCreateManyInput) {
+    edges {
+      node {
+        invitation {
+          id
+          email
+          status
+          expiresAt
+          issuedAt
+        }
+        url
+        emailAdmitted
+      }
+    }
+  }
+}

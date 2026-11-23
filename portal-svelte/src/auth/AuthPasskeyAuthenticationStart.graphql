@@ -1,0 +1,29 @@
+mutation AuthPasskeyAuthenticationStart {
+  passkeyAuthenticationStart(purpose: PASSKEY_CHANGE) {
+    node {
+      token
+      expiresAt
+      options {
+        challenge
+        rpId
+        rpName
+        userId
+        userName
+        userDisplayName
+        algorithms
+        credentials {
+          id
+          transports
+        }
+        timeout
+        userVerification
+        residentKey
+        extensions {
+          credProps
+          credentialProtectionPolicy
+          enforceCredentialProtectionPolicy
+        }
+      }
+    }
+  }
+}

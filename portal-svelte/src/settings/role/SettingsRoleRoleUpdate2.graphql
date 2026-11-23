@@ -1,0 +1,7 @@
+mutation SettingsRoleRoleUpdate2($roleUpdateId: ID!, $roleUpdateInput: RoleUpdateInput!) {
+  roleUpdate(id: $roleUpdateId, input: $roleUpdateInput) {
+    node {
+      id
+    }
+  }
+}

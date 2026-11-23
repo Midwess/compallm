@@ -1,0 +1,10 @@
+mutation OnboardingUserProfileUpdate($userProfileUpdateInput: UserProfileUpdateInput!) {
+  userProfileUpdate(input: $userProfileUpdateInput) {
+    node {
+      displayName
+      username
+      email
+      avatarUrl
+    }
+  }
+}

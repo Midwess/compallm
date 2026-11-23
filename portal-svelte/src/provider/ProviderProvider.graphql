@@ -1,0 +1,39 @@
+query ProviderProvider($providerId: ID!) {
+  provider(id: $providerId) {
+    node {
+      id
+      name
+      description
+      logoUrl
+      connection {
+        baseUrl
+      }
+      models {
+        id
+        name
+        enabled
+        capabilities
+        inputPrice
+        outputPrice
+        cachedPrice
+        protocol
+        connection {
+          path
+        }
+        contextTokens
+        text {
+          input {
+            configuration {
+              maxTokens
+            }
+          }
+          output {
+            configuration {
+              maxTokens
+            }
+          }
+        }
+      }
+    }
+  }
+}

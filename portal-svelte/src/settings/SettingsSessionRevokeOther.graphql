@@ -1,0 +1,5 @@
+mutation SettingsSessionRevokeOther($sessionRevokeOtherId: ID!) {
+  sessionRevokeOther(id: $sessionRevokeOtherId) {
+    node
+  }
+}

@@ -1,0 +1,48 @@
+query SettingsMembersMeAndOrganizationAndMembers(
+  $membersAfter: String
+  $membersFilter: MemberFilterInput
+  $membersOrderBy: [MemberOrderInput!]
+  $includeMembersEdgesNode: Boolean! = false
+  $includeMembersEdgesNode2: Boolean! = false
+  $includeMembersEdgesNode3: Boolean! = false
+) {
+  me {
+    node {
+      id
+      organizationOwner
+    }
+  }
+  organization {
+    node {
+      ownerMemberIds
+    }
+  }
+  members(first: 20, after: $membersAfter, filter: $membersFilter, currentUserFirst: true, orderBy: $membersOrderBy) {
+    edges {
+      node {
+        id
+        displayName
+        email
+        available
+        joinedAt
+        role @include(if: $includeMembersEdgesNode) {
+          id
+          name
+          description
+          color
+          owner
+        }
+        groups @include(if: $includeMembersEdgesNode2) {
+          id
+          name
+          description
+        }
+        effectiveRoleIds @include(if: $includeMembersEdgesNode3)
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

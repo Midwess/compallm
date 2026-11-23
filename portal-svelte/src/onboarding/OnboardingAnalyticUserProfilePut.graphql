@@ -1,0 +1,7 @@
+mutation OnboardingAnalyticUserProfilePut($analyticUserProfilePutInput: AnalyticUserProfilePutInput!) {
+  analyticUserProfilePut(input: $analyticUserProfilePutInput) {
+    node {
+      value
+    }
+  }
+}

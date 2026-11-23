@@ -1,0 +1,5 @@
+mutation SettingsDialogsRoleDelete($roleDeleteId: ID!) {
+  roleDelete(id: $roleDeleteId) {
+    node
+  }
+}

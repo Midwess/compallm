@@ -1,0 +1,1824 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+enum AuthenticationMethod {
+  API_KEY
+  OAUTH
+  CUSTOM
+  NONE
+}
+
+enum AuthenticationPurpose {
+  LOGIN
+  PASSKEY_CHANGE
+}
+
+enum BillingModel {
+  METERED
+  SUBSCRIPTION
+  SUBSCRIPTION_WITH_OVERAGE
+  FREE
+  UNKNOWN
+}
+
+enum CacheBilling {
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  UNSUPPORTED
+  INCLUDED
+  NOT_APPLICABLE
+  PER_ROUTE
+  UNKNOWN
+}
+
+enum CapabilityCacheMode {
+  SEPARATE_RATE
+  STANDARD_INPUT_RATE
+  INCLUDED
+  UNSUPPORTED
+}
+
+enum CapabilityPriceMode {
+  FIXED
+  TIERED_TOKEN
+  SCHEDULED
+}
+
+enum CapabilityPricingKind {
+  USAGE
+  FREE
+  INCLUDED
+  MODEL_BILLING
+}
+
+enum CapabilityStatus {
+  UNKNOWN
+  UNSUPPORTED
+  SUPPORTED
+}
+
+enum ConfigurationInputKind {
+  STRING
+  URL
+  OBJECT
+  POSITIVE_INTEGER
+  PRICE
+}
+
+"How the request delivers credentials; this is never stored in signed claims."
+enum CredentialDelivery {
+  "Set HttpOnly cookies and return metadata without credential values."
+  COOKIE
+  "Return credentials explicitly without setting browser cookies."
+  TOKEN
+}
+
+enum CredentialLocation {
+  HEADER
+  QUERY
+}
+
+enum CreditUsageDirection {
+  INPUT
+  OUTPUT
+  CACHE_READ
+}
+
+enum EndpointMode {
+  FIXED
+  ACCOUNT_SPECIFIC
+  DISCOVERED
+  UNKNOWN
+}
+
+enum FilterIs {
+  NULL
+  NOT_NULL
+}
+
+enum HomeDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+}
+
+enum ImageMediaType {
+  JPEG
+  PNG
+  WEBP
+}
+
+enum ModelBillingKind {
+  SUBSCRIPTION
+  FREE
+  REQUEST
+  CREDIT
+}
+
+enum ModelServiceKind {
+  TEXT
+  EMBEDDING
+  IMAGE
+  AUDIO
+  VIDEO
+  RERANK
+  TTS
+  STT
+}
+
+enum ModelTemplateOrigin {
+  GLOBAL
+  OVERRIDE
+  CUSTOM
+}
+
+enum OAuthFlow {
+  AUTHORIZATION_CODE
+  DEVICE_CODE
+  CLIENT_CREDENTIALS
+}
+
+enum OnboardingDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+}
+
+enum OnboardingFlow {
+  PERSONAL
+  INVITED_NEW
+  INVITED_EXISTING
+}
+
+enum OnboardingStep {
+  PROFILE
+  WORKSPACE
+  WORK
+  PREFERENCES
+  INTRODUCTION
+  READY
+}
+
+enum OrderByDirection {
+  AscNullsFirst
+  AscNullsLast
+  DescNullsFirst
+  DescNullsLast
+}
+
+enum PreferenceAppearanceMode {
+  SYSTEM
+  LIGHT
+  DARK
+}
+
+enum PreferenceBadgeStyle {
+  DOT
+  COUNT
+}
+
+enum PreferenceCodeTheme {
+  FOLLOW_INTERFACE
+  SYSTEM
+  LINEAR_LIGHT
+  LINEAR_DARK
+}
+
+enum PreferenceDarkPalette {
+  BASIC_DARK
+  BLUEBERRY_DARK
+  MARSHMALLOW_DARK
+}
+
+enum PreferenceDestination {
+  CHAT
+  MODELS
+  PROVIDERS
+  NOTEBOOKS
+  PLUGINS
+  STATS
+  API_KEYS
+  MEMBERS
+  CONVERSATIONS
+}
+
+enum PreferenceFontFamily {
+  DEFAULT
+  MONOSPACE
+}
+
+enum PreferenceKeyCombination {
+  ENTER
+  MODIFIER_ENTER
+}
+
+enum PreferenceLightPalette {
+  BASIC_WHITE
+  BLUEBERRY_WHITE
+  MARSHMALLOW_WHITE
+}
+
+enum PreferenceNamingFormat {
+  FULL_NAME
+  USERNAME
+}
+
+enum PreferencePixelFontSize {
+  PX12
+  PX13
+  PX14
+  PX16
+}
+
+enum PreferenceRelativeFontSize {
+  SMALLER
+  SMALL
+  DEFAULT
+  LARGE
+  LARGER
+}
+
+enum PreferenceSidebarCategory {
+  WORKSPACE
+  ROUTERS
+  ORGANIZATION
+  CONVERSATIONS
+}
+
+enum PreferenceSidebarVisibility {
+  ALWAYS
+  WHEN_BADGED
+  HIDDEN
+}
+
+enum PreferenceWeekday {
+  MONDAY
+  SUNDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+enum PriceBillingPeriod {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+enum PriceTierBasis {
+  INPUT_TOKENS
+  TOTAL_TOKENS
+}
+
+enum PriceUnit {
+  TOKENS
+  REQUESTS
+  IMAGES
+  SECONDS
+  CHARACTERS
+  UTF8_BYTES
+  CREDITS
+  VIDEOS
+}
+
+enum PricingMode {
+  FIXED
+  TIERED
+  API
+  ACCOUNT_SPECIFIC
+  NOT_APPLICABLE
+  UNPUBLISHED
+  UNKNOWN
+  SCHEDULED
+}
+
+"Catalog connection family hint; each configured model selects its own operation."
+enum ProviderApiProtocol {
+  OPENAI_COMPATIBLE
+  ANTHROPIC
+  PROVIDER_SPECIFIC
+}
+
+"Capabilities declared by a catalog or configured model; not an authorization grant."
+enum ProviderModelCapability {
+  TEXT
+  VISION
+  PDF
+  AUDIO
+  VIDEO
+  IMAGE_GENERATION
+  AUDIO_GENERATION
+  SEARCH
+  REASONING
+  TOOL_CALL
+  FORCED_TOOL_CHOICE
+  STRUCTURED_OUTPUT
+}
+
+"Text operation determining the upstream request and response format."
+enum TextModelProtocol {
+  OPENAI_CHAT_COMPLETIONS
+  OPENAI_RESPONSES
+  ANTHROPIC_MESSAGES
+}
+
+enum ThinkingEffortLevel {
+  LOW
+  MEDIUM
+  HIGH
+  XHIGH
+  MAX
+}
+
+enum UpstreamProtocol {
+  OPENAI
+  OPENAI_RESPONSES
+  ANTHROPIC
+  GEMINI
+  MINIMAX
+  OPENROUTER
+  XAI
+}
+
+enum UserPreferenceGroup {
+  NAVIGATION
+  SIDEBAR
+  MEMBER_DISPLAY
+  CALENDAR
+  THEME
+  TYPOGRAPHY
+  ACCESSIBILITY
+  MESSAGE_COMPOSITION
+  CODE_APPEARANCE
+  ALL
+}
+
+input AccessibilityPatchInput {
+  underlineLinks: Boolean
+  reduceMotion: Boolean
+  pointerCursors: Boolean
+}
+
+input AnalyticUserProfilePutInput {
+  key: String!
+  value: String!
+}
+
+input CalendarPatchInput {
+  firstDay: PreferenceWeekday
+}
+
+input ChatCreateInput {
+  message: String!
+  modelId: String!
+}
+
+input CodeAppearancePatchInput {
+  theme: PreferenceCodeTheme
+  font: CodeFontPatchInput
+}
+
+input CodeFontPatchInput {
+  family: PreferenceFontFamily
+  size: PreferencePixelFontSize
+}
+
+input CredentialCreateInput {
+  name: String!
+}
+
+"""
+Shared input for confirming a signup or signin email challenge.
+
+The verified encrypted challenge comes from request context, never this input.
+The adapter calls `validify()` before Core verifies the code and challenge.
+"""
+input EmailCodeInput {
+  purpose: AuthenticationPurpose = LOGIN
+  "Exactly six ASCII digits after trimming surrounding whitespace."
+  code: String!
+  "Cookie delivery is the default; token delivery must be requested explicitly."
+  delivery: CredentialDelivery = COOKIE
+}
+
+"""
+Shared input for requesting either a signup or a signin email challenge.
+
+Call `validify()` before Core execution. GraphQL parsing alone does not run
+normalization, application validation, or email ownership checks.
+"""
+input EmailInput {
+  purpose: AuthenticationPurpose = LOGIN
+  "Trimmed and ASCII-lowercased using the shared Rust email policy."
+  email: String!
+  invitation: Boolean = false
+  "Cookie delivery is the default; token delivery must be requested explicitly."
+  delivery: CredentialDelivery = COOKIE
+}
+
+input GroupCreateInput {
+  name: String!
+  description: String!
+  roleIds: [String!]!
+}
+
+input GroupUpdateInput {
+  name: String
+  description: String
+  addMemberIds: [String!]
+  removeMemberIds: [String!]
+  addRoleIds: [String!]
+  removeRoleIds: [String!]
+}
+
+input IDFilter {
+  eq: ID
+}
+
+input ImageUploadInput {
+  mediaType: ImageMediaType!
+  size: Int!
+}
+
+input InvitationBatchCreateInput {
+  invitations: [InvitationCreateInput!]!
+}
+
+input InvitationCreateInput {
+  email: String!
+}
+
+input MemberDisplayPatchInput {
+  nameFormat: PreferenceNamingFormat
+}
+
+input MemberFilterInput {
+  displayName: StringFilter
+  email: StringFilter
+  or: [MemberMatchInput!]
+  roleId: IDFilter
+}
+
+input MemberMatchInput {
+  displayName: StringFilter
+  email: StringFilter
+}
+
+input MemberOrderInput {
+  id: OrderByDirection
+  displayName: OrderByDirection
+  email: OrderByDirection
+}
+
+input MessageCompositionPatchInput {
+  convertEmoticons: Boolean
+  sendShortcut: PreferenceKeyCombination
+}
+
+input ModelTemplateCreateInput {
+  configuration: ModelTemplateCustomizeInput!
+}
+
+input ModelTemplateCustomizeInput {
+  name: String
+  protocol: TextModelProtocol
+  path: String
+  limits: ModelTemplateLimitsInput
+  inputPrice: ModelTemplatePriceInput
+  outputPrice: ModelTemplatePriceInput
+  cachedPrice: ModelTemplatePriceInput
+  capabilities: [ProviderModelCapability!]
+  effortMapping: ProviderEffortMapping
+  headers: [ProviderHeader!]
+  bodyDefaults: [ProviderBodyDefault!]
+}
+
+input ModelTemplateEffectiveLimitsInput {
+  context: ContextTokens
+  input: ContextTokens
+  output: ContextTokens
+}
+
+input ModelTemplateFilterInput {
+  id: StringFilter
+  name: StringFilter
+  displayName: StringFilter
+  or: [ModelTemplateMatchInput!]
+}
+
+input ModelTemplateLimitsInput {
+  context: ContextTokens
+  input: ContextTokens
+  output: ContextTokens
+}
+
+input ModelTemplateMatchInput {
+  id: StringFilter
+  name: StringFilter
+  displayName: StringFilter
+}
+
+input ModelTemplatePriceInput {
+  enabled: Boolean!
+  value: String
+}
+
+input NavigationPatchInput {
+  home: PreferenceDestination
+}
+
+input OnboardingLinkInput {
+  label: String!
+  href: String!
+}
+
+input OrganizationOnboardingSettingsInput {
+  welcome: String!
+  links: [OnboardingLinkInput!]!
+  destination: OnboardingDestination!
+  artworkColor: String
+  requireFullName: Boolean!
+  requireAvatar: Boolean!
+}
+
+input OrganizationProfileUpdateInput {
+  name: String
+  avatarUploaded: Boolean = false
+}
+
+input OrganizationSettingsUpdateInput {
+  name: String
+  slug: String
+  fiscalMonth: String
+  welcome: String
+  announcements: String
+  home: HomeDestination
+}
+
+input PalettePatchInput {
+  light: PreferenceLightPalette
+  dark: PreferenceDarkPalette
+}
+
+input PasskeyFinishInput {
+  purpose: AuthenticationPurpose = LOGIN
+  token: String!
+  id: String!
+  rawId: String!
+  clientDataJson: String!
+  attestationObject: String
+  authenticatorData: String
+  signature: String
+  userHandle: String
+  transports: [String!]
+  delivery: CredentialDelivery = COOKIE
+}
+
+input PasskeyRegistrationInput {
+  name: String!
+}
+
+input ProfileUpdateInput {
+  name: String
+  username: String
+}
+
+input ProviderBodyDefault {
+  key: String!
+  value: String!
+}
+
+"Opaque registry identity, independent of an edited upstream model name."
+input ProviderCatalogRef {
+  provider: String!
+  model: String!
+}
+
+input ProviderCreateFromTemplateInput {
+  name: String!
+  providerTemplateId: String!
+  baseUrl: String!
+  apiKey: String!
+  headers: [ProviderHeader!]!
+  models: [ProviderTemplateModelInput!]!
+  logoUrl: String
+  logoUploadId: String
+}
+
+"New connection definition; credentials and header values are write-only."
+input ProviderCreateInput {
+  name: String!
+  baseUrl: String!
+  apiKey: String!
+  headers: [ProviderHeader!]!
+  models: [ProviderModelWrite!]!
+}
+
+"Empty object means no configured effort levels. Configured values cannot be empty."
+input ProviderEffortMapping {
+  low: String
+  medium: String
+  high: String
+  xhigh: String
+  max: String
+}
+
+input ProviderHeader {
+  key: String!
+  "Write-only header content; never returned by management reads."
+  value: String!
+}
+
+"Omit value to retain an existing header secret; new names require a value."
+input ProviderHeaderUpdate {
+  key: String!
+  "Omit to preserve the saved value for this header name. New names require a value."
+  value: String
+}
+
+"Complete configured text-model values. Decimal prices are USD per million tokens."
+input ProviderModelConfiguration {
+  name: String!
+  protocol: TextModelProtocol!
+  path: String!
+  maxContextTokens: ContextTokens!
+  contextLimitEnabled: Boolean! = true
+  maxInputTokens: ContextTokens
+  maxOutputTokens: ContextTokens
+  headers: [ProviderHeader!]! = []
+  bodyDefaults: [ProviderBodyDefault!]! = []
+  enabled: Boolean! = true
+  effortMapping: ProviderEffortMapping
+  capabilities: [ProviderModelCapability!]! = []
+  catalogRef: ProviderCatalogRef
+  inputPrice: String!
+  outputPrice: String!
+  cachedPrice: String!
+  inputPriceEnabled: Boolean! = true
+  outputPriceEnabled: Boolean! = true
+  cachedPriceEnabled: Boolean! = true
+}
+
+"Persisted identity is omitted for new models and forbidden during provider creation."
+input ProviderModelWrite {
+  "Omit for a new model; supplied IDs must belong to this connection."
+  id: ID
+  "Complete text-model configuration, including explicit token prices."
+  configuration: ProviderModelConfiguration!
+}
+
+"Partial update. Omitted fields are unchanged; explicit null is rejected."
+input ProviderPatchInput {
+  name: String
+  baseUrl: String
+  "Omit to preserve the current credential. Empty strings and null are invalid."
+  apiKey: String
+  headers: [ProviderHeaderUpdate!]
+  models: [ProviderModelWrite!]
+}
+
+"Full non-secret replacement. Omitting apiKey preserves the saved credential."
+input ProviderReplaceInput {
+  name: String!
+  baseUrl: String!
+  "Omit to preserve the current credential. Empty strings and null are invalid."
+  apiKey: String
+  headers: [ProviderHeaderUpdate!]!
+  models: [ProviderModelWrite!]!
+}
+
+input ProviderTemplateFilterInput {
+  id: StringFilter
+  name: StringFilter
+  or: [ProviderTemplateMatchInput!]
+}
+
+input ProviderTemplateMatchInput {
+  id: StringFilter
+  name: StringFilter
+}
+
+input ProviderTemplateModelInput {
+  id: String!
+  protocol: TextModelProtocol!
+}
+
+input ProviderTemplateOrderInput {
+  name: OrderByDirection
+  id: OrderByDirection
+}
+
+"Atomic batch of new provider connections for the verified organization."
+input ProvidersCreateInput {
+  providers: [ProviderCreateInput!]!
+}
+
+input ReportingScheduleInput {
+  timezone: String!
+}
+
+input RoleCreateInput {
+  name: String!
+  description: String!
+  "Comments and unnecessary whitespace are removed before the length limit is checked."
+  cedarSource: String!
+}
+
+input RoleUpdateInput {
+  name: String
+  description: String
+  "Comments and unnecessary whitespace are removed before the length limit is checked."
+  cedarSource: String
+}
+
+input SidebarLayoutSectionInput {
+  category: PreferenceSidebarCategory!
+  items: [PreferenceDestination!]!
+}
+
+"Order replaces ordering while preserving visibility; visibility patches are keyed by destination."
+input SidebarPatchInput {
+  layout: [SidebarLayoutSectionInput!]
+  order: [PreferenceDestination!]
+  visibility: [SidebarVisibilityPatchInput!]
+  badgeStyle: PreferenceBadgeStyle
+}
+
+input SidebarVisibilityPatchInput {
+  item: PreferenceDestination!
+  visibility: PreferenceSidebarVisibility!
+}
+
+input SpendingLimitInput {
+  amount: String
+}
+
+input StringFilter {
+  eq: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  neq: String
+  is: FilterIs
+  startsWith: String
+  like: String
+  ilike: String
+  regex: String
+  iregex: String
+}
+
+input ThemePatchInput {
+  mode: PreferenceAppearanceMode
+  palettes: PalettePatchInput
+}
+
+input TypographyPatchInput {
+  family: PreferenceFontFamily
+  size: PreferenceRelativeFontSize
+}
+
+"Partial personal preferences. Omitted fields are preserved; explicit null is rejected."
+input UserPreferencesPatchInput {
+  navigation: NavigationPatchInput
+  sidebar: SidebarPatchInput
+  memberDisplay: MemberDisplayPatchInput
+  calendar: CalendarPatchInput
+  theme: ThemePatchInput
+  typography: TypographyPatchInput
+  accessibility: AccessibilityPatchInput
+  messageComposition: MessageCompositionPatchInput
+  codeAppearance: CodeAppearancePatchInput
+}
+
+input UserProfileUpdateInput {
+  displayName: String
+  username: String
+  avatarUploaded: Boolean = false
+}
+
+"Positive u32 context size, encoded as an exact JSON number (1–4294967295)."
+scalar ContextTokens
+
+type AccessibilityPreferences {
+  underlineLinks: Boolean!
+  reduceMotion: Boolean!
+  pointerCursors: Boolean!
+}
+
+type AnalyticUserProfile {
+  key: String!
+  value: String!
+}
+
+type AnalyticUserProfilePayload {
+  node: AnalyticUserProfile!
+}
+
+type AudioCapabilities {
+  input: AudioSupport!
+  output: AudioSupport!
+}
+
+type AudioConfiguration {
+  formats: [String!]
+  maxDurationMs: Float
+  maxBytes: Float
+}
+
+type AudioSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: AudioConfiguration
+}
+
+type AuthenticationConfiguration {
+  method: AuthenticationMethod!
+  configuration: AuthenticationParameters!
+}
+
+type AuthenticationParameters {
+  placement: CredentialPlacement
+  flow: OAuthFlow
+  authorizationUrl: String
+  tokenUrl: String
+  deviceAuthorizationUrl: String
+  scopes: [String!]!
+  requiredInputs: [ConfigurationInput!]!
+  adapter: String
+  parameters: [ConfigurationEntry!]!
+}
+
+type AvatarUpload {
+  url: String!
+  fields: [UploadFormField!]!
+  "Expiration as Unix seconds, encoded as a string."
+  expiresAt: String!
+}
+
+type AvatarUploadPayload {
+  node: AvatarUpload!
+}
+
+type BillingAllowance {
+  unit: PriceUnit!
+  quota: String
+  resetPeriod: PriceBillingPeriod
+}
+
+type BillingFee {
+  amount: String
+  currency: String
+  period: PriceBillingPeriod
+}
+
+"Public body default. Value is JSON text for the configuration editor."
+type BodyDefaultEntry {
+  key: String!
+  value: String!
+}
+
+type BooleanPayload {
+  node: Boolean!
+}
+
+type CalendarPreferences {
+  firstDay: PreferenceWeekday!
+}
+
+type CapabilityCachePrice {
+  mode: CapabilityCacheMode!
+  amount: String
+  currency: String
+  quantity: String
+}
+
+type CapabilityPricing {
+  kind: CapabilityPricingKind!
+  usage: CapabilityUsage
+}
+
+type CapabilityRate {
+  unit: PriceUnit!
+  amount: String
+  currency: String
+  quantity: String
+  credits: String
+  direction: CreditUsageDirection
+  cache: CapabilityCachePrice
+  conditions: [ConfigurationEntry!]!
+}
+
+type CapabilitySlot {
+  fromHour: Int!
+  toHour: Int!
+  pricing: CapabilityUsage!
+}
+
+type CapabilityTier {
+  fromTokens: String!
+  toTokens: String
+  rate: CapabilityRate!
+}
+
+type CapabilityUsage {
+  mode: CapabilityPriceMode!
+  rates: [CapabilityRate!]!
+  tierBasis: PriceTierBasis
+  tiers: [CapabilityTier!]!
+  timezone: String
+  slots: [CapabilitySlot!]!
+}
+
+type CodeAppearancePreferences {
+  theme: PreferenceCodeTheme!
+  font: CodeFontPreferences!
+}
+
+type CodeFontPreferences {
+  family: PreferenceFontFamily!
+  size: PreferencePixelFontSize!
+}
+
+type ConfigurationEntry {
+  key: String!
+  value: String!
+}
+
+type ConfigurationInput {
+  name: String!
+  kind: ConfigurationInputKind!
+  required: Boolean!
+  allowedValues: [String!]
+}
+
+type ConnectionConfiguration {
+  baseUrl: String
+  path: String
+  timeoutMs: Float
+  query: [ConfigurationEntry!]!
+  authentication: AuthenticationConfiguration
+  endpoint: EndpointRequirements!
+}
+
+type CredentialPlacement {
+  location: CredentialLocation!
+  name: String!
+  prefix: String
+}
+
+"Email admission succeeded; cookie delivery never exposes the OTP credential."
+type EmailChallenge {
+  lifetime: TokenLifetime!
+  token: String
+}
+
+type EmailChallengePayload {
+  node: EmailChallenge!
+}
+
+type EndpointConfiguration {
+  urlTemplate: String
+  requiredInputs: [ConfigurationInput!]!
+}
+
+type EndpointRequirements {
+  mode: EndpointMode!
+  configuration: EndpointConfiguration!
+}
+
+type FeatureSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+}
+
+type Group {
+  id: ID!
+  name: String!
+  description: String!
+  roles: RoleConnection!
+  memberIds: [ID!]!
+}
+
+type GroupConnection {
+  edges: [GroupEdge!]!
+  pageInfo: PageInfo!
+}
+
+type GroupEdge {
+  cursor: String!
+  node: Group!
+}
+
+type GroupPayload {
+  node: Group!
+}
+
+type IDPayload {
+  node: ID!
+}
+
+type ImageGenerationConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type ImageGenerationSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: ImageGenerationConfiguration
+}
+
+type Invitation {
+  id: ID!
+  organizationId: ID!
+  email: String!
+  inviterId: ID!
+  status: String!
+  issuedAt: Float!
+  expiresAt: Float!
+}
+
+type InvitationConnection {
+  edges: [InvitationEdge!]!
+  pageInfo: PageInfo!
+}
+
+type InvitationContext {
+  organizationName: String!
+  organizationId: ID!
+  email: String!
+  expiresAt: Float!
+  signup: Boolean!
+}
+
+type InvitationContextPayload {
+  node: InvitationContext!
+}
+
+type InvitationEdge {
+  cursor: String!
+  node: Invitation!
+}
+
+type InvitationIssued {
+  invitation: Invitation!
+  url: String!
+  emailAdmitted: Boolean!
+}
+
+type InvitationIssuedConnection {
+  edges: [InvitationIssuedEdge!]!
+  pageInfo: PageInfo!
+}
+
+type InvitationIssuedEdge {
+  cursor: String!
+  node: InvitationIssued!
+}
+
+type InvitationIssuedPayload {
+  node: InvitationIssued!
+}
+
+type InvitationPayload {
+  node: Invitation!
+}
+
+type Me {
+  organizationOwner: Boolean!
+  id: ID!
+  sessionId: ID!
+  organizationId: ID!
+  "Effective policies for this verified user only. UI decisions do not grant server authority."
+  cedarSource: String!
+  "Cedar JSON entity facts for the verified principal and its role/group ancestry; contains no credentials."
+  cedarEntities: String!
+}
+
+type MePayload {
+  node: Me!
+}
+
+type Member {
+  role: Role!
+  groups: [Group!]!
+  "Direct and group-inherited role identities in the verified organization."
+  effectiveRoleIds: [ID!]!
+  "Group identities in the verified organization; no policy source is exposed."
+  groupIds: [ID!]!
+  joinedAt: Float!
+  id: ID!
+  displayName: String!
+  email: String!
+  available: Boolean!
+}
+
+type MemberConnection {
+  edges: [MemberEdge!]!
+  pageInfo: PageInfo!
+}
+
+type MemberDisplayPreferences {
+  nameFormat: PreferenceNamingFormat!
+}
+
+type MemberEdge {
+  cursor: String!
+  node: Member!
+}
+
+type MessageCompositionPreferences {
+  convertEmoticons: Boolean!
+  sendShortcut: PreferenceKeyCombination!
+}
+
+type ModelBilling {
+  kind: ModelBillingKind!
+  product: String
+  plan: String
+  fee: BillingFee
+  entitlements: [BillingAllowance!]!
+  requestRate: CapabilityRate
+  amountPerCredit: String
+  currency: String
+  description: String
+}
+
+type ModelConnection {
+  protocol: UpstreamProtocol!
+  configuration: ConnectionConfiguration!
+}
+
+type ModelOperation {
+  operation: TextModelProtocol!
+  path: String!
+}
+
+type ModelTemplate {
+  customFields: [String!]!
+  origin: ModelTemplateOrigin!
+  id: ID!
+  providerTemplateId: ID!
+  upstreamModelId: String!
+  name: String!
+  connections: [ModelConnection!]!
+  bodyDefaults: [BodyDefaultEntry!]!
+  routeSelection: RouteSelection
+  displayName: String!
+  description: String
+  headers: [ConfigurationEntry!]!
+  operations: [ModelOperation!]!
+  capabilities: [ProviderModelCapability!]!
+  text: TextCapabilities!
+  vision: VisionSupport!
+  pdf: PdfSupport!
+  audio: AudioCapabilities!
+  video: VideoSupport!
+  imageGeneration: ImageGenerationSupport!
+  thinking: ThinkingSupport!
+  tools: ToolCapabilities!
+  structuredOutput: StructuredOutputSupport!
+  search: SearchSupport!
+  maxContextTokens: ContextTokens
+  maxInputTokens: ContextTokens
+  maxOutputTokens: ContextTokens
+  effortMapping: [ThinkingEffort!]!
+  inputPrice: String
+  outputPrice: String
+  cachedPrice: String
+  billing: ModelBilling
+  billingModel: BillingModel!
+  pricingMode: PricingMode!
+  cacheBilling: CacheBilling!
+  serviceKind: ModelServiceKind
+}
+
+type ModelTemplateConnection {
+  edges: [ModelTemplateEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ModelTemplateEdge {
+  cursor: String!
+  node: ModelTemplate!
+}
+
+type ModelTemplatePayload {
+  node: ModelTemplate!
+}
+
+type Mutation {
+  providerLogoUpload(input: ImageUploadInput!): ProviderLogoUploadPayload!
+  providerCreate(input: ProviderCreateFromTemplateInput!): ProviderPayload!
+  modelTemplateCustomize(providerTemplateId: ID!, id: ID!, input: ModelTemplateCustomizeInput!): ModelTemplatePayload!
+  modelTemplateCreate(providerTemplateId: ID!, input: ModelTemplateCreateInput!): ModelTemplatePayload!
+  modelTemplateReset(providerTemplateId: ID!, id: ID!): ModelTemplatePayload!
+  modelTemplateDelete(providerTemplateId: ID!, id: ID!): BooleanPayload!
+  passkeyRegistrationStart: PasskeyCeremonyPayload!
+  passkeyRegistrationFinish(input: PasskeyFinishInput!, name: PasskeyRegistrationInput!): PasskeySummaryPayload!
+  passkeyUpdate(id: ID!, input: PasskeyRegistrationInput!): PasskeySummaryPayload!
+  passkeyAuthenticationStart(purpose: AuthenticationPurpose! = LOGIN): PasskeyCeremonyPayload!
+  passkeyAuthenticationFinish(input: PasskeyFinishInput!): SessionCredentialsPayload!
+  passkeyRemove(id: ID!): IDPayload!
+  analyticUserProfilePut(input: AnalyticUserProfilePutInput!): AnalyticUserProfilePayload!
+  organizationOnboardingSettingsUpdate(input: OrganizationOnboardingSettingsInput!): OrganizationOnboardingSettingsPayload!
+  onboardingAdvance(back: Boolean! = false): OnboardingContextPayload!
+  onboardingComplete: OnboardingContextPayload!
+  onboardingPresent(manual: Boolean! = false): OnboardingContextPayload!
+  invitationCreateMany(input: InvitationBatchCreateInput!): InvitationIssuedConnection!
+  invitationCreate(input: InvitationCreateInput!): InvitationIssuedPayload!
+  invitationRevoke(id: ID!): InvitationPayload!
+  organizationProfileUpdate(input: OrganizationProfileUpdateInput!): OrganizationPayload!
+  generateOrgAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
+  groupUpdate(id: ID!, input: GroupUpdateInput!): GroupPayload!
+  groupDelete(id: ID!): BooleanPayload!
+  "Update the current user's display name and confirm an uploaded avatar."
+  userProfileUpdate(input: UserProfileUpdateInput!): UserPayload!
+  "Authorize a direct JPEG/PNG/WebP avatar upload up to 5 MiB for five minutes."
+  generateUrlAvatarUrl(input: ImageUploadInput!): AvatarUploadPayload!
+  "Atomically patch the signed-in user's preferences, preserving omitted fields."
+  userPreferencesUpdate(input: UserPreferencesPatchInput!): UserPreferencesPayload!
+  "Restore selected preference groups, or ALL alone, to Core defaults."
+  userPreferencesReset(groups: [UserPreferenceGroup!]!): UserPreferencesPayload!
+  "Request a signup email challenge; reject existing accounts before sending."
+  emailSignupRequest(input: EmailInput!): EmailChallengePayload!
+  "Confirm the verified signup challenge and create the account and session."
+  emailSignupConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
+  "Request a signin email challenge for an existing active account."
+  emailSigninRequest(input: EmailInput!): EmailChallengePayload!
+  "Confirm the verified signin challenge and create a scoped session."
+  emailSigninConfirm(input: EmailCodeInput!): SessionCredentialsPayload!
+  "Refresh using explicit refresh Bearer authority; leave browser cookies unchanged."
+  sessionRefresh: SessionCredentialsPayload!
+  "Revoke one other session belonging to the authenticated account."
+  sessionRevokeOther(id: ID!): BooleanPayload!
+  "Revoke all other account sessions, retaining this login."
+  sessionRevokeOthers: BooleanPayload!
+  "Revoke the current session and clear its cookies after success."
+  sessionRevoke: BooleanPayload!
+  "Create a role in the verified active organization."
+  roleCreate(input: RoleCreateInput!): RolePayload!
+  roleAssign(id: ID!, memberId: ID!): RolePayload!
+  roleDelete(id: ID!): BooleanPayload!
+  roleUpdate(id: ID!, input: RoleUpdateInput!): RolePayload!
+  "Create a group and its initial role assignments in the verified active organization."
+  groupCreate(input: GroupCreateInput!): GroupPayload!
+}
+
+type NavigationPreferences {
+  home: PreferenceDestination!
+}
+
+type OnboardingContext {
+  required: Boolean!
+  flow: OnboardingFlow!
+  step: OnboardingStep!
+  settings: OrganizationOnboardingSettings!
+  shouldPresent: Boolean!
+  hasBeenPresented: Boolean!
+}
+
+type OnboardingContextPayload {
+  node: OnboardingContext!
+}
+
+type OnboardingLink {
+  label: String!
+  href: String!
+}
+
+type Organization {
+  ownerMemberIds: [ID!]!
+  avatarUrl: String
+  canUpdateProfile: Boolean!
+  id: ID!
+  name: String!
+}
+
+type OrganizationOnboardingSettings {
+  welcome: String!
+  links: [OnboardingLink!]!
+  destination: OnboardingDestination!
+  artworkColor: String
+  requireFullName: Boolean!
+  requireAvatar: Boolean!
+}
+
+type OrganizationOnboardingSettingsPayload {
+  node: OrganizationOnboardingSettings!
+}
+
+type OrganizationPayload {
+  node: Organization!
+}
+
+type PageInfo {
+  startCursor: String
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+}
+
+type PalettePreferences {
+  light: PreferenceLightPalette!
+  dark: PreferenceDarkPalette!
+}
+
+type PasskeyCeremony {
+  token: String!
+  expiresAt: String!
+  options: PasskeyOptions!
+}
+
+type PasskeyCeremonyPayload {
+  node: PasskeyCeremony!
+}
+
+type PasskeyDescriptor {
+  id: String!
+  transports: [String!]!
+}
+
+type PasskeyExtensions {
+  credProps: Boolean
+  credentialProtectionPolicy: String
+  enforceCredentialProtectionPolicy: Boolean
+}
+
+type PasskeyOptions {
+  challenge: String!
+  rpId: String!
+  rpName: String
+  userId: String
+  userName: String
+  userDisplayName: String
+  algorithms: [Int!]!
+  credentials: [PasskeyDescriptor!]!
+  extensions: PasskeyExtensions!
+  timeout: Int!
+  residentKey: String
+  userVerification: String!
+}
+
+type PasskeySummary {
+  id: ID!
+  credentialId: String!
+  name: String!
+  registeredAt: String!
+  lastUsedAt: String
+}
+
+type PasskeySummaryConnection {
+  edges: [PasskeySummaryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PasskeySummaryEdge {
+  cursor: String!
+  node: PasskeySummary!
+}
+
+type PasskeySummaryPayload {
+  node: PasskeySummary!
+}
+
+type PdfConfiguration {
+  maxFiles: Float
+  maxPages: Float
+}
+
+type PdfSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: PdfConfiguration
+}
+
+type PolicyAction {
+  name: String!
+  displayName: String!
+  description: String!
+  entityType: String!
+  resourceType: String!
+}
+
+type PolicyActionConnection {
+  edges: [PolicyActionEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PolicyActionEdge {
+  cursor: String!
+  node: PolicyAction!
+}
+
+type Provider {
+  logoUrl: String
+  description: String
+  connection: ConnectionConfiguration!
+  models: [ProviderModel!]!
+  "Stable provider identity, serialized as a string."
+  id: ID!
+  "Owning organization; a supplied identifier never grants access."
+  organizationId: ID!
+  "Provider display name within its organization."
+  name: String!
+}
+
+type ProviderConnection {
+  edges: [ProviderEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ProviderEdge {
+  cursor: String!
+  node: Provider!
+}
+
+type ProviderLogoUpload {
+  id: String!
+  upload: AvatarUpload!
+}
+
+type ProviderLogoUploadPayload {
+  node: ProviderLogoUpload!
+}
+
+type ProviderModel {
+  capabilities: [ProviderModelCapability!]!
+  inputPrice: String
+  outputPrice: String
+  cachedPrice: String
+  protocol: UpstreamProtocol!
+  connection: ConnectionConfiguration!
+  text: TextCapabilities!
+  contextTokens: ContextTokens
+  "Stable configured-model identity, serialized as a string."
+  id: ID!
+  "Owning organization identity."
+  organizationId: ID!
+  "Owning provider identity."
+  providerId: ID!
+  "Configured upstream model name."
+  name: String!
+  "Configured availability; this flag alone does not authorize invocation."
+  enabled: Boolean!
+}
+
+type ProviderPayload {
+  node: Provider!
+}
+
+type ProviderTemplate {
+  id: ID!
+  name: String!
+  description: String
+  logoUrl: String
+  connection: ConnectionConfiguration!
+  baseUrl: String
+  headers: [ConfigurationEntry!]!
+  endpoint: EndpointRequirements!
+  authentication: [AuthenticationConfiguration!]!
+  models(filter: ModelTemplateFilterInput): ModelTemplateConnection!
+}
+
+type ProviderTemplateConnection {
+  edges: [ProviderTemplateEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ProviderTemplateEdge {
+  cursor: String!
+  node: ProviderTemplate!
+}
+
+type ProviderTemplatePayload {
+  node: ProviderTemplate!
+}
+
+type Query {
+  "Public global provider catalog; defaults to 20 providers and caps pages at 100."
+  providerTemplates(search: String, filter: ProviderTemplateFilterInput, orderBy: [ProviderTemplateOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): ProviderTemplateConnection!
+  "Public provider defaults with a complete, unpaginated collection of database-ready models."
+  providerTemplate(id: ID!): ProviderTemplatePayload
+  "Public configuration defaults for one database-ready model, identified within its provider."
+  modelTemplate(providerTemplateId: ID!, id: ID!): ModelTemplatePayload
+  providers(first: Int, after: String): ProviderConnection!
+  provider(id: ID!): ProviderPayload
+  effectiveProviderTemplates(search: String, first: Int, after: String): ProviderTemplateConnection!
+  effectiveProviderTemplate(id: ID!): ProviderTemplatePayload
+  effectiveModelTemplate(providerTemplateId: ID!, id: ID!): ModelTemplatePayload
+  passkeys: PasskeySummaryConnection!
+  analyticUserProfile(key: String!): AnalyticUserProfilePayload
+  onboardingContext: OnboardingContextPayload
+  organizationOnboardingSettings: OrganizationOnboardingSettingsPayload!
+  invitationContext: InvitationContextPayload!
+  invitations(first: Int, after: String): InvitationConnection!
+  me: MePayload!
+  organizationProfile(id: ID!): OrganizationPayload
+  "Read an active user profile using verified user identity."
+  userProfile(id: ID!): UserPayload
+  "Return the signed-in user's personal preferences; missing rows use Core defaults without a write."
+  userPreferences: UserPreferencesPayload!
+  "Return the system-owned organization policy action catalog."
+  organizationPolicyActions: PolicyActionConnection!
+  "Return the verified current session identity."
+  session: SessionPayload!
+  sessions(first: Int, after: String): SessionConnection!
+  "Return the active organization from verified user authority."
+  organization: OrganizationPayload!
+  members(currentUserFirst: Boolean, filter: MemberFilterInput, orderBy: [MemberOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): MemberConnection!
+  "Find visible role metadata in the active organization."
+  role(id: ID!, includeUnseen: Boolean! = false): RolePayload
+  "Return the complete visible role metadata collection, ordered by ID."
+  roles(includeUnseen: Boolean! = false): RoleConnection!
+  "Find visible group metadata in the active organization."
+  group(id: ID!): GroupPayload
+  "Return the complete visible group metadata collection, ordered by ID."
+  groups: GroupConnection!
+}
+
+type Role {
+  "Native Cedar source; template slots bind to this role and its organization."
+  cedarSource: String
+  id: ID!
+  name: String!
+  description: String!
+  color: String!
+  owner: Boolean!
+}
+
+type RoleConnection {
+  edges: [RoleEdge!]!
+  pageInfo: PageInfo!
+}
+
+type RoleEdge {
+  cursor: String!
+  node: Role!
+}
+
+type RolePayload {
+  node: Role!
+}
+
+type RouteOption {
+  id: String!
+  provider: String!
+  upstreamModelId: String!
+  contextTokens: ContextTokens
+  text: TextCapabilities!
+  billing: ModelBilling
+  implicitCaching: Boolean
+}
+
+type RouteSelection {
+  options: [RouteOption!]!
+  selected: String
+  allowFallbacks: Boolean!
+  exactProviderSelection: Boolean!
+}
+
+type SearchConfiguration {
+  maxResults: Float
+}
+
+type SearchSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: SearchConfiguration
+}
+
+type Session {
+  expiresAt: String!
+  lastSeenAt: String!
+  signedInAt: String!
+  "IP observed by the API connection at sign-in; it may belong to a proxy or VPN."
+  ipAddress: String
+  "User-Agent captured at sign-in, used only for session recognition."
+  userAgent: String
+  passkey: PasskeySummary
+  "Public avatar for this user; clients show a fallback while absent or loading."
+  avatarUrl: String
+  "Login session identity, serialized as a string without numeric precision loss."
+  id: ID!
+  "User owning this verified session."
+  userId: ID!
+  "Organization selected for this verified session."
+  organizationId: ID!
+  "Current name of this login's organization, resolved only when selected."
+  organizationName: String!
+}
+
+type SessionConnection {
+  edges: [SessionEdge!]!
+  pageInfo: PageInfo!
+}
+
+"Timing is always returned; credential values exist only in explicit TOKEN delivery."
+type SessionCredentials {
+  purpose: AuthenticationPurpose!
+  accessLifetime: TokenLifetime
+  refreshLifetime: TokenLifetime
+  passkeyChangeLifetime: TokenLifetime
+  passkeyChangeToken: String
+  accessToken: String
+  refreshToken: String
+}
+
+type SessionCredentialsPayload {
+  node: SessionCredentials!
+}
+
+type SessionEdge {
+  cursor: String!
+  node: Session!
+}
+
+type SessionPayload {
+  node: Session!
+}
+
+type SidebarEntry {
+  item: PreferenceDestination!
+  visibility: PreferenceSidebarVisibility!
+}
+
+type SidebarLayoutSection {
+  category: PreferenceSidebarCategory!
+  items: [PreferenceDestination!]!
+}
+
+type SidebarPreferences {
+  layout: [SidebarLayoutSection!]!
+  badgeStyle: PreferenceBadgeStyle!
+  entries: [SidebarEntry!]!
+}
+
+type StructuredOutputConfiguration {
+  jsonMode: FeatureSupport!
+  jsonSchema: FeatureSupport!
+}
+
+type StructuredOutputSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: StructuredOutputConfiguration
+}
+
+type TextCapabilities {
+  input: TextInputSupport!
+  output: TextGenerationSupport!
+}
+
+type TextGenerationConfiguration {
+  maxTokens: Float
+  thinking: ThinkingSupport!
+}
+
+type TextGenerationSupport {
+  status: CapabilityStatus!
+  configuration: TextGenerationConfiguration
+  pricing: CapabilityPricing
+}
+
+type TextInputConfiguration {
+  maxTokens: Float
+}
+
+type TextInputSupport {
+  status: CapabilityStatus!
+  configuration: TextInputConfiguration
+  pricing: CapabilityPricing
+}
+
+type ThemePreferences {
+  mode: PreferenceAppearanceMode!
+  palettes: PalettePreferences!
+}
+
+type ThinkingBudget {
+  minTokens: Float!
+  maxTokens: Float!
+  defaultTokens: Float
+}
+
+type ThinkingConfiguration {
+  effortMapping: [ThinkingEffort!]!
+  defaultEffort: ThinkingEffortLevel
+  budget: ThinkingBudget
+}
+
+type ThinkingEffort {
+  level: ThinkingEffortLevel!
+  value: String!
+}
+
+type ThinkingSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: ThinkingConfiguration
+}
+
+"Exact Unix-second validity and client throttle values encoded as decimal strings."
+type TokenLifetime {
+  issuedAt: String!
+  expiresAt: String!
+  expiresInSeconds: String!
+  throttleSeconds: String!
+}
+
+type ToolCallingConfiguration {
+  maxTools: Float
+}
+
+type ToolCallingSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: ToolCallingConfiguration
+}
+
+type ToolCapabilities {
+  calling: ToolCallingSupport!
+  forcedChoice: FeatureSupport!
+  parallelCalls: FeatureSupport!
+}
+
+type TypographyPreferences {
+  family: PreferenceFontFamily!
+  size: PreferenceRelativeFontSize!
+}
+
+type UploadFormField {
+  name: String!
+  value: String!
+}
+
+type User {
+  "Public avatar URL; the object may not exist yet and clients must show a fallback."
+  avatarUrl: String
+  "Stable user identity, serialized as a string."
+  id: ID!
+  username: String!
+  "Email is readable by authenticated users and cannot be updated here."
+  email: String!
+  "Display name; this field does not establish identity or uniqueness."
+  displayName: String!
+}
+
+type UserPayload {
+  node: User!
+}
+
+type UserPreferences {
+  navigation: NavigationPreferences!
+  sidebar: SidebarPreferences!
+  memberDisplay: MemberDisplayPreferences!
+  calendar: CalendarPreferences!
+  theme: ThemePreferences!
+  typography: TypographyPreferences!
+  accessibility: AccessibilityPreferences!
+  messageComposition: MessageCompositionPreferences!
+  codeAppearance: CodeAppearancePreferences!
+}
+
+type UserPreferencesPayload {
+  node: UserPreferences!
+}
+
+type ValidationIssue {
+  path: [String!]!
+  code: String!
+  message: String!
+}
+
+type VideoConfiguration {
+  formats: [String!]
+  maxDurationMs: Float
+  maxFrames: Float
+}
+
+type VideoSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: VideoConfiguration
+}
+
+type VisionConfiguration {
+  formats: [String!]
+  maxImages: Float
+}
+
+type VisionSupport {
+  status: CapabilityStatus!
+  pricing: CapabilityPricing
+  configuration: VisionConfiguration
+}

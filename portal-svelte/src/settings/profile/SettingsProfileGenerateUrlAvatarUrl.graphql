@@ -1,0 +1,12 @@
+mutation SettingsProfileGenerateUrlAvatarUrl($generateUrlAvatarUrlInput: ImageUploadInput!) {
+  generateUrlAvatarUrl(input: $generateUrlAvatarUrlInput) {
+    node {
+      url
+      fields {
+        name
+        value
+      }
+      expiresAt
+    }
+  }
+}

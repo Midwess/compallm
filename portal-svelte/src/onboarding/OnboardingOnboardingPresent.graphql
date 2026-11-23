@@ -1,0 +1,21 @@
+mutation OnboardingOnboardingPresent($onboardingPresentManual: Boolean!) {
+  onboardingPresent(manual: $onboardingPresentManual) {
+    node {
+      required
+      hasBeenPresented
+      flow
+      step
+      settings {
+        welcome
+        links {
+          label
+          href
+        }
+        destination
+        artworkColor
+        requireFullName
+        requireAvatar
+      }
+    }
+  }
+}

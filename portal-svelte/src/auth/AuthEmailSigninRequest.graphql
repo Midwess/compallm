@@ -1,0 +1,10 @@
+mutation AuthEmailSigninRequest($emailSigninRequestInput: EmailInput!) {
+  emailSigninRequest(input: $emailSigninRequestInput) {
+    node {
+      lifetime {
+        expiresInSeconds
+        throttleSeconds
+      }
+    }
+  }
+}

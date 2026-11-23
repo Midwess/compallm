@@ -186,3 +186,23 @@ conventions:
     UI: no independent validation messages or error tooltips as part of rule integration
 
 ```
+
+## Parallel Svelte workspace
+
+`portal-svelte`, `libs/storybook-svelte`, and `libs/graphql-svelte` are the parallel Svelte migration scaffold.
+Preserve the existing React projects until explicitly requested otherwise. SvelteKit uses static SPA output;
+Rust/Axum remains the production backend, with no production frontend switch implemented yet.
+
+For these Svelte projects, Houdini replaces the Genql-only frontend conventions above. Author queries and fragments
+beside their consumers; generate operation types, schema input types, stores, and artifacts through the shared
+`libs/graphql-svelte` package. Rust remains authoritative for the exported SDL, validation, normalization, defaults,
+messages, and business invariants. Use the existing generated Zod contracts for forms. Never hand-edit generated files
+or create parallel API interfaces. The Cargo `generate` command generates both clients; install the Houdini package's
+dependencies first. Node 24.13+ is required. Vite transforms documents; rerun generation after document edits.
+
+The Svelte UI library owns copied Tailwind foundations and six palettes. Keep theme definitions shared within the new
+projects, source scanning explicit, preview-only utilities outside production library CSS, and Storybook offline.
+Retain the existing form, loading, collection, permission, cancellation, accessibility, and design contracts when
+migrating features. React-specific bindings are implementation details to replace, not requirements to copy.
+Validate with formatting checks, Svelte/TypeScript checks, builds, and manual inspection; add no Storybook automated
+interaction or browser test suites. Do not connect the scaffold to live business operations without a feature task.

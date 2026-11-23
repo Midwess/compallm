@@ -1,0 +1,7 @@
+mutation AuthPasskeyAuthenticationFinish($passkeyAuthenticationFinishInput: PasskeyFinishInput!) {
+  passkeyAuthenticationFinish(input: $passkeyAuthenticationFinishInput) {
+    node {
+      purpose
+    }
+  }
+}

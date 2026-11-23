@@ -1,0 +1,11 @@
+mutation PasskeyPasskeyUpdate($passkeyUpdateId: ID!, $passkeyUpdateInput: PasskeyRegistrationInput!) {
+  passkeyUpdate(id: $passkeyUpdateId, input: $passkeyUpdateInput) {
+    node {
+      credentialId
+      id
+      name
+      registeredAt
+      lastUsedAt
+    }
+  }
+}

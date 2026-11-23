@@ -1,0 +1,11 @@
+mutation SettingsProfileUserProfileUpdate($userProfileUpdateInput: UserProfileUpdateInput!) {
+  userProfileUpdate(input: $userProfileUpdateInput) {
+    node {
+      id
+      displayName
+      username
+      email
+      avatarUrl
+    }
+  }
+}

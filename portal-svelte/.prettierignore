@@ -1,0 +1,5 @@
+node_modules
+dist
+.svelte-kit
+storybook-static
+package-lock.json

@@ -1,0 +1,18 @@
+query SettingsGroupMembers($membersAfter: String, $membersFilter: MemberFilterInput) {
+  members(first: 30, after: $membersAfter, filter: $membersFilter) {
+    edges {
+      node {
+        id
+        displayName
+        email
+        available
+        effectiveRoleIds
+        groupIds
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

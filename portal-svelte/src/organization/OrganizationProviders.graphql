@@ -1,0 +1,14 @@
+query OrganizationProviders($providersAfter: String) {
+  providers(first: 100, after: $providersAfter) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

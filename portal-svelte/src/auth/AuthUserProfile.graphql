@@ -1,0 +1,7 @@
+query AuthUserProfile($userProfileId: ID!) {
+  userProfile(id: $userProfileId) {
+    node {
+      email
+    }
+  }
+}

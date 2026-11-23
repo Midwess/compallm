@@ -1,0 +1,17 @@
+query SettingsMembersInvitations($invitationsAfter: String) {
+  invitations(first: 20, after: $invitationsAfter) {
+    edges {
+      node {
+        id
+        email
+        status
+        expiresAt
+        issuedAt
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

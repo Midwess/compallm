@@ -1,0 +1,42 @@
+query SettingsMeAndOrganizationAndRolesAndGroups(
+  $includeFields: Boolean! = false
+  $includeFields2: Boolean! = false
+  $includeFields3: Boolean! = false
+) {
+  me {
+    node {
+      id
+      organizationOwner
+    }
+  }
+  organization @include(if: $includeFields) {
+    node {
+      ownerMemberIds
+    }
+  }
+  roles @include(if: $includeFields2) {
+    edges {
+      node {
+        id
+        name
+        color
+        owner
+      }
+    }
+  }
+  groups @include(if: $includeFields3) {
+    edges {
+      node {
+        id
+        name
+        roles @include(if: $includeFields2) {
+          edges {
+            node {
+              id
+            }
+          }
+        }
+      }
+    }
+  }
+}

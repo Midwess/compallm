@@ -1,0 +1,8 @@
+mutation SettingsGroupCreate($groupCreateInput: GroupCreateInput!) {
+  groupCreate(input: $groupCreateInput) {
+    node {
+      id
+      name
+    }
+  }
+}

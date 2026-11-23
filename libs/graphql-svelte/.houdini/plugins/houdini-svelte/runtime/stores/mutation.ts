@@ -1,0 +1,59 @@
+// @ts-nocheck
+import type { RequestEvent } from '@sveltejs/kit'
+import type {
+	MutationArtifact,
+	GraphQLObject,
+	QueryResult,
+	GraphQLVariables,
+} from 'houdini/runtime'
+
+import { initClient } from '../client.js'
+import { BaseStore } from './base.js'
+import { fetchParams } from './query.js'
+
+export class MutationStore<
+	_Data extends GraphQLObject,
+	_Input extends GraphQLVariables | undefined | null,
+	_Optimistic extends GraphQLObject,
+> extends BaseStore<_Data, _Input, MutationArtifact> {
+	kind = 'HoudiniMutation' as const
+
+	async mutate(
+		variables: _Input,
+		{
+			metadata,
+			fetch,
+			event,
+			abortController,
+			...mutationConfig
+		}: {
+			metadata?: App.Metadata
+			fetch?: typeof globalThis.fetch
+			event?: RequestEvent
+			abortController?: AbortController
+		} & MutationConfig<_Data, _Input, _Optimistic> = {}
+	): Promise<QueryResult<_Data, _Input>> {
+		await initClient()
+
+		const { context } = await fetchParams(this.artifact, this.artifact.name, {
+			fetch,
+			metadata,
+			event,
+		})
+
+		return await this.observer.send({
+			variables,
+			fetch: context.fetch,
+			metadata,
+			session: context.session,
+			abortController,
+			stuff: {
+				...mutationConfig,
+			},
+		})
+	}
+}
+
+export type MutationConfig<_Result, _Input, _Optimistic> = {
+	optimisticResponse?: _Optimistic
+}

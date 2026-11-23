@@ -1,0 +1,52 @@
+query SettingsGroupGroupAndRolesAndMembers(
+  $groupId: ID!
+  $includeGroupNode: Boolean! = false
+  $includeGroupNodeMemberIds: Boolean! = false
+) {
+  group(id: $groupId) {
+    node {
+      id
+      name
+      description
+      roles @include(if: $includeGroupNode) {
+        edges {
+          node {
+            id
+            name
+            description
+            color
+            owner
+          }
+        }
+      }
+      memberIds @include(if: $includeGroupNodeMemberIds)
+    }
+  }
+  roles @include(if: $includeGroupNode) {
+    edges {
+      node {
+        id
+        name
+        description
+        color
+        owner
+      }
+    }
+  }
+  members(first: 30) @include(if: $includeGroupNodeMemberIds) {
+    edges {
+      node {
+        id
+        displayName
+        email
+        available
+        effectiveRoleIds
+        groupIds
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

@@ -1,0 +1,10 @@
+mutation AuthEmailSignupRequest($emailSignupRequestInput: EmailInput!) {
+  emailSignupRequest(input: $emailSignupRequestInput) {
+    node {
+      lifetime {
+        expiresInSeconds
+        throttleSeconds
+      }
+    }
+  }
+}

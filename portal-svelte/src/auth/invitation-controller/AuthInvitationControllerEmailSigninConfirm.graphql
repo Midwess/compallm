@@ -1,0 +1,9 @@
+mutation AuthInvitationControllerEmailSigninConfirm($emailSigninConfirmInput: EmailCodeInput!) {
+  emailSigninConfirm(input: $emailSigninConfirmInput) {
+    node {
+      accessLifetime {
+        expiresInSeconds
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+query ProviderCatalogEffectiveProviderTemplates(
+  $effectiveProviderTemplatesAfter: String
+  $effectiveProviderTemplatesSearch: String
+) {
+  effectiveProviderTemplates(first: 20, after: $effectiveProviderTemplatesAfter, search: $effectiveProviderTemplatesSearch) {
+    edges {
+      node {
+        id
+        name
+        baseUrl
+        logoUrl
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

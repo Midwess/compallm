@@ -1,0 +1,11 @@
+mutation SettingsMembersInvitationRevoke($invitationRevokeId: ID!) {
+  invitationRevoke(id: $invitationRevokeId) {
+    node {
+      id
+      email
+      status
+      expiresAt
+      issuedAt
+    }
+  }
+}

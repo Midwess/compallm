@@ -1,0 +1,20 @@
+query PasskeyPasskeysAndSession {
+  passkeys {
+    edges {
+      node {
+        credentialId
+        id
+        name
+        registeredAt
+        lastUsedAt
+      }
+    }
+  }
+  session {
+    node {
+      passkey {
+        id
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+mutation SettingsMembersGroupUpdate($groupUpdateId: ID!, $groupUpdateInput: GroupUpdateInput!) {
+  groupUpdate(id: $groupUpdateId, input: $groupUpdateInput) {
+    node {
+      id
+      memberIds
+    }
+  }
+}

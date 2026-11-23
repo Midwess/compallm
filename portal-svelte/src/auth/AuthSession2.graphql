@@ -1,0 +1,15 @@
+query AuthSession2 {
+  session {
+    node {
+      id
+      userId
+      organizationId
+      organizationName
+      avatarUrl
+      ipAddress
+      userAgent
+      signedInAt
+      lastSeenAt
+    }
+  }
+}

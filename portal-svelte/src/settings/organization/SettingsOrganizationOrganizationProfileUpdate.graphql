@@ -1,0 +1,10 @@
+mutation SettingsOrganizationOrganizationProfileUpdate($organizationProfileUpdateInput: OrganizationProfileUpdateInput!) {
+  organizationProfileUpdate(input: $organizationProfileUpdateInput) {
+    node {
+      id
+      name
+      avatarUrl
+      canUpdateProfile
+    }
+  }
+}

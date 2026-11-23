@@ -1,0 +1,12 @@
+mutation SettingsOrganizationGenerateOrgAvatarUrl($generateOrgAvatarUrlInput: ImageUploadInput!) {
+  generateOrgAvatarUrl(input: $generateOrgAvatarUrlInput) {
+    node {
+      url
+      fields {
+        name
+        value
+      }
+      expiresAt
+    }
+  }
+}

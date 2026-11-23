@@ -1,0 +1,10 @@
+query PermissionMe {
+  me {
+    node {
+      id
+      organizationId
+      cedarSource
+      cedarEntities
+    }
+  }
+}

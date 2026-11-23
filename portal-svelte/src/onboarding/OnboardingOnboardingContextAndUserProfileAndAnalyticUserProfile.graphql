@@ -1,0 +1,34 @@
+query OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile($userProfileId: ID!) {
+  onboardingContext {
+    node {
+      required
+      hasBeenPresented
+      flow
+      step
+      settings {
+        welcome
+        links {
+          label
+          href
+        }
+        destination
+        artworkColor
+        requireFullName
+        requireAvatar
+      }
+    }
+  }
+  userProfile(id: $userProfileId) {
+    node {
+      displayName
+      username
+      email
+      avatarUrl
+    }
+  }
+  analyticUserProfile(key: "work") {
+    node {
+      value
+    }
+  }
+}

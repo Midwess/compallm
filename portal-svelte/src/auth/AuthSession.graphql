@@ -1,0 +1,9 @@
+query AuthSession {
+  session {
+    node {
+      passkey {
+        credentialId
+      }
+    }
+  }
+}

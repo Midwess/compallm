@@ -1,0 +1,64 @@
+mutation PreferenceUserUserPreferencesUpdate(
+  $userPreferencesUpdateInput: UserPreferencesPatchInput!
+  $includeNavigation: Boolean! = false
+  $includeMemberDisplay: Boolean! = false
+  $includeCalendar: Boolean! = false
+  $includeTheme: Boolean! = false
+  $includeTypography: Boolean! = false
+  $includeAccessibility: Boolean! = false
+  $includeMessageComposition: Boolean! = false
+  $includeCodeAppearance: Boolean! = false
+  $includeSidebar: Boolean! = false
+) {
+  userPreferencesUpdate(input: $userPreferencesUpdateInput) {
+    node {
+      navigation @include(if: $includeNavigation) {
+        home
+      }
+      memberDisplay @include(if: $includeMemberDisplay) {
+        nameFormat
+      }
+      calendar @include(if: $includeCalendar) {
+        firstDay
+      }
+      theme @include(if: $includeTheme) {
+        mode
+        palettes {
+          light
+          dark
+        }
+      }
+      typography @include(if: $includeTypography) {
+        family
+        size
+      }
+      accessibility @include(if: $includeAccessibility) {
+        underlineLinks
+        reduceMotion
+        pointerCursors
+      }
+      messageComposition @include(if: $includeMessageComposition) {
+        convertEmoticons
+        sendShortcut
+      }
+      codeAppearance @include(if: $includeCodeAppearance) {
+        theme
+        font {
+          family
+          size
+        }
+      }
+      sidebar @include(if: $includeSidebar) {
+        badgeStyle
+        entries {
+          item
+          visibility
+        }
+        layout {
+          category
+          items
+        }
+      }
+    }
+  }
+}

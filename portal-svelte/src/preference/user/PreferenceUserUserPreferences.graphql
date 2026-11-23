@@ -1,0 +1,53 @@
+query PreferenceUserUserPreferences {
+  userPreferences {
+    node {
+      navigation {
+        home
+      }
+      memberDisplay {
+        nameFormat
+      }
+      calendar {
+        firstDay
+      }
+      theme {
+        mode
+        palettes {
+          light
+          dark
+        }
+      }
+      typography {
+        family
+        size
+      }
+      accessibility {
+        underlineLinks
+        reduceMotion
+        pointerCursors
+      }
+      messageComposition {
+        convertEmoticons
+        sendShortcut
+      }
+      codeAppearance {
+        theme
+        font {
+          family
+          size
+        }
+      }
+      sidebar {
+        badgeStyle
+        entries {
+          item
+          visibility
+        }
+        layout {
+          category
+          items
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+query AuthInvitationControllerInvitationContext {
+  invitationContext {
+    node {
+      organizationName
+      email
+      expiresAt
+      signup
+    }
+  }
+}

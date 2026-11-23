@@ -1,0 +1,13 @@
+query SettingsRoleOrganizationPolicyActions {
+  organizationPolicyActions {
+    edges {
+      node {
+        name
+        displayName
+        description
+        entityType
+        resourceType
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+mutation SettingsMembersRoleAssign($roleAssignId: ID!, $roleAssignMemberId: ID!) {
+  roleAssign(id: $roleAssignId, memberId: $roleAssignMemberId) {
+    node {
+      id
+      name
+      description
+      color
+      owner
+    }
+  }
+}

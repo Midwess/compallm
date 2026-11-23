@@ -1,0 +1,10 @@
+query SettingsOrganizationOrganizationProfile($organizationProfileId: ID!) {
+  organizationProfile(id: $organizationProfileId) {
+    node {
+      id
+      name
+      avatarUrl
+      canUpdateProfile
+    }
+  }
+}

@@ -1,0 +1,9 @@
+mutation AuthInvitationControllerEmailSignupRequest($emailSignupRequestInput: EmailInput!) {
+  emailSignupRequest(input: $emailSignupRequestInput) {
+    node {
+      lifetime {
+        expiresInSeconds
+      }
+    }
+  }
+}

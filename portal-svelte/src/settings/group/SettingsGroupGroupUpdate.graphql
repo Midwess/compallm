@@ -1,0 +1,25 @@
+mutation SettingsGroupGroupUpdate(
+  $groupUpdateId: ID!
+  $groupUpdateInput: GroupUpdateInput!
+  $includeGroupUpdateNodeMemberIds: Boolean! = false
+  $includeGroupUpdateNode: Boolean! = false
+) {
+  groupUpdate(id: $groupUpdateId, input: $groupUpdateInput) {
+    node {
+      id
+      name
+      description
+      memberIds @include(if: $includeGroupUpdateNodeMemberIds)
+      roles @include(if: $includeGroupUpdateNode) {
+        edges {
+          node {
+            id
+            name
+            description
+            color
+          }
+        }
+      }
+    }
+  }
+}

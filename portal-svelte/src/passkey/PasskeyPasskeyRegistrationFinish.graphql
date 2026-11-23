@@ -1,0 +1,14 @@
+mutation PasskeyPasskeyRegistrationFinish(
+  $passkeyRegistrationFinishInput: PasskeyFinishInput!
+  $passkeyRegistrationFinishName: PasskeyRegistrationInput!
+) {
+  passkeyRegistrationFinish(input: $passkeyRegistrationFinishInput, name: $passkeyRegistrationFinishName) {
+    node {
+      credentialId
+      id
+      name
+      registeredAt
+      lastUsedAt
+    }
+  }
+}

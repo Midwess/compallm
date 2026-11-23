@@ -1,0 +1,10 @@
+mutation SettingsRoleCreate($roleCreateInput: RoleCreateInput!) {
+  roleCreate(input: $roleCreateInput) {
+    node {
+      id
+      name
+      description
+      color
+    }
+  }
+}

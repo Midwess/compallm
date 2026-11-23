@@ -20,6 +20,14 @@ pub fn generate() -> Result<(), Box<dyn Error>> {
     if !status.success() {
         return Err("contract generation failed".into());
     }
+    let houdini = root.join("libs/graphql-svelte");
+    let status = Command::new("node")
+        .arg(houdini.join("generate.mjs"))
+        .current_dir(&houdini)
+        .status()?;
+    if !status.success() {
+        return Err("Houdini generation failed; install libs/graphql-svelte dependencies".into());
+    }
     Ok(())
 }
 

@@ -1,0 +1,11 @@
+query SettingsProfileUserProfile($userProfileId: ID!) {
+  userProfile(id: $userProfileId) {
+    node {
+      id
+      displayName
+      username
+      email
+      avatarUrl
+    }
+  }
+}

@@ -1,0 +1,7 @@
+mutation OnboardingOrganizationProfileUpdate($organizationProfileUpdateInput: OrganizationProfileUpdateInput!) {
+  organizationProfileUpdate(input: $organizationProfileUpdateInput) {
+    node {
+      name
+    }
+  }
+}

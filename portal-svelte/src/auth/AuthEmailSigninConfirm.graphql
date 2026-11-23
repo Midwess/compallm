@@ -1,0 +1,7 @@
+mutation AuthEmailSigninConfirm($emailSigninConfirmInput: EmailCodeInput!) {
+  emailSigninConfirm(input: $emailSigninConfirmInput) {
+    node {
+      purpose
+    }
+  }
+}

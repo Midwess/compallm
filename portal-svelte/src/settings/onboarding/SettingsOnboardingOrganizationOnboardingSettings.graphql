@@ -1,0 +1,15 @@
+query SettingsOnboardingOrganizationOnboardingSettings {
+  organizationOnboardingSettings {
+    node {
+      welcome
+      links {
+        label
+        href
+      }
+      destination
+      artworkColor
+      requireFullName
+      requireAvatar
+    }
+  }
+}

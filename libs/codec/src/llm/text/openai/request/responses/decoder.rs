@@ -1,4 +1,4 @@
-use super::component::{InputItem, Text, Tool};
+use super::component::{InputItem, ReasoningInput, Text, Tool, ToolChoiceInput};
 use crate::decoder::{Decoder, DecoderError, DecoderStatus};
 use crate::json::{JsonContainer, JsonDecoder, JsonToken};
 use crate::llm::text::component::*;
@@ -8,6 +8,8 @@ enum Field {
     Input,
     Tools,
     Text,
+    ToolChoice,
+    Reasoning,
 }
 
 #[derive(Debug)]
@@ -103,9 +105,27 @@ impl Decoder for OpenAIResponseRequestDecoder {
                         .map_component(|v| {
                             TextRequestComponent::Tools(v.into_iter().map(Into::into).collect())
                         }),
-                    Field::Text => json
-                        .parse_next::<Text>(input, eof)?
-                        .map_component(|v| TextRequestComponent::ResponseFormat(v.format.into())),
+                    Field::Text => {
+                        let status = json.parse_next::<Text>(input, eof)?;
+                        match status {
+                            DecoderStatus::Component(value) => {
+                                let format = value.format.try_into().map_err(|_| {
+                                    DecoderError::InvalidInput("invalid response format")
+                                })?;
+                                DecoderStatus::Component(TextRequestComponent::ResponseFormat(
+                                    format,
+                                ))
+                            }
+                            DecoderStatus::NeedInput => DecoderStatus::NeedInput,
+                            DecoderStatus::Finished => DecoderStatus::Finished,
+                        }
+                    }
+                    Field::ToolChoice => json
+                        .parse_next::<ToolChoiceInput>(input, eof)?
+                        .map_component(|v| TextRequestComponent::ToolChoice(v.into())),
+                    Field::Reasoning => json
+                        .parse_next::<ReasoningInput>(input, eof)?
+                        .map_component(|v| TextRequestComponent::Reasoning(v.into())),
                 };
                 match status {
                     DecoderStatus::Finished => {
@@ -135,6 +155,14 @@ impl Decoder for OpenAIResponseRequestDecoder {
                 DecoderStatus::Component(JsonToken::ObjectStart(Some("text"))) => {
                     json = json.enter()?;
                     self.field = Some(Field::Text);
+                }
+                DecoderStatus::Component(JsonToken::ObjectStart(Some("tool_choice"))) => {
+                    json = json.enter()?;
+                    self.field = Some(Field::ToolChoice);
+                }
+                DecoderStatus::Component(JsonToken::ObjectStart(Some("reasoning"))) => {
+                    json = json.enter()?;
+                    self.field = Some(Field::Reasoning);
                 }
                 DecoderStatus::Component(JsonToken::ObjectEnd) => {
                     if !self.has_model || !self.has_input {

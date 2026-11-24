@@ -1,5 +1,5 @@
 [workspace]
-members = ["geolocation", "libs/db-context", "libs/query-derive", "libs/query", "libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/codec", "libs/storage", "test", "router", "sec"]
+members = ["geolocation", "libs/db-context", "libs/query-derive", "libs/query", "libs/validation-derive", "api", "libs/core", "libs/postgres", "libs/utils", "libs/mailing", "libs/codec", "libs/serde-rules", "libs/storage", "test", "router", "sec"]
 resolver = "3"
 
 [workspace.package]
@@ -35,6 +35,7 @@ compallm-postgres = { path = "libs/postgres", default-features = false }
 compallm-utils = { path = "libs/utils", default-features = false }
 compallm-mailing = { path = "libs/mailing", default-features = false }
 compallm-storage = { path = "libs/storage", default-features = false }
+compallm-serde-rules = { path = "libs/serde-rules", default-features = false }
 async-channel = { version = "2.5", default-features = false }
 lettre = { version = "0.11", default-features = false }
 async-trait = { version = "0.1", default-features = false }

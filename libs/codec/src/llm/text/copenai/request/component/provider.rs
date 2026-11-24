@@ -1,22 +1,16 @@
-use super::Decoded;
 use crate::llm::text::component::Provider;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_with::DeserializeAs;
 
-impl<'de> Deserialize<'de> for Decoded<Provider> {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        CompatibleOpenAIProvider::deserialize(deserializer).map(|value| Self(value.into()))
-    }
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "Provider", deny_unknown_fields)]
+pub(crate) enum ProviderWire {
+    #[serde(rename = "require_parameters", alias = "require_parameter")]
+    RequireParameter(bool),
 }
 
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct CompatibleOpenAIProvider {
-    #[serde(alias = "require_parameters")]
-    require_parameter: bool,
-}
-
-impl From<CompatibleOpenAIProvider> for Provider {
-    fn from(value: CompatibleOpenAIProvider) -> Self {
-        Self::RequireParameter(value.require_parameter)
+impl<'de> DeserializeAs<'de, Provider> for ProviderWire {
+    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Provider, D::Error> {
+        Self::deserialize(deserializer)
     }
 }

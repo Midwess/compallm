@@ -9,3 +9,17 @@ pub enum JsonToken<'a> {
     ValueBoolean(Option<&'a str>, bool),
     ValueNull(Option<&'a str>),
 }
+
+impl<'a> JsonToken<'a> {
+    pub fn key(&self) -> Option<&'a str> {
+        match self {
+            Self::ObjectStart(key)
+            | Self::ArrayStart(key)
+            | Self::ValueString(key, _)
+            | Self::ValueNumber(key, _)
+            | Self::ValueBoolean(key, _)
+            | Self::ValueNull(key) => *key,
+            Self::ObjectEnd | Self::ArrayEnd => None,
+        }
+    }
+}

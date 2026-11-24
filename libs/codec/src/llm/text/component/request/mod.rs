@@ -1,5 +1,6 @@
 mod message;
 mod provider;
+mod reasoning;
 mod response_format;
 mod stop;
 mod stream_options;
@@ -8,6 +9,7 @@ mod tools;
 
 pub use message::*;
 pub use provider::Provider;
+pub use reasoning::{Reasoning, ReasoningEffort};
 pub use response_format::{JsonSchema, ResponseFormat};
 pub use stop::Stop;
 pub use stream_options::StreamOptions;
@@ -28,7 +30,9 @@ pub enum TextRequestComponent {
     /// Controls whether the model may request multiple tool calls in one turn.
     ParallelToolCalls(bool),
     /// Limits generated tokens, including reasoning tokens where the provider counts them.
-    MaxCompletionTokens(u32),
+    MaxTokens(u32),
+    /// Controls reasoning generation and visibility independently of reasoning history.
+    Reasoning(Reasoning),
     /// Nucleus sampling: considers tokens within this cumulative probability mass.
     TopP(f64),
     /// Limits sampling to the most likely K tokens; zero disables this filter.

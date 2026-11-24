@@ -1572,11 +1572,13 @@ name = "codec"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "compallm-serde-rules",
  "futures-core",
  "futures-io",
  "futures-util",
  "serde",
  "serde_json",
+ "serde_with",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
@@ -1794,6 +1796,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "compallm-serde-rules"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

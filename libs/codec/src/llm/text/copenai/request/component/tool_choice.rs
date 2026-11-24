@@ -1,53 +1,87 @@
-use super::Decoded;
-use super::{
-    CompatibleOpenAIRequestComponent, ComponentDeserializeHelper, tools::CompatibleOpenAIToolType,
-};
+use super::tools::ToolTypeWire;
 use crate::llm::text::component::{ToolChoice, ToolType};
-use serde::Deserialize;
+use compallm_serde_rules::deserialize;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_with::{DeserializeAs, SerializeAs};
 
-impl<'de> Deserialize<'de> for Decoded<ToolChoice> {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        use serde::de::Error;
-        CompatibleOpenAIToolChoice::deserialize(deserializer)?
-            .try_into()
-            .map(Self)
-            .map_err(D::Error::custom)
+pub(crate) struct ToolChoiceWire;
+
+impl SerializeAs<ToolChoice> for ToolChoiceWire {
+    fn serialize_as<S: Serializer>(value: &ToolChoice, serializer: S) -> Result<S::Ok, S::Error> {
+        ChoiceOutput::from(value).serialize(serializer)
     }
 }
 
-#[derive(serde::Deserialize)]
-#[serde(untagged, deny_unknown_fields)]
-pub(super) enum CompatibleOpenAIToolChoice {
-    Name(String),
+impl<'de> DeserializeAs<'de, ToolChoice> for ToolChoiceWire {
+    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<ToolChoice, D::Error> {
+        ChoiceInput::deserialize(deserializer).map(Into::into)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ChoiceName {
+    Auto,
+    None,
+    Required,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum ChoiceOutput<'a> {
+    Name(ChoiceName),
     Function {
-        #[serde(rename = "type", with = "CompatibleOpenAIToolType")]
+        #[serde(rename = "type", with = "ToolTypeWire")]
+        kind: ToolType,
+        function: FunctionName<&'a str>,
+    },
+}
+
+#[derive(Deserialize)]
+#[serde(untagged, deny_unknown_fields)]
+enum ChoiceInput {
+    Name(ChoiceName),
+    Function {
+        #[serde(rename = "type", with = "ToolTypeWire")]
         kind: ToolType,
         function: FunctionName,
     },
 }
 
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct FunctionName {
-    #[serde(deserialize_with = "CompatibleOpenAIRequestComponent::nonempty")]
-    name: String,
+#[derive(Serialize, Deserialize)]
+#[serde(
+    deny_unknown_fields,
+    bound(deserialize = "S: Deserialize<'de> + AsRef<str>")
+)]
+struct FunctionName<S = String> {
+    #[serde(deserialize_with = "deserialize::nonempty")]
+    name: S,
 }
 
-impl TryFrom<CompatibleOpenAIToolChoice> for ToolChoice {
-    type Error = &'static str;
-
-    fn try_from(value: CompatibleOpenAIToolChoice) -> Result<Self, Self::Error> {
+impl<'a> From<&'a ToolChoice> for ChoiceOutput<'a> {
+    fn from(value: &'a ToolChoice) -> Self {
         match value {
-            CompatibleOpenAIToolChoice::Name(value) => match value.as_str() {
-                "auto" => Ok(Self::Auto),
-                "none" => Ok(Self::None),
-                "required" => Ok(Self::Required),
-                _ => Err("invalid tool choice"),
+            ToolChoice::Auto => Self::Name(ChoiceName::Auto),
+            ToolChoice::None => Self::Name(ChoiceName::None),
+            ToolChoice::Required => Self::Name(ChoiceName::Required),
+            ToolChoice::Function(name) => Self::Function {
+                kind: ToolType::Function,
+                function: FunctionName { name },
             },
-            CompatibleOpenAIToolChoice::Function {
+        }
+    }
+}
+
+impl From<ChoiceInput> for ToolChoice {
+    fn from(value: ChoiceInput) -> Self {
+        match value {
+            ChoiceInput::Name(ChoiceName::Auto) => Self::Auto,
+            ChoiceInput::Name(ChoiceName::None) => Self::None,
+            ChoiceInput::Name(ChoiceName::Required) => Self::Required,
+            ChoiceInput::Function {
                 kind: ToolType::Function,
                 function,
-            } => Ok(Self::Function(function.name)),
+            } => Self::Function(function.name),
         }
     }
 }

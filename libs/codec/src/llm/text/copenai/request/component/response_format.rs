@@ -1,55 +1,76 @@
-use super::{CompatibleOpenAIRequestComponent, ComponentDeserializeHelper, Decoded};
 use crate::llm::text::component::{JsonSchema, ResponseFormat};
-use serde::Deserialize;
+use compallm_serde_rules::{deserialize, serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_with::{DeserializeAs, de::DeserializeAsWrap};
 
-impl<'de> Deserialize<'de> for Decoded<ResponseFormat> {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        use serde::de::Error;
-        CompatibleOpenAIResponseFormat::deserialize(deserializer)?
+#[derive(Serialize)]
+#[serde(
+    remote = "ResponseFormat",
+    tag = "type",
+    content = "json_schema",
+    rename_all = "snake_case"
+)]
+pub(crate) enum ResponseFormatWire {
+    Text,
+    JsonObject,
+    JsonSchema(#[serde(with = "JsonSchemaWire")] JsonSchema),
+}
+
+impl<'de> DeserializeAs<'de, ResponseFormat> for ResponseFormatWire {
+    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<ResponseFormat, D::Error> {
+        FormatInput::deserialize(deserializer)?
             .try_into()
-            .map(Self)
-            .map_err(D::Error::custom)
+            .map_err(serde::de::Error::custom)
     }
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct CompatibleOpenAIResponseFormat {
+struct FormatInput {
     #[serde(rename = "type")]
-    kind: String,
-    #[serde(
-        default,
-        deserialize_with = "CompatibleOpenAIRequestComponent::present"
-    )]
-    json_schema: Option<Decoded<JsonSchema>>,
+    kind: FormatKind,
+    #[serde(default, deserialize_with = "deserialize::present")]
+    json_schema: Option<DeserializeAsWrap<JsonSchema, JsonSchemaWire>>,
 }
 
-impl TryFrom<CompatibleOpenAIResponseFormat> for ResponseFormat {
-    type Error = &'static str;
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FormatKind {
+    Text,
+    JsonObject,
+    JsonSchema,
+}
 
-    fn try_from(value: CompatibleOpenAIResponseFormat) -> Result<Self, Self::Error> {
-        match (value.kind.as_str(), value.json_schema) {
-            ("text", None) => Ok(Self::Text),
-            ("json_object", None) => Ok(Self::JsonObject),
-            ("json_schema", Some(Decoded(schema))) => Ok(Self::JsonSchema(schema)),
+impl TryFrom<FormatInput> for ResponseFormat {
+    type Error = &'static str;
+    fn try_from(value: FormatInput) -> Result<Self, Self::Error> {
+        match (value.kind, value.json_schema) {
+            (FormatKind::Text, None) => Ok(Self::Text),
+            (FormatKind::JsonObject, None) => Ok(Self::JsonObject),
+            (FormatKind::JsonSchema, Some(schema)) => Ok(Self::JsonSchema(schema.into_inner())),
             _ => Err("invalid response format"),
         }
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(remote = "JsonSchema", deny_unknown_fields)]
-struct CompatibleOpenAIJsonSchema {
-    #[serde(deserialize_with = "CompatibleOpenAIRequestComponent::nonempty")]
+struct JsonSchemaWire {
+    #[serde(deserialize_with = "deserialize::nonempty")]
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     strict: Option<bool>,
-    #[serde(deserialize_with = "CompatibleOpenAIRequestComponent::schema")]
+    #[serde(
+        deserialize_with = "deserialize::schema",
+        serialize_with = "serialize::serialize_raw"
+    )]
     schema: String,
 }
 
-impl<'de> Deserialize<'de> for Decoded<JsonSchema> {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        CompatibleOpenAIJsonSchema::deserialize(deserializer).map(Self)
+impl<'de> DeserializeAs<'de, JsonSchema> for JsonSchemaWire {
+    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<JsonSchema, D::Error> {
+        Self::deserialize(deserializer)
     }
 }

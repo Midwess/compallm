@@ -18,7 +18,7 @@ pub struct FrontendSettings {
 impl Default for FrontendSettings {
     fn default() -> Self {
         Self {
-            port: 7887,
+            port: 4868,
             managed: true,
             public_origin: String::new(),
         }

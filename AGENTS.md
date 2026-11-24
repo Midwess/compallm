@@ -117,7 +117,7 @@ conventions:
   http-listener:
     owns: API dual-stack binding under api/src/http/listener.rs
     restart: enable address reuse on Unix so recently closed connections do not move the API to another port; never enable port reuse between live listeners
-    fallback: scan upward only for AddrInUse; propagate other socket errors; keep the frontend on its configured strict port (default 7887)
+    fallback: scan upward only for AddrInUse; propagate other socket errors; keep the frontend on its configured strict port (default 4868)
 
   cancellation:
     use: hero::cancellation::CancellationToken and FutureExtension::with_cancel for cancellation and timeouts
@@ -191,7 +191,7 @@ conventions:
 
 `portal` and `libs/storybook` are the official Svelte projects. React references and Genql are removed.
 SvelteKit uses adapter-node SSR. Rust/Axum owns `/api` and streams other requests to Svelte on the API-configured
-strict frontend port (default 7887). Rust remains authoritative for business operations. Server loads use request-local
+strict frontend port (default 4868). Rust remains authoritative for business operations. Server loads use request-local
 fetch/cookies and generated artifacts; never share user state or configure the global browser transport during SSR.
 Create component-local controllers, seed serializable server results before render, and start browser effects on mount.
 

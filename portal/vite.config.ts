@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
     resolve: { dedupe: ['svelte'] },
     optimizeDeps: { exclude: ['@cedar-policy/cedar-wasm'] },
     server: {
-      port: Number(env.FRONTEND_PORT || 7887),
+      port: Number(env.FRONTEND_PORT || 4868),
       strictPort: true,
       proxy: { '/api': { target: env.RUST_API_ORIGIN || 'http://127.0.0.1:3000' } },
       fs: { allow: ['..'] },

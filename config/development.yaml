@@ -1,6 +1,6 @@
 settings:
   frontend:
-    port: <%= get_env(name="FRONTEND_PORT", default="7887") %>
+    port: <%= get_env(name="FRONTEND_PORT", default="4868") %>
     managed: <%= get_env(name="FRONTEND_MANAGED", default="true") %>
     public_origin: "<%= get_env(name="AUTH_PUBLIC_ORIGIN", default="") %>"
   s3:

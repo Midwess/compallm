@@ -4,6 +4,10 @@ Help individuals and teams work, learn, and build with LLMs through an organizat
 
 Compallm combines access to multiple providers, governed API usage, chat, interactive responses, plugins, and knowledge notebooks.
 
+## Database schema viewer
+
+Open [db_scheme/dbml.html](db_scheme/dbml.html) directly in a browser. The file includes the schema, hover explanations, an editor, and HTML/DBML downloads; it needs no local server. The diagram uses dbdiagram and requires internet access. It describes the target provider/model catalog design and does not inspect or modify the running database.
+
 ## Product plan
 
 See the [Compallm Wiki](https://github.com/Midwess/compallm/wiki) and [product overview](https://github.com/Midwess/compallm/wiki/Product-overview) for feature plans. Each feature's architecture page describes its solution and unresolved requirements. Documentation is maintained in the separate Wiki Git repository; this application repository contains no documentation site.
@@ -22,11 +26,26 @@ npm --prefix libs/storybook run build
 npm --prefix portal ci
 npm --prefix portal run build
 docker compose up -d
-FRONTEND_PORT=7888 cargo run -p compallm-api -- start
+cargo run -p compallm-api -- start
 ```
 
-The API configuration owns `settings.frontend.port`, default `7887`, overridden with `FRONTEND_PORT`.
-The existing Compose PostgreSQL mapping also uses `7887`; the example uses `7888` for Svelte so both can run.
+For pnpm, use the root workspace and Node.js 24.13+:
+
+```bash
+pnpm install
+pnpm --dir libs/contract build
+pnpm --dir libs/storybook build
+pnpm --dir portal dev
+```
+
+When running the frontend separately, start Rust in another terminal with
+`FRONTEND_MANAGED=false cargo run -p compallm-api -- start`. Axum forwards to the existing dev server on port 4868.
+
+Running `pnpm install` from Portal also installs the workspace. Its local contract and Storybook packages are linked to
+source directories. Use the root pnpm lockfile; keep package-local npm lockfiles for the npm CI workflow.
+
+The API configuration owns `settings.frontend.port`, default `4868`, overridden with `FRONTEND_PORT`.
+PostgreSQL remains on `7887`; the frontend uses `4868`.
 Axum binds its public port first, passes the actual API origin to Node, starts `portal/build/index.js`, and checks readiness.
 Frontend binding is strict. `FRONTEND_MANAGED=false` connects to an independently supervised loopback Node server on the configured port.
 Set its `RUST_API_ORIGIN` to the internal API address, `HOST=127.0.0.1`, `PORT` to the frontend port,
@@ -38,7 +57,7 @@ Use localhost for development passkeys; 127.0.0.1 is a different WebAuthn domain
 For production set `AUTH_PUBLIC_ORIGIN` to the public HTTPS origin, retain secure cookies, configure the signing and provider secrets,
 and supervise both processes. Deploy the complete `portal/build` output beside the API binary's Portal directory, with its Node runtime dependencies.
 Node is required in production; Vite is build/development tooling. API-managed startup uses the built Node server in both environments.
-Rebuild and restart it after frontend edits. Standalone `npm --prefix portal run dev` offers Vite development on port 7887;
+Rebuild and restart it after frontend edits. Standalone `npm --prefix portal run dev` offers Vite development on port 4868;
 its API target defaults to port 3000 and can be overridden with `RUST_API_ORIGIN`.
 
 Provider creation requires a stable server-only `PROVIDER_CREDENTIAL_SECRET` of at least 32 bytes.

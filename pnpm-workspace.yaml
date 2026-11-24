@@ -1,0 +1,14 @@
+packages:
+  - portal
+  - libs/contract
+  - libs/storybook
+
+overrides:
+  "@compallm/contract": link:./libs/contract
+  "@compallm/storybook": link:./libs/storybook
+
+allowBuilds:
+  "@tsparticles/engine": true
+  esbuild: true
+  houdini-core: true
+  houdini-svelte: true

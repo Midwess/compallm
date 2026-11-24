@@ -1,5 +1,6 @@
 import type { PermissionCheck, PermissionFacts, PermissionStatus } from '@compallm/storybook'
-import type { RoleUpdateInput } from '@compallm/contract/graphql'
+import type { RoleUpdateInput } from '@compallm/contract/houdini'
+
 import type { PolicyProjection } from '@compallm/storybook/pages/settings'
 
 type Projection = { projection: PolicyProjection[]; diagnostics: string[] }

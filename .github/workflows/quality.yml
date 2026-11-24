@@ -88,51 +88,19 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: portal/package-lock.json
+          cache-dependency-path: libs/contract/package-lock.json
       - name: Install shared form dependencies
-        run: npm ci --prefix portal
-      - name: Install Houdini generator dependencies
-        run: npm ci --prefix libs/graphql-svelte
+        run: npm ci --prefix libs/contract
       - name: Regenerate Rust-owned GraphQL and validation contracts
         run: |
           cargo run --locked -p compallm-api -- generate
-          git diff --exit-code -- libs/contract libs/graphql-svelte/.houdini
-          test -z "$(git ls-files --others --exclude-standard -- libs/contract libs/graphql-svelte/.houdini)"
+          git diff --exit-code -- libs/contract
+          test -z "$(git ls-files --others --exclude-standard -- libs/contract)"
       - name: Check shared offline form contracts
         run: node --test test/tests/input_contract.mjs test/tests/provider_form_contract.mjs
 
   portal:
-    name: Frontend checks
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: portal
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: portal/package-lock.json
-      - run: npm ci
-      - name: Install UI library dependencies
-        run: npm ci --prefix ../libs/storybook
-      - name: Lint (including Tailwind), typecheck, and build UI library
-        run: |
-          npm --prefix ../libs/storybook run lint:check
-          npm --prefix ../libs/storybook run check
-          npm --prefix ../libs/storybook run build
-      - run: npm run lint:check
-      - name: Test authentication controller flows
-        run: npm test
-      - name: Typecheck
-        run: npm exec -- tsc -b
-      - name: Build the frontend
-        run: npm exec -- vite build
-
-  svelte:
-    name: Svelte scaffold checks
+    name: Portal and Storybook checks
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -142,36 +110,34 @@ jobs:
           node-version: "24"
       - run: npm ci --prefix libs/contract
       - run: npm --prefix libs/contract run build
-      - run: npm ci --prefix libs/graphql-svelte
-      - run: npm ci --prefix libs/storybook-svelte
-      - run: npm ci --prefix portal-svelte
-      - name: Check and build the parallel Svelte projects
+      - run: npm ci --prefix libs/storybook
+      - run: npm ci --prefix portal
+      - name: Check and build Portal and Storybook
         run: |
-          npm --prefix libs/graphql-svelte run lint:check
-          npm --prefix libs/graphql-svelte run check:coverage
-          npm --prefix libs/storybook-svelte run lint:check
-          npm --prefix libs/storybook-svelte run check
-          npm --prefix libs/storybook-svelte run build
-          npm --prefix libs/storybook-svelte run build:storybook
-          npm --prefix portal-svelte run lint:check
-          npm --prefix portal-svelte run check
-          npm --prefix portal-svelte run build
+          npm --prefix libs/contract run lint:houdini
+          npm --prefix libs/contract run check:houdini
+          npm --prefix libs/storybook run lint:check
+          npm --prefix libs/storybook run check
+          npm --prefix libs/storybook run build
+          npm --prefix libs/storybook run build:storybook
+          npm --prefix portal run lint:check
+          npm --prefix portal run check
+          npm --prefix portal test
+          npm --prefix portal run build
 
   quality:
     name: Quality gate
     if: ${{ always() }}
-    needs: [format, rust, portal, svelte]
+    needs: [format, rust, portal]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       FORMAT_RESULT: ${{ needs.format.result }}
       RUST_RESULT: ${{ needs.rust.result }}
       PORTAL_RESULT: ${{ needs.portal.result }}
-      SVELTE_RESULT: ${{ needs.svelte.result }}
     steps:
       - name: Require every quality check to pass
         run: |
           test "$FORMAT_RESULT" = success
           test "$RUST_RESULT" = success
           test "$PORTAL_RESULT" = success
-          test "$SVELTE_RESULT" = success

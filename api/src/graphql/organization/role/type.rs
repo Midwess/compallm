@@ -22,6 +22,36 @@ impl From<compallm_core::organization::Role> for Role {
 
 #[juniper::graphql_object(context = crate::graphql::GraphqlContext)]
 impl Role {
+    async fn can_read_policy(
+        &self,
+        #[graphql(context)] authority: &crate::http::authorization::AuthorizationContext,
+    ) -> Result<bool, crate::graphql::error::Error> {
+        use compallm_core::authorization::{
+            MemberPermissionError,
+            condition::{CheckPermission, ForAction},
+            policy::Action,
+        };
+        let permission = authority.member_permission().await?;
+        let role = compallm_core::organization::Role {
+            id: self
+                .id
+                .parse()
+                .map_err(|_| crate::graphql::error::Error::invalid_input())?,
+            organization_id: permission.organization_id(),
+            name: self.name.clone(),
+            description: self.description.clone(),
+            cedar_source: String::new(),
+            org_owner: self.owner,
+        };
+        match role
+            .for_action(Action::RolePolicyRead)
+            .check_permission(&permission)
+        {
+            Ok(()) => Ok(true),
+            Err(MemberPermissionError::Denied) => Ok(false),
+            Err(_) => Err(crate::graphql::error::Error::internal()),
+        }
+    }
     /// Native Cedar source; template slots bind to this role and its organization.
     async fn cedar_source(
         &self,

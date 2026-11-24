@@ -1,5 +1,6 @@
-import { createStore, type StoreApi } from 'zustand/vanilla'
-import type { PolicyAction } from '@compallm/contract/graphql'
+import { createStore, type StateStore as StoreApi } from './state.svelte'
+import type { SchemaCacheTypes } from '@compallm/contract/houdini'
+type PolicyAction = { name: SchemaCacheTypes['types']['PolicyAction']['fields']['name']['type'] }
 export type PermissionAction = PolicyAction['name']
 export type PermissionResourceType = 'Organization' | 'Role' | 'Group' | 'Member' | 'Provider' | 'ProviderModel' | 'Model'
 

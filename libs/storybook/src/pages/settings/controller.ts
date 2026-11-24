@@ -1,15 +1,10 @@
-import { useContext } from 'react'
-import { useFormStore } from '../../components/form'
-import { SettingsControllerContext } from '../../context'
 import type { SettingsState } from './types'
 
+import { getSettingsController } from '../../context'
+import { readStore } from '../page-state.svelte'
 export function useSettingsController() {
-  const controller = useContext(SettingsControllerContext)
-  if (!controller) throw new Error('SettingsPage requires SettingsControllerContext.')
-  return controller
+  return getSettingsController()
 }
 export function useSettings<T>(selector: (state: SettingsState) => T, names: readonly string[] = []) {
-  return useFormStore(useSettingsController().store, selector, names)
+  return readStore(useSettingsController().store, selector, names)
 }
-
-export { useCodeAppearance } from './preferences/user/controller'

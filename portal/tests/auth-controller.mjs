@@ -1,315 +1,182 @@
 import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { createServer } from 'vite'
-import { createStore } from 'zustand/vanilla'
-import { createMemoryRouter, redirect } from 'react-router'
+import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-// Load application TypeScript without a browser, listener, or backend process.
 const server = await createServer({
-  root: new URL('..', import.meta.url).pathname,
+  root: fileURLToPath(new URL('..', import.meta.url)),
   configFile: false,
-  server: { middlewareMode: true, hmr: false, watch: null },
+  plugins: [svelte({ configFile: false, compilerOptions: { experimental: { async: true } } })],
+  cacheDir: join(tmpdir(), 'compallm-svelte-controller-tests'),
+  server: { middlewareMode: true, hmr: false, ws: false, watch: null },
   appType: 'custom',
-  ssr: { noExternal: ['@compallm/storybook'] },
+  resolve: {
+    alias: { $houdini: fileURLToPath(new URL('../../libs/contract/houdini/generated', import.meta.url)) },
+    dedupe: ['svelte'],
+  },
+  ssr: { noExternal: ['@compallm/storybook', '@compallm/contract'] },
 })
 after(() => server.close())
 const { AuthController } = await server.ssrLoadModule('/src/auth/controller.ts')
+const { GraphqlClient } = await server.ssrLoadModule('/src/graphql-client.ts')
 const { UrlController } = await server.ssrLoadModule('/src/url/controller.ts')
-
-function urlController() {
-  const store = createStore(() => ({ pathname: '/signup', search: '', hash: '' }))
-  const destinations = []
-  return {
-    store,
-    destinations,
-    navigate(href) {
-      destinations.push(href)
-      const url = new URL(href, 'http://localhost')
-      store.setState({ pathname: url.pathname, search: url.search, hash: url.hash })
-    },
-  }
-}
-function until(store, predicate) {
-  if (predicate(store.getState())) return Promise.resolve()
-  return new Promise((resolve) => {
-    const unsubscribe = store.subscribe((state) => {
-      if (predicate(state)) {
-        unsubscribe()
-        resolve()
-      }
-    })
-  })
-}
+const { configureTransport } = await server.ssrLoadModule(
+  new URL('../../libs/contract/houdini/client.ts', import.meta.url).pathname,
+)
 const user = {
   id: '9007199254740995',
   userId: '9007199254740997',
   organizationId: '9007199254740999',
-  organizationName: 'Personal',
+  organizationName: 'Research team',
+  avatarUrl: null,
+  ipAddress: null,
+  userAgent: null,
+  signedInAt: '0',
+  lastSeenAt: '0',
 }
 const reply = (data) => Response.json({ data })
-
-test('startup retry recovers a failed deep link and rechecks anonymous access', { timeout: 10000 }, async () => {
-  const originalFetch = globalThis.fetch
+const unavailable = () =>
+  Response.json({
+    data: null,
+    errors: [{ message: 'Temporarily unavailable', extensions: { code: 'UNAVAILABLE', status: 503 } }],
+  })
+function fixture(send, path = '/login') {
   const originalWindow = globalThis.window
-  try {
-    for (const authenticated of [true, false]) {
-      const href = 'http://localhost/Research/chat?view=recent#message'
-      globalThis.window = { location: new URL(href) }
-      const url = new UrlController()
-      let retry
-      const app = {
-        beginLoading: () => ({
-          complete() {},
-          cancel() {},
-          fail(_error, action) {
-            retry = action
-          },
-        }),
-      }
-      const controller = new AuthController(url, app, url.retryFailedRoute)
-      let attempts = 0
-      globalThis.fetch = async () => {
-        attempts++
-        if (attempts === 1) throw new TypeError('Network unavailable')
-        return reply({ session: { node: authenticated ? user : null } })
-      }
-      const router = createMemoryRouter(
-        [
-          {
-            path: '/Research/chat',
-            loader: async () => {
-              const currentUser = await controller.ensureCurrentUser()
-              return currentUser ? currentUser : redirect('/login')
+  globalThis.window = { location: new URL('http://localhost' + path) }
+  const url = new UrlController()
+  url.synchronize(globalThis.window.location)
+  const destinations = []
+  url.connect(async (href) => {
+    destinations.push(href)
+    url.synchronize(new URL(href, 'http://localhost'))
+  })
+  const client = new GraphqlClient(async (_input, init) => send(JSON.parse(init.body), init.signal))
+  const release = configureTransport(client.request)
+  const controller = new AuthController(url, client)
+  return {
+    controller,
+    client,
+    destinations,
+    close() {
+      controller.dispose()
+      release()
+      globalThis.window = originalWindow
+    },
+  }
+}
+
+test('confirmation retry restores identity without replaying an accepted or uncertain write', async () => {
+  for (const uncertain of [false, true]) {
+    let confirmations = 0,
+      identityReads = 0
+    let profileEmail = uncertain ? 'someone-else@example.com' : 'alex@example.com'
+    const app = fixture((operation) => {
+      if (operation.operationName === 'AuthEmailSigninConfirm2') {
+        confirmations++
+        if (uncertain) throw new TypeError('Connection lost after commit')
+        return reply({
+          emailSigninConfirm: {
+            __typename: 'SessionCredentialsPayload',
+            node: {
+              __typename: 'SessionCredentials',
+              accessLifetime: { __typename: 'TokenLifetime', expiresInSeconds: '600' },
             },
-            shouldRevalidate: () => false,
           },
-          { path: '/login' },
-        ],
-        { initialEntries: ['/Research/chat?view=recent#message'] },
-      )
-      const disconnect = url.connect(router)
-      try {
-        await until(
-          { getState: () => router.state, subscribe: router.subscribe },
-          (state) => state.initialized && state.navigation.state === 'idle',
-        )
-        assert.ok(router.state.errors)
-        await retry()
-        assert.equal(router.state.errors, null)
-        if (authenticated) {
-          assert.equal(router.state.location.pathname, '/Research/chat')
-          assert.equal(router.state.location.search, '?view=recent')
-          assert.equal(router.state.location.hash, '#message')
-        } else assert.equal(router.state.location.pathname, '/login')
-        assert.equal(attempts, 2)
-      } finally {
-        disconnect()
-        router.dispose()
-        controller.stop()
-      }
-    }
-  } finally {
-    globalThis.fetch = originalFetch
-    if (originalWindow === undefined) delete globalThis.window
-    else globalThis.window = originalWindow
-  }
-})
-
-test('invalid authorization clears in-memory identity and returns to sign in', () => {
-  const url = urlController()
-  const controller = new AuthController(url)
-  controller.store.setState({ currentUser: user, status: 'authenticated' })
-  controller.invalidAuthorization()
-  assert.equal(controller.store.getState().currentUser, null)
-  assert.equal(controller.store.getState().status, 'anonymous')
-  assert.equal(url.destinations.at(-1), '/login')
-})
-
-test('confirmed signup retries only identity loading after a temporary failure', { timeout: 10000 }, async () => {
-  const original = globalThis.fetch
-  const url = urlController()
-  const controller = new AuthController(url)
-  let confirmations = 0
-  let identities = 0
-  globalThis.fetch = async (_input, init) => {
-    const { query } = JSON.parse(init.body)
-    assert.equal(init.credentials, 'same-origin')
-    if (query.includes('emailSignupRequest'))
-      return reply({
-        emailSignupRequest: { node: { lifetime: { expiresInSeconds: '600', throttleSeconds: '30' } } },
-      })
-    if (query.includes('emailSignupConfirm')) {
-      confirmations++
-      return reply({ emailSignupConfirm: { node: { accessLifetime: { expiresInSeconds: '60' } } } })
-    }
-    identities++
-    return identities === 1
-      ? Response.json(
-          { errors: [{ message: 'Temporarily unavailable', extensions: { code: 'SERVICE_UNAVAILABLE', status: 503 } }] },
-          { status: 200 },
-        )
-      : reply({ session: { node: user } })
-  }
-  try {
-    controller.start('signup')
-    await controller.requestCode('reader@example.com')
-    assert.ok(controller.store.getState().remaining > 0)
-    await controller.verifyCode('123456')
-    await until(controller.store, (state) => state.pending === null && state.status === 'error')
-    assert.equal(confirmations, 1)
-    await controller.retry()
-    assert.equal(confirmations, 1)
-    assert.equal(identities, 2)
-    assert.deepEqual(controller.store.getState().currentUser, user)
-    assert.equal(controller.store.getState().step, 'complete')
-    assert.equal(url.destinations.at(-1), '/security')
-    assert.equal(controller.securityOfferSession, user.id)
-  } finally {
-    controller.stop()
-    globalThis.fetch = original
-  }
-})
-
-test('signout cancels deduplicated identity checks and ignores their late results', { timeout: 10000 }, async () => {
-  const original = globalThis.fetch
-  const controller = new AuthController(urlController())
-  let resolveIdentity
-  let queries = 0
-  globalThis.fetch = async (_input, init) => {
-    const { query } = JSON.parse(init.body)
-    if (query.includes('sessionRevoke')) return reply({ sessionRevoke: { node: true } })
-    queries++
-    return new Promise((resolve) => {
-      resolveIdentity = resolve
-    })
-  }
-  try {
-    const first = controller.ensureCurrentUser().catch((error) => error)
-    const second = controller.ensureCurrentUser().catch((error) => error)
-    assert.equal(queries, 1)
-    await controller.signOut()
-    resolveIdentity(reply({ session: { node: user } }))
-    await Promise.all([first, second])
-    assert.equal(controller.store.getState().currentUser, null)
-    assert.equal(controller.store.getState().status, 'anonymous')
-  } finally {
-    controller.stop()
-    globalThis.fetch = original
-  }
-})
-
-test(
-  'discoverable login starts without email and the email alternative waits for an explicit address',
-  { timeout: 10000 },
-  async () => {
-    const originalFetch = globalThis.fetch
-    const controller = new AuthController(urlController())
-    let sent = 0,
-      started = 0
-    globalThis.fetch = async (_url, init) => {
-      const { query, variables } = JSON.parse(init.body)
-      if (query.includes('passkeyAuthenticationStart')) {
-        started++
-        assert.ok(!query.includes('email:'))
-        assert.ok(!JSON.stringify(variables ?? {}).includes('@'))
-        return Response.json({
-          errors: [{ message: 'Passkey unavailable', extensions: { code: 'PASSKEY_UNAVAILABLE', status: 503 } }],
         })
       }
-      if (query.includes('emailSigninRequest')) {
-        sent++
-        return reply({ emailSigninRequest: { node: { lifetime: { expiresInSeconds: '600', throttleSeconds: '30' } } } })
-      }
-      throw new Error('Unexpected request')
-    }
+      if (operation.operationName === 'AuthSession2')
+        return ++identityReads === 1 ? unavailable() : reply({ session: { node: user } })
+      if (operation.operationName === 'AuthUserProfile') return reply({ userProfile: { node: { email: profileEmail } } })
+      throw new Error('Unexpected operation')
+    }, '/login/confirmation?email=alex%40example.com')
     try {
-      controller.start('signin')
-      assert.equal(controller.store.getState().step, 'choose')
-      await controller.verifyPasskey()
-      assert.equal(started, 1)
-      assert.equal(sent, 0)
-      await controller.useEmailCode()
-      assert.equal(controller.store.getState().step, 'email')
-      assert.equal(sent, 0)
-      await controller.requestCode('reader@example.com')
-      assert.equal(controller.store.getState().step, 'code')
-      assert.equal(sent, 1)
+      app.controller.start('signin')
+      app.controller.form.set('code', '123456')
+      await app.controller.verifyCode('123456')
+      assert.equal(app.controller.store.getState().step, 'code')
+      assert.equal(app.controller.form.get('code'), '123456')
+      await app.controller.retry()
+      if (uncertain) {
+        await app.controller.retry()
+        assert.equal(app.controller.store.getState().currentUser, null)
+        assert.equal(app.controller.store.getState().step, 'code')
+        profileEmail = 'alex@example.com'
+        await app.controller.retry()
+      }
+      assert.equal(confirmations, 1)
+      assert.equal(app.controller.store.getState().currentUser.id, user.id)
+      assert.equal(app.controller.store.getState().step, 'complete')
+      assert.equal(app.destinations.at(-1), '/Research%20team')
+      assert.equal(app.client.activity.getState().pending, 0)
     } finally {
-      controller.stop()
-      globalThis.fetch = originalFetch
+      app.close()
     }
-  },
-)
-
-test('the optional security route is offered once and reload skips to the workspace', async (t) => {
-  const { loader } = await server.ssrLoadModule('/src/routes/security.tsx')
-  const { authController } = await server.ssrLoadModule('/src/auth/controller.ts')
-  t.mock.method(authController, 'ensureCurrentUser', async () => user)
-  authController.securityOfferSession = user.id
-  assert.equal(await loader(), null)
-  const next = await loader()
-  assert.equal(next.headers.get('Location'), '/Personal')
-  authController.securityOfferSession = undefined
-  const reload = await loader()
-  assert.equal(reload.headers.get('Location'), '/Personal')
+  }
 })
 
-test('sensitive verification preserves identity and uses purpose without navigation', async (t) => {
-  const url = urlController()
-  const controller = new AuthController(url)
-  controller.store.setState({ currentUser: user, status: 'authenticated' })
-  t.after(controller.stop)
-  const writes = []
-  t.mock.method(globalThis, 'fetch', async (_url, init) => {
-    const { query, variables } = JSON.parse(init.body)
-    if (query.includes('userProfile')) return reply({ userProfile: { node: { email: 'owner@example.com' } } })
-    const input = Object.values(variables).find((value) => value?.purpose)
-    assert.equal(input.purpose, 'PASSKEY_CHANGE')
-    writes.push(query.includes('emailSigninRequest') ? 'request' : 'confirm')
-    if (query.includes('emailSigninRequest'))
+test('signout retains identity on rejection and cannot be undone by an older session read', async () => {
+  let identityReads = 0,
+    failRevoke = true,
+    releaseIdentity
+  const app = fixture((operation) => {
+    if (operation.operationName === 'AuthSession2') {
+      if (++identityReads === 2)
+        return new Promise((resolve) => {
+          releaseIdentity = () => resolve(reply({ session: { node: user } }))
+        })
+      return reply({ session: { node: user } })
+    }
+    if (operation.operationName === 'AuthSessionRevoke')
+      return failRevoke ? unavailable() : reply({ sessionRevoke: { __typename: 'BooleanPayload', node: true } })
+    throw new Error('Unexpected operation')
+  })
+  try {
+    await app.controller.refreshCurrentUser()
+    await app.controller.signOut()
+    assert.equal(app.controller.store.getState().currentUser.id, user.id)
+    assert.equal(app.controller.store.getState().status, 'authenticated')
+    const pending = app.controller.refreshCurrentUser().catch((error) => error)
+    while (!releaseIdentity) await new Promise((resolve) => setImmediate(resolve))
+    failRevoke = false
+    await app.controller.signOut()
+    releaseIdentity()
+    assert.equal((await pending).name, 'AbortError')
+    assert.equal(app.controller.store.getState().currentUser, null)
+    assert.equal(app.controller.store.getState().status, 'anonymous')
+    assert.equal(app.destinations.at(-1), '/login')
+  } finally {
+    app.close()
+  }
+})
+
+test('confirmation restoration preserves the OTP challenge without a user-session probe', async () => {
+  const operations = []
+  const app = fixture((operation) => {
+    operations.push(operation.operationName)
+    if (operation.operationName === 'AuthEmailSigninConfirm2')
       return reply({
-        emailSigninRequest: {
+        emailSigninConfirm: {
+          __typename: 'SessionCredentialsPayload',
           node: {
-            lifetime: { expiresInSeconds: '180', throttleSeconds: '0' },
+            __typename: 'SessionCredentials',
+            accessLifetime: { __typename: 'TokenLifetime', expiresInSeconds: '600' },
           },
         },
       })
-    return reply({ emailSigninConfirm: { node: { purpose: 'PASSKEY_CHANGE' } } })
-  })
-  const result = controller.requestVerification()
-  await controller.useEmailCode()
-  await controller.requestCode('')
-  assert.equal(controller.store.getState().step, 'code')
-  await controller.verifyCode('123456')
-  assert.equal(await result, true)
-  assert.equal(controller.store.getState().verificationActive, false)
-  assert.equal(controller.store.getState().currentUser, user)
-  assert.equal(controller.store.getState().lastLoginMethod, 'email')
-  assert.deepEqual(url.destinations, [])
-  assert.deepEqual(writes, ['request', 'confirm'])
-})
-
-test('cancelling sensitive verification ignores late results and preserves identity', async (t) => {
-  const controller = new AuthController(urlController())
-  controller.store.setState({ currentUser: user, status: 'authenticated' })
-  t.after(controller.stop)
-  let resolve
-  t.mock.method(
-    globalThis,
-    'fetch',
-    () =>
-      new Promise((done) => {
-        resolve = done
-      }),
-  )
-  const result = controller.requestVerification()
-  await controller.useEmailCode()
-  const request = controller.requestCode('')
-  controller.cancelVerification()
-  resolve(reply({ userProfile: { node: { email: 'owner@example.com' } } }))
-  await request
-  assert.equal(await result, false)
-  assert.equal(controller.store.getState().verificationActive, false)
-  assert.equal(controller.store.getState().currentUser, user)
-  assert.equal(controller.store.getState().step, 'choose')
+    if (operation.operationName === 'AuthSession2') return reply({ session: { node: user } })
+    throw new Error('Unexpected operation')
+  }, '/login/confirmation?email=alex%40example.com')
+  try {
+    app.controller.start('signin')
+    assert.equal(await app.controller.ensureGuestAccess(), null)
+    assert.deepEqual(operations, [])
+    await app.controller.verifyCode('123456')
+    assert.deepEqual(operations, ['AuthEmailSigninConfirm2', 'AuthSession2'])
+    assert.equal(app.controller.store.getState().currentUser.id, user.id)
+  } finally {
+    app.close()
+  }
 })

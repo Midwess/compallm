@@ -1,5 +1,5 @@
-import type { StoreApi } from 'zustand/vanilla'
-import type { PasskeySummary } from '@compallm/contract/graphql'
+import type { StateStore } from '../../state.svelte'
+import type { PasskeySummary } from '../api-types'
 export interface PasskeyState {
   loaded?: boolean
   records: Pick<PasskeySummary, 'id' | 'name' | 'registeredAt' | 'lastUsedAt'>[]
@@ -14,7 +14,7 @@ export interface PasskeyState {
   emailSent: boolean
 }
 export interface PasskeyController {
-  store: StoreApi<PasskeyState>
+  store: StateStore<PasskeyState>
   load(): Promise<void>
   openAdd(): void
   openRemove(id: string): void

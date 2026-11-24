@@ -1,0 +1,5 @@
+export { default as SettingsPageTitle } from './SettingsPageTitle.svelte'
+export { default as SettingsSectionHeader } from './SettingsSectionHeader.svelte'
+export { default as SettingsSectionTitle } from './SettingsSectionTitle.svelte'
+export { default as SettingsSectionDescription } from './SettingsSectionDescription.svelte'
+export { default as SettingsDivider } from './SettingsDivider.svelte'

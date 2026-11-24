@@ -1,155 +1,116 @@
 {
   "name": "@compallm/storybook",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
-  "license": "Elastic-2.0",
-  "engines": {
-    "node": ">=22.12.0"
-  },
   "scripts": {
-    "dev": "storybook dev --port 6006 --host 127.0.0.1 --exact-port --no-open --disable-telemetry",
-    "start": "storybook dev --port 6006 --host 127.0.0.1 --exact-port --no-open --disable-telemetry",
-    "build": "vite build --config vite.library.config.ts && tsc -p tsconfig.build.json && node scripts/finish-build.mjs",
-    "build:storybook": "storybook build --disable-telemetry && vite build --config vite.pages.config.ts && node scripts/finish-pages.mjs",
-    "check": "tsc --noEmit",
-    "lint": "prettier . --write && eslint . --fix",
-    "lint:check": "eslint . && prettier . --check && npm run lint:tailwind",
-    "lint:tailwind": "node scripts/tailwind-lint.mjs",
-    "prepack": "npm run build",
-    "postinstall": "npm --prefix ../contract ci --ignore-scripts && npm --prefix ../contract run build"
-  },
-  "dependencies": {
-    "@base-ui/react": "^1.9.0",
-    "@compallm/contract": "file:../contract",
-    "@fontsource-variable/inter": "^5.3.0",
-    "@fontsource/jetbrains-mono": "^5.3.0",
-    "@hookform/resolvers": "^7.0.6",
-    "@paper-design/shaders-react": "^0.0.82",
-    "@phosphor-icons/react": "2.1.10",
-    "@radix-ui/themes": "^3.3.0",
-    "@tsparticles/confetti": "^4.6.0",
-    "bowser": "^2.15.0",
-    "dompurify": "^3.4.17",
-    "lodash-es": "^4.18.1",
-    "motion": "^14.12.0",
-    "ogl": "^1.0.11",
-    "react-hook-form": "^7.92.0",
-    "scheduler-polyfill": "1.3.0",
-    "shiki": "^4.6.0",
-    "tailwind-merge": "^3.7.0",
-    "use-sync-external-store": "^1.7.0",
-    "zustand": "^5.0.16"
-  },
-  "devDependencies": {
-    "@cedar-policy/cedar-wasm": "4.14.0",
-    "@eslint/js": "^9",
-    "@playwright/test": "^1.64.1",
-    "@storybook/addon-a11y": "10.6.4",
-    "@storybook/addon-docs": "10.6.4",
-    "@storybook/addon-mcp": "10.6.4",
-    "@storybook/react-vite": "10.6.4",
-    "@tailwindcss/language-server": "0.16.0",
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/lodash-es": "^4.17.12",
-    "@types/node": "24.19.2",
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
-    "@types/use-sync-external-store": "^1.7.0",
-    "@vitejs/plugin-react": "6.1.2",
-    "eslint": "^9",
-    "eslint-plugin-react-hooks": "^7",
-    "globals": "^16",
-    "prettier": "^3",
-    "react": "19.3.1",
-    "react-dom": "19.3.1",
-    "storybook": "10.6.4",
-    "tailwindcss": "^4.3.3",
-    "typescript": "6.0.3",
-    "typescript-eslint": "^8",
-    "vite": "8.3.4"
-  },
-  "description": "Compallm React components and pages, designed and previewed in Storybook",
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE",
-    "LICENSE-spinkit"
-  ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "sideEffects": [
-    "**/*.css"
-  ],
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "dev": "storybook dev --port 6007 --host 127.0.0.1 --exact-port --no-open --disable-telemetry",
+    "start": "npm run dev",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "lint:check": "npm run lint && npm run format:check",
+    "build": "svelte-package -i src && vite build",
+    "build:storybook": "storybook build --disable-telemetry",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix --max-warnings 0 && npm run format",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
   },
   "exports": {
     ".": {
-      "compallm-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "svelte": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./theme.css": "./src/styles/theme.css",
+    "./foundations.css": "./src/styles/foundations.css",
+    "./context": {
+      "types": "./dist/context.d.ts",
+      "svelte": "./src/context.ts",
+      "default": "./dist/context.js"
     },
     "./components/*": {
-      "compallm-source": "./src/components/*.tsx",
       "types": "./dist/components/*.d.ts",
-      "import": "./dist/components/*.js"
+      "svelte": "./src/components/*.ts",
+      "default": "./dist/components/*.js"
     },
-    "./styles.css": {
-      "compallm-source": "./src/styles/tailwind.css",
-      "default": "./dist/styles.css"
+    "./pages/*": {
+      "types": "./dist/pages/*/index.d.ts",
+      "svelte": "./src/pages/*/index.ts",
+      "default": "./dist/pages/*/index.js"
     },
-    "./theme.css": {
-      "compallm-source": "./src/styles/theme.css",
-      "default": "./dist/theme.css"
+    "./pages/auth/model": {
+      "types": "./dist/pages/auth/store.d.ts",
+      "svelte": "./src/pages/auth/store.ts",
+      "default": "./dist/pages/auth/store.js"
     },
-    "./package.json": "./package.json",
-    "./pages/signup": {
-      "compallm-source": "./src/pages/signup/index.tsx",
-      "types": "./dist/pages/signup/index.d.ts",
-      "import": "./dist/pages/signup.js"
+    "./state": {
+      "types": "./dist/state.svelte.d.ts",
+      "svelte": "./src/state.svelte.ts",
+      "default": "./dist/state.svelte.js"
     },
-    "./pages/signin": {
-      "compallm-source": "./src/pages/signin/index.tsx",
-      "types": "./dist/pages/signin/index.d.ts",
-      "import": "./dist/pages/signin.js"
-    },
-    "./context": {
-      "compallm-source": "./src/context.ts",
-      "types": "./dist/context.d.ts",
-      "import": "./dist/context.js"
-    },
-    "./pages/main": {
-      "compallm-source": "./src/pages/main/index.tsx",
-      "types": "./dist/pages/main/index.d.ts",
-      "import": "./dist/pages/main.js"
-    },
-    "./pages/settings": {
-      "compallm-source": "./src/pages/settings/index.tsx",
-      "types": "./dist/pages/settings/index.d.ts",
-      "import": "./dist/pages/settings.js"
-    },
-    "./pages/organization": {
-      "compallm-source": "./src/pages/organization/index.tsx",
-      "types": "./dist/pages/organization/index.d.ts",
-      "import": "./dist/pages/organization.js"
-    },
-    "./pages/organization/chat": {
-      "compallm-source": "./src/pages/organization/chat/index.tsx",
-      "types": "./dist/pages/organization/chat/index.d.ts",
-      "import": "./dist/pages/organization/chat.js"
-    },
-    "./pages/organization/create-provider": {
-      "compallm-source": "./src/pages/organization/create-provider/index.tsx",
-      "types": "./dist/pages/organization/create-provider/index.d.ts",
-      "import": "./dist/pages/organization/create-provider.js"
-    },
-    "./pages/onboarding": {
-      "compallm-source": "./src/pages/onboarding/index.tsx",
-      "types": "./dist/pages/onboarding/index.d.ts",
-      "import": "./dist/pages/onboarding.js"
+    "./pages/invitation": {
+      "types": "./dist/pages/invitation.d.ts",
+      "svelte": "./src/pages/invitation.ts",
+      "default": "./dist/pages/invitation.js"
     }
   },
-  "packageManager": "pnpm@11.11.0+sha512.4463f65fd80ed80d69bc1d4bf163ee94f605c7380fc318bb5b2ebe15f8cd12d49c51a4d59e951b401e764d3b6ca751cbf51bc50ed7001a6bcb4935e684c34882"
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "LICENSE-spinkit"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "dependencies": {
+    "@compallm/contract": "file:../contract",
+    "@fontsource-variable/inter": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@paper-design/shaders": "0.0.82",
+    "@tsparticles/confetti": "3.9.1",
+    "bits-ui": "2.22.0",
+    "bowser": "2.13.1",
+    "clsx": "2.1.1",
+    "dompurify": "3.4.17",
+    "lodash-es": "4.18.1",
+    "motion": "14.12.0",
+    "ogl": "1.0.11",
+    "phosphor-svelte": "3.1.1",
+    "scheduler-polyfill": "1.3.0",
+    "shiki": "4.6.0",
+    "tailwind-merge": "3.7.0"
+  },
+  "peerDependencies": {
+    "svelte": "^5.59.1"
+  },
+  "devDependencies": {
+    "@cedar-policy/cedar-wasm": "4.14.0",
+    "@eslint/js": "9.39.2",
+    "@storybook/addon-a11y": "10.6.8",
+    "@storybook/addon-docs": "10.6.8",
+    "@storybook/svelte-vite": "10.6.8",
+    "@sveltejs/package": "3.0.3",
+    "@sveltejs/vite-plugin-svelte": "7.0.0",
+    "@tailwindcss/vite": "4.3.4",
+    "@types/lodash-es": "4.17.12",
+    "eslint": "9.39.2",
+    "eslint-plugin-svelte": "3.24.1",
+    "globals": "17.14.0",
+    "prettier": "3.9.0",
+    "prettier-plugin-svelte": "4.2.0",
+    "storybook": "10.6.8",
+    "svelte": "5.59.1",
+    "svelte-check": "4.7.8",
+    "tailwindcss": "4.3.4",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.73.0",
+    "vite": "8.3.4"
+  },
+  "engines": {
+    "node": ">=24.13"
+  },
+  "license": "Elastic-2.0",
+  "description": "Compallm Svelte components and pages, designed and previewed in Storybook"
 }

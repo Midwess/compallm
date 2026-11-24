@@ -1,3 +1,4 @@
+import { cloneFormValue } from '@compallm/storybook'
 import type {
   ModelDraft,
   ProviderModel,
@@ -119,7 +120,7 @@ export function modelDraft(value: ModelDetail, global?: ModelDetail | null): Mod
     inputPriceEnabled: value.inputPrice !== null,
     outputPriceEnabled: value.outputPrice !== null,
     cachedPriceEnabled: value.cachedPrice !== null,
-    templatePrices: {
+    catalogPrices: {
       inputPrice: value.inputPrice ?? '',
       outputPrice: value.outputPrice ?? '',
       cachedPrice: value.cachedPrice ?? '',
@@ -130,7 +131,7 @@ export function modelDraft(value: ModelDetail, global?: ModelDetail | null): Mod
   const defaults = global ? modelDraft(global) : undefined
   if (defaults) {
     draft.providerContextTokens = defaults.maxContextTokens
-    draft.templatePrices = {
+    draft.catalogPrices = {
       inputPrice: defaults.inputPrice,
       outputPrice: defaults.outputPrice,
       cachedPrice: defaults.cachedPrice,
@@ -145,5 +146,5 @@ export function modelDraft(value: ModelDetail, global?: ModelDetail | null): Mod
     'cachedPriceEnabled',
   ] as const)
     draft[field] = value.customFields.includes(field)
-  return { ...draft, defaults: structuredClone(defaults ?? draft) }
+  return { ...draft, defaults: cloneFormValue(defaults ?? draft) }
 }

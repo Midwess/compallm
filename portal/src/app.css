@@ -1,0 +1,5 @@
+@import 'tailwindcss' source(none);
+@import '@compallm/storybook/foundations.css';
+@source './';
+@source '../../libs/storybook/src/components';
+@source '../../libs/storybook/src/pages';

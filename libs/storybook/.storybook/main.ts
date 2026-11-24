@@ -1,49 +1,22 @@
+import graphql from '@compallm/contract/houdini/vite'
 import { fileURLToPath } from 'node:url'
-import { readFile } from 'node:fs/promises'
-import type { StorybookConfig } from '@storybook/react-vite'
-import type { Plugin } from 'vite'
+import type { StorybookConfig } from '@storybook/svelte-vite'
 import tailwindcss from '@tailwindcss/vite'
-
-const workspace = fileURLToPath(new URL('..', import.meta.url))
-
 const config: StorybookConfig = {
-  stories: ['../stories/**/*.stories.@(ts|tsx)'],
-  framework: '@storybook/react-vite',
-  staticDirs: [{ from: '../../../portal/public/assets/providers', to: '/assets/providers' }],
-  addons: ['@storybook/addon-docs', '@storybook/addon-a11y', '@storybook/addon-mcp'],
+  stories: ['../stories/**/*.stories.ts'],
+  framework: '@storybook/svelte-vite',
+  staticDirs: [{ from: '../../../portal/static/assets/providers', to: '/assets/providers' }],
+  addons: ['@storybook/addon-docs', '@storybook/addon-a11y'],
   core: { disableTelemetry: true },
-  features: { componentsManifest: true },
   async viteFinal(config) {
-    // The library preview has no dependency on the portal application.
     const { mergeConfig } = await import('vite')
     return mergeConfig(config, {
-      plugins: [
-        tailwindcss(),
-        {
-          name: 'route-page-previews',
-          configureServer(server) {
-            server.middlewares.use(async (request, response, next) => {
-              const pathname = new URL(request.url ?? '/', 'http://localhost').pathname.replace(/\/$/, '')
-              if (pathname !== '/signup' && pathname !== '/signin') return next()
-              try {
-                const source = await readFile(new URL('../route-preview.html', import.meta.url), 'utf8')
-                const html = await server.transformIndexHtml(pathname, source)
-                response.setHeader('Content-Type', 'text/html')
-                response.end(html)
-              } catch (error) {
-                next(error)
-              }
-            })
-          },
-        } satisfies Plugin,
-      ],
+      plugins: [graphql(), tailwindcss()],
       resolve: {
-        dedupe: ['react', 'react-dom'],
+        alias: { $houdini: fileURLToPath(new URL('../../contract/houdini/generated', import.meta.url)) },
+        dedupe: ['svelte'],
       },
-      optimizeDeps: { exclude: ['@compallm/contract'] },
-      server: { fs: { allow: [workspace, fileURLToPath(new URL('../../contract', import.meta.url))] } },
     })
   },
 }
-
 export default config

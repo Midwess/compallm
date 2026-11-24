@@ -1,11 +1,11 @@
+import type { ProviderCatalog } from '../../api-types'
 import type {
-  ProviderTemplate,
-  ProviderApiProtocol,
-  TextModelProtocol as ContractTextModelProtocol,
-  ProviderModelCapability,
+  ProviderApiProtocol$options as ProviderApiProtocol,
+  TextModelProtocol$options as ContractTextModelProtocol,
+  ProviderModelCapability$options as ProviderModelCapability,
   ProviderEffortMapping,
   ProviderCatalogRef,
-} from '@compallm/contract/graphql'
+} from '@compallm/contract/houdini'
 import type { NavigationRequest } from '../../../url'
 import type { FormStore } from '../../../components/form'
 
@@ -21,10 +21,10 @@ export interface HeaderEntry {
 }
 export type EffortMapping = Partial<Record<keyof ProviderEffortMapping, string>>
 export type ThinkingLevel = keyof EffortMapping
-export type ProviderPreset = Pick<ProviderTemplate, 'id' | 'name'> & {
+export type ProviderPreset = Pick<ProviderCatalog, 'id' | 'name'> & {
   protocol?: ApiProtocol
-  baseUrl?: ProviderTemplate['baseUrl']
-  logoPath?: NonNullable<ProviderTemplate['logoUrl']>
+  baseUrl?: ProviderCatalog['baseUrl']
+  logoPath?: NonNullable<ProviderCatalog['logoUrl']>
 }
 export interface ModelDraft {
   origin?: 'GLOBAL' | 'OVERRIDE' | 'CUSTOM'
@@ -55,7 +55,7 @@ export interface ModelDraft {
   inputPriceEnabled?: boolean
   outputPriceEnabled?: boolean
   cachedPriceEnabled?: boolean
-  templatePrices?: Pick<ModelDraft, 'inputPrice' | 'outputPrice' | 'cachedPrice'>
+  catalogPrices?: Pick<ModelDraft, 'inputPrice' | 'outputPrice' | 'cachedPrice'>
   defaults?: Omit<ModelDraft, 'defaults'>
 }
 export interface ProviderModel extends ModelDraft {
@@ -127,6 +127,8 @@ export interface CreateProviderController {
   onProviderSearch?(): void
   onLoadMoreProviders?(): void
   onRetryCatalog?(): void
+  providerHref?(id: string): string
+  modelHref?(id: string): string
   onSelectProvider(id: string): void
   onUseCustomProvider(): void
   onChooseProvider(): void

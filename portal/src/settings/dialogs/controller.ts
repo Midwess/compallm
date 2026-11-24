@@ -1,10 +1,21 @@
+import { SettingsDialogsGroupDeleteStore, SettingsDialogsRoleDeleteStore } from '@compallm/contract/houdini'
 import type { SettingsDialog, SettingsDialogKind, SettingsState } from '@compallm/storybook/pages/settings'
-import type { MutationGenqlSelection } from '@compallm/contract/graphql'
-import type { StoreApi } from 'zustand/vanilla'
-import { graphql } from '../../graphql-client'
+
+import type { StateStore as StoreApi } from '@compallm/storybook/state'
+import { graphqlClient, requireData } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 
 export class DialogsController {
+  private scope?: AbortController
+  start = () => {
+    this.scope?.abort()
+    const scope = new AbortController()
+    this.scope = scope
+    return () => {
+      scope.abort()
+      if (this.scope === scope) this.scope = undefined
+    }
+  }
   private readonly store: StoreApi<SettingsState>
   private readonly roleDeleted: (id: string) => void
   private readonly revokeOtherSessions?: () => Promise<void>
@@ -28,13 +39,19 @@ export class DialogsController {
     if (!this.store.getState().busy) this.store.setState({ dialog: null })
   }
   confirmDialog = (dialog: SettingsDialog) => {
+    const scope = this.scope
+    if (!scope || scope.signal.aborted) return
     if (dialog.kind === 'revoke-sessions') {
       if (this.store.getState().busy || this.store.getState().dialog !== dialog || !this.revokeOtherSessions) return
       this.store.setState({ busy: true })
       void this.revokeOtherSessions()
-        .then(() => this.store.setState({ dialog: null }))
+        .then(() => {
+          if (!scope.signal.aborted) this.store.setState({ dialog: null })
+        })
         .catch(notify.error)
-        .finally(() => this.store.setState({ busy: false }))
+        .finally(() => {
+          if (!scope.signal.aborted) this.store.setState({ busy: false })
+        })
       return
     }
     const { busy, dialog: activeDialog } = this.store.getState()
@@ -45,24 +62,30 @@ export class DialogsController {
     void (async () => {
       try {
         if (dialog.kind === 'delete-group') {
-          const selection = { groupDelete: { __args: { id }, node: true } } satisfies MutationGenqlSelection
-          const result = await graphql().mutation(selection)
+          const result = await new SettingsDialogsGroupDeleteStore()
+            .mutate({ groupDeleteId: id }, { fetch: graphqlClient.fetch(scope.signal) })
+            .then(requireData)
+          if (scope.signal.aborted) return
           if (!result.groupDelete.node) throw new Error('Group deletion was not confirmed')
           this.store.setState((state) => ({ dialog: state.dialog === activeDialog ? null : state.dialog }))
           this.groupDeleted(id)
           return
         }
-        const selection = { roleDelete: { __args: { id }, node: true } } satisfies MutationGenqlSelection
-        const result = await graphql().mutation(selection)
+
+        const result = await new SettingsDialogsRoleDeleteStore()
+          .mutate({ roleDeleteId: id }, { fetch: graphqlClient.fetch(scope.signal) })
+          .then(requireData)
+        if (scope.signal.aborted) return
         if (!result.roleDelete.node) throw new Error('Role deletion was not confirmed')
         this.store.setState((state) => ({ dialog: state.dialog === activeDialog ? null : state.dialog }))
         this.roleDeleted(id)
       } catch (error) {
-        notify.apiError(error, () => {
-          if (this.store.getState().dialog === activeDialog) this.confirmDialog(activeDialog)
-        })
+        if (!scope.signal.aborted)
+          notify.apiError(error, () => {
+            if (!scope.signal.aborted && this.store.getState().dialog === activeDialog) this.confirmDialog(activeDialog)
+          })
       } finally {
-        this.store.setState({ busy: false })
+        if (!scope.signal.aborted) this.store.setState({ busy: false })
       }
     })()
   }

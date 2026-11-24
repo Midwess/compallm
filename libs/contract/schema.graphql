@@ -1095,6 +1095,7 @@ type InvitationPayload {
 
 type Me {
   organizationOwner: Boolean!
+  organizationPermissions: [OrganizationPermission!]!
   id: ID!
   sessionId: ID!
   organizationId: ID!
@@ -1319,6 +1320,11 @@ type OrganizationOnboardingSettingsPayload {
 
 type OrganizationPayload {
   node: Organization!
+}
+
+type OrganizationPermission {
+  action: String!
+  allowed: Boolean!
 }
 
 type PageInfo {
@@ -1547,6 +1553,7 @@ type Query {
 }
 
 type Role {
+  canReadPolicy: Boolean!
   "Native Cedar source; template slots bind to this role and its organization."
   cedarSource: String
   id: ID!

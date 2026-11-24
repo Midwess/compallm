@@ -1,11 +1,21 @@
-import { createStore } from 'zustand/vanilla'
+import {
+  PasskeyPasskeysAndSessionStore,
+  PasskeyPasskeyRegistrationStartStore,
+  PasskeyPasskeyUpdateStore,
+  PasskeyPasskeysStore,
+  PasskeyPasskeyRegistrationFinishStore,
+  PasskeyPasskeys2Store,
+  PasskeyPasskeyRemoveStore,
+} from '@compallm/contract/houdini'
+import { createStore } from '@compallm/storybook/state'
 import type { PasskeyController as Contract, PasskeyState } from '@compallm/storybook'
 import type { AuthController } from '@compallm/storybook'
-import type { MutationGenqlSelection, QueryGenqlSelection, PasskeyFinishInput as FinishInput } from '@compallm/contract/graphql'
+import type { PasskeyFinishInput as FinishInput } from '@compallm/contract/houdini'
+
 import { PasskeyRegistrationInput, PasskeyFinishInput } from '@compallm/contract/validation'
-import { graphql, ApiError } from '../graphql-client'
+import { graphqlClient, requireData, ApiError } from '../graphql-client'
 import { apiErrorMessage, notify } from '../notifications/toast'
-import { credential, ceremonySelection, passkeySelection } from './browser'
+import { credential } from './browser'
 export class PasskeyController implements Contract {
   readonly store = createStore<PasskeyState>(() => ({
     records: [],
@@ -65,8 +75,19 @@ export class PasskeyController implements Contract {
       emailSent: false,
     })
   }
+  seed(result: import('@compallm/contract/houdini').PasskeyPasskeysAndSession$result) {
+    this.store.setState({
+      records: result.passkeys.edges.map(({ node }) => ({ ...node })),
+      loaded: true,
+      status: 'ready',
+      currentPasskeyId: result.session.node.passkey?.id ?? null,
+    })
+    this.seeded = true
+  }
+  private seeded = false
   startView = () => {
-    void this.load()
+    if (this.seeded) this.seeded = false
+    else void this.load()
     return this.close
   }
   load = async () => {
@@ -76,10 +97,9 @@ export class PasskeyController implements Contract {
     const signal = AbortSignal.any([this.scope.signal, read.signal])
     this.store.setState({ status: 'loading', error: null })
     try {
-      const result = await graphql(signal).query({
-        passkeys: { edges: { node: passkeySelection } },
-        session: { node: { passkey: { id: true } } },
-      } satisfies QueryGenqlSelection)
+      const result = await new PasskeyPasskeysAndSessionStore()
+        .fetch({ fetch: graphqlClient.fetch(signal), policy: 'NoCache', blocking: true })
+        .then(requireData)
       if (!signal.aborted)
         this.store.setState({
           records: result.passkeys.edges.map((e) => e.node),
@@ -156,9 +176,9 @@ export class PasskeyController implements Contract {
     this.run(async (signal) => {
       const {
         passkeyRegistrationStart: { node: ceremony },
-      } = await graphql(signal).mutation({
-        passkeyRegistrationStart: { node: ceremonySelection },
-      } satisfies MutationGenqlSelection)
+      } = await new PasskeyPasskeyRegistrationStartStore()
+        .mutate(undefined, { fetch: graphqlClient.fetch(signal) })
+        .then(requireData)
       const input = PasskeyFinishInput.parse(await credential(ceremony.options, ceremony.token, true, signal))
       if (!signal.aborted) {
         this.registration = { input, expiresAt: Number(ceremony.expiresAt) * 1000 }
@@ -173,17 +193,17 @@ export class PasskeyController implements Contract {
       const input = PasskeyRegistrationInput.parse({ name })
       const {
         passkeyUpdate: { node },
-      } = await graphql(signal).mutation({
-        passkeyUpdate: { __args: { id, input }, node: passkeySelection },
-      } satisfies MutationGenqlSelection)
+      } = await new PasskeyPasskeyUpdateStore()
+        .mutate({ passkeyUpdateId: id, passkeyUpdateInput: input }, { fetch: graphqlClient.fetch(signal) })
+        .then(requireData)
       if (!signal.aborted) this.store.setState((s) => ({ records: s.records.map((p) => (p.id === id ? node : p)) }))
     })
   add = async (name: string) => {
     return this.run(async (signal) => {
       if (this.pendingCredential) {
-        const response = await graphql(signal).query({
-          passkeys: { edges: { node: passkeySelection } },
-        } satisfies QueryGenqlSelection)
+        const response = await new PasskeyPasskeysStore()
+          .fetch({ fetch: graphqlClient.fetch(signal), policy: 'NoCache', blocking: true })
+          .then(requireData)
         const records = response.passkeys.edges.map((e) => e.node)
         const confirmed = records.some((p) => p.credentialId === this.pendingCredential)
         if (signal.aborted) return
@@ -202,9 +222,12 @@ export class PasskeyController implements Contract {
       this.pendingCredential = response.rawId
       const {
         passkeyRegistrationFinish: { node },
-      } = await graphql(signal).mutation({
-        passkeyRegistrationFinish: { __args: { input: response, name: nameInput }, node: passkeySelection },
-      } satisfies MutationGenqlSelection)
+      } = await new PasskeyPasskeyRegistrationFinishStore()
+        .mutate(
+          { passkeyRegistrationFinishInput: response, passkeyRegistrationFinishName: nameInput },
+          { fetch: graphqlClient.fetch(signal) },
+        )
+        .then(requireData)
       if (!signal.aborted) {
         this.pendingCredential = undefined
         this.registration = undefined
@@ -220,20 +243,31 @@ export class PasskeyController implements Contract {
   remove = async (id: string) => {
     return this.run(async (signal) => {
       if (this.pendingRemoval === id) {
-        const response = await graphql(signal).query({
-          passkeys: { edges: { node: passkeySelection } },
-        } satisfies QueryGenqlSelection)
+        const response = await new PasskeyPasskeys2Store()
+          .fetch({ fetch: graphqlClient.fetch(signal), policy: 'NoCache', blocking: true })
+          .then(requireData)
         const records = response.passkeys.edges.map((e) => e.node)
         if (signal.aborted) return
         const confirmed = !records.some((p) => p.id === id)
-        this.store.setState({ records, status: 'ready', ...(confirmed ? { dialog: null } : {}) })
+        this.store.setState({
+          records,
+          status: 'ready',
+          ...(confirmed
+            ? {
+                dialog: null,
+                currentPasskeyId: this.store.getState().currentPasskeyId === id ? null : this.store.getState().currentPasskeyId,
+              }
+            : {}),
+        })
         this.pendingRemoval = undefined
         if (confirmed) return
       }
       this.pendingRemoval = id
       const {
         passkeyRemove: { node },
-      } = await graphql(signal).mutation({ passkeyRemove: { __args: { id }, node: true } } satisfies MutationGenqlSelection)
+      } = await new PasskeyPasskeyRemoveStore()
+        .mutate({ passkeyRemoveId: id }, { fetch: graphqlClient.fetch(signal) })
+        .then(requireData)
       if (!signal.aborted) {
         this.pendingRemoval = undefined
         notify.info('Passkey revoked')

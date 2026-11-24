@@ -1,4 +1,4 @@
-import { FormModel, type FormOptions } from './form-model'
+import { FormModel, type FormOptions } from './form-model.svelte'
 
 type RecordForm = { form: FormModel<object>; release(): void; stop(): void; views: number }
 

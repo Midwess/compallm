@@ -1,3 +1,9 @@
+import {
+  SettingsRoleRoleStore,
+  SettingsRoleOrganizationPolicyActionsStore,
+  SettingsRoleRoleUpdateStore,
+  SettingsRoleRoleUpdate2Store,
+} from '@compallm/contract/houdini'
 import { permissionKey, type PermissionController } from '@compallm/storybook'
 import { requirePermissions } from '../../permission/controller'
 import {
@@ -6,10 +12,10 @@ import {
   type RoleDraft,
   type SettingsState,
 } from '@compallm/storybook/pages/settings'
-import type { StoreApi } from 'zustand/vanilla'
-import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
+import type { StateStore as StoreApi } from '@compallm/storybook/state'
+
 import { RoleUpdateInput, RoleUpdateInputConstraints } from '@compallm/contract/validation'
-import { ApiError, graphql } from '../../graphql-client'
+import { ApiError, graphqlClient, requireData } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 
 export class RoleController implements Contract {
@@ -45,28 +51,40 @@ export class RoleController implements Contract {
     this.store.setState({ draft: retained, loading: true, busy: false })
     if (!retained) this.settings.setState({ policyActions: [] })
     try {
-      if (this.permissions) await requirePermissions(this.permissions, [{ action: 'role.read', resourceType: 'Organization' }])
-      if (request.signal.aborted || this.request !== request) return
-      const policyRead = { action: 'role.policy.read', resourceType: 'Role', resourceId: id } as const
-      if (this.permissions) await this.permissions.evaluate([policyRead])
-      if (request.signal.aborted || this.request !== request) return
-      const canReadPolicy =
-        !this.permissions || this.permissions.store.getState().entries[permissionKey(policyRead)]?.status === 'allowed'
-      const roleSelection = {
-        role: {
-          __args: { id },
-          node: { id: true, name: true, description: true, color: true, cedarSource: canReadPolicy, owner: true },
-        },
-      } satisfies QueryGenqlSelection
-      const catalogSelection = {
-        organizationPolicyActions: {
-          edges: { node: { name: true, displayName: true, description: true, entityType: true, resourceType: true } },
-        },
-      } satisfies QueryGenqlSelection
-      const [metadata, catalog] = await Promise.allSettled([
-        graphql(request.signal).query(roleSelection),
-        graphql(request.signal).query(catalogSelection),
-      ])
+      const prepared = this.prepared
+      this.prepared = undefined
+      const [metadata, catalog] =
+        prepared?.result.role?.node.id === id
+          ? [
+              { status: 'fulfilled' as const, value: prepared.result },
+              prepared.catalog
+                ? { status: 'fulfilled' as const, value: prepared.catalog }
+                : { status: 'rejected' as const, reason: new Error('Policy catalog is unavailable.') },
+            ]
+          : await (async () => {
+              if (this.permissions)
+                await requirePermissions(this.permissions, [{ action: 'role.read', resourceType: 'Organization' }])
+              if (request.signal.aborted || this.request !== request) throw new DOMException('Cancelled', 'AbortError')
+              const policyRead = { action: 'role.policy.read', resourceType: 'Role', resourceId: id } as const
+              if (this.permissions) await this.permissions.evaluate([policyRead])
+              if (request.signal.aborted || this.request !== request) throw new DOMException('Cancelled', 'AbortError')
+              const canReadPolicy =
+                !this.permissions || this.permissions.store.getState().entries[permissionKey(policyRead)]?.status === 'allowed'
+
+              return Promise.allSettled([
+                new SettingsRoleRoleStore()
+                  .fetch({
+                    variables: { roleId: id, includeRoleNodeCedarSource: canReadPolicy },
+                    fetch: graphqlClient.fetch(request.signal),
+                    policy: 'NoCache',
+                    blocking: true,
+                  })
+                  .then(requireData),
+                new SettingsRoleOrganizationPolicyActionsStore()
+                  .fetch({ fetch: graphqlClient.fetch(request.signal), policy: 'NoCache', blocking: true })
+                  .then(requireData),
+              ])
+            })()
       if (request.signal.aborted || this.request !== request) return
       if (metadata.status === 'rejected') throw metadata.reason
       if (!metadata.value.role) return
@@ -110,7 +128,12 @@ export class RoleController implements Contract {
         }
       }
       if (request.signal.aborted || this.request !== request) return
-      if (retained && (this.store.form.dirty || this.store.form.pending)) return
+      if (retained && (this.store.form.dirty || this.store.form.pending)) {
+        const current = this.store.getState().draft
+        if (current?.id === id && current.source === (role.cedarSource ?? ''))
+          this.store.setState({ draft: { ...current, projection, diagnostics, parsing: false } })
+        return
+      }
       this.openRole({ ...role, source: role.cedarSource }, { projection, diagnostics })
     } catch (error) {
       if (!request.signal.aborted)
@@ -120,6 +143,39 @@ export class RoleController implements Contract {
     } finally {
       if (this.request === request) this.store.setState({ loading: false })
     }
+  }
+  private prepared?: {
+    result: import('@compallm/contract/houdini').SettingsRoleRole$result
+    catalog?: import('@compallm/contract/houdini').SettingsRoleOrganizationPolicyActions$result
+  }
+  seed(
+    result: import('@compallm/contract/houdini').SettingsRoleRole$result,
+    catalog?: import('@compallm/contract/houdini').SettingsRoleOrganizationPolicyActions$result,
+  ) {
+    this.prepared = { result, catalog }
+    if (result.role) {
+      const check = { action: 'role.policy.read', resourceType: 'Role' as const, resourceId: result.role.node.id }
+      this.permissions?.store.setState((state) => ({
+        entries: {
+          ...state.entries,
+          [permissionKey(check)]: { check, status: result.role!.node.canReadPolicy ? 'allowed' : 'denied' },
+        },
+      }))
+      this.openRole({ ...result.role.node, source: result.role.node.cedarSource ?? null })
+      if (result.role.node.cedarSource != null) this.store.setState((state) => ({ draft: { ...state.draft!, parsing: true } }))
+      this.store.form.reset(this.store.form.values)
+    }
+    if (catalog)
+      this.settings.setState({
+        policyActions: catalog.organizationPolicyActions.edges.map(({ node }) => ({
+          id: node.name,
+          label: node.displayName,
+          category: node.entityType,
+          scope: node.resourceType,
+          description: node.description,
+        })),
+      })
+    this.store.setState({ loading: false })
   }
   setQuery = (query: string) => this.store.setState({ query })
   setFilter = (key: string, value: string) => this.store.setState((s) => ({ filters: { ...s.filters, [key]: value } }))
@@ -139,6 +195,7 @@ export class RoleController implements Contract {
         builtin: role.owner ?? false,
       },
     })
+    this.store.form.reset(this.store.form.values)
   }
   open = () => {
     if (this.store.getState().draft) return
@@ -177,12 +234,15 @@ export class RoleController implements Contract {
       await requirePermissions(this.permissions, [{ action: 'role.metadata.update', resourceType: 'Role', resourceId: id }])
     if (request.signal.aborted || this.request !== request || signal?.aborted) throw new DOMException('Cancelled', 'AbortError')
     const input = RoleUpdateInput.parse(value)
-    const selection = {
-      roleUpdate: { __args: { id, input }, node: { id: true, name: true, description: true, color: true } },
-    } satisfies MutationGenqlSelection
+
     const {
       roleUpdate: { node },
-    } = await graphql(signal ? AbortSignal.any([signal, request.signal]) : request.signal).mutation(selection)
+    } = await new SettingsRoleRoleUpdateStore()
+      .mutate(
+        { roleUpdateId: id, roleUpdateInput: input },
+        { fetch: graphqlClient.fetch(signal ? AbortSignal.any([signal, request.signal]) : request.signal) },
+      )
+      .then(requireData)
     if (request.signal.aborted || this.request !== request) throw new DOMException('Cancelled', 'AbortError')
     this.settings.setState((state) => ({ roles: state.roles.map((role) => (role.id === id ? { ...role, ...node } : role)) }))
     return node
@@ -278,8 +338,10 @@ export class RoleController implements Contract {
       await requirePermissions(this.permissions, [{ action: 'role.policy.update', resourceType: 'Role', resourceId: id }])
     if (request.signal.aborted || this.request !== request) return false
     const input = this.policyInput(prepared)
-    const selection = { roleUpdate: { __args: { id, input }, node: { id: true } } } satisfies MutationGenqlSelection
-    await graphql(request.signal).mutation(selection)
+
+    await new SettingsRoleRoleUpdate2Store()
+      .mutate({ roleUpdateId: id, roleUpdateInput: input }, { fetch: graphqlClient.fetch(request.signal) })
+      .then(requireData)
     if (request.signal.aborted || this.request !== request) return false
     this.savedPolicy = { id, source: prepared.compact }
     return true

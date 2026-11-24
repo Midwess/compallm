@@ -1,4 +1,4 @@
-import { createStore } from 'zustand/vanilla'
+import { createStore } from '../../state.svelte'
 import type { OnboardingController, OnboardingState, OnboardingStep } from './types'
 export class OnboardingPreviewController implements OnboardingController {
   readonly store

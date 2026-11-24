@@ -1,20 +1,26 @@
+import type { SettingsRouteData } from '../load'
+import {
+  SettingsProfileUserProfileStore,
+  SettingsProfileGenerateUrlAvatarUrlStore,
+  SettingsProfileUserProfileUpdateStore,
+} from '@compallm/contract/houdini'
 import type { ProfileController as Contract, SettingsController } from '@compallm/storybook/pages/settings'
 import type { AuthController } from '@compallm/storybook'
-import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
+
 import { ImageUploadInput, UserProfileUpdateInput } from '@compallm/contract/validation'
-import { ApiError, graphql } from '../../graphql-client'
+import { ApiError, graphqlClient, requireData } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 import { beginRequest } from '../../request-activity'
 
 export type ProfileAuth = Partial<Pick<AuthController, 'store'>>
-
-const profileSelection = { id: true, displayName: true, username: true, email: true, avatarUrl: true } as const
 
 export class ProfileController implements Contract {
   private scope = new AbortController()
   private read?: AbortController
   private userId?: string
   private active = false
+  private preparation?: SettingsRouteData
+  routeData?: () => SettingsRouteData | undefined
   private uploaded?: { file: File; userId: string }
   private readonly settings: SettingsController['store']
   private readonly auth: ProfileAuth
@@ -29,7 +35,8 @@ export class ProfileController implements Contract {
   }
 
   start = () => {
-    this.cancel()
+    if (!this.seeded) this.cancel()
+    this.seeded = false
     this.active = true
     this.scope = new AbortController()
     const synchronize = () => {
@@ -80,23 +87,26 @@ export class ProfileController implements Contract {
     this.read = request
     this.settings.setState({ profileStatus: 'loading' })
     try {
-      const selection = { userProfile: { __args: { id: userId }, node: profileSelection } } satisfies QueryGenqlSelection
-      const { userProfile } = await graphql(AbortSignal.any([scope.signal, request.signal])).query(selection)
+      const prepared = this.routeData?.()
+      const usable =
+        prepared &&
+        prepared !== this.preparation &&
+        prepared.version === graphqlClient.readVersion &&
+        prepared.userId === userId &&
+        prepared.profile
+      this.preparation = prepared
+      const { userProfile } = usable
+        ? prepared.profile!
+        : await new SettingsProfileUserProfileStore()
+            .fetch({
+              variables: { userProfileId: userId },
+              fetch: graphqlClient.fetch(AbortSignal.any([scope.signal, request.signal])),
+              policy: 'NoCache',
+              blocking: true,
+            })
+            .then(requireData)
       if (scope.signal.aborted || this.read !== request) return
-      if (!userProfile) {
-        this.settings.setState({ profileStatus: 'missing' })
-        return
-      }
-      if (userProfile.node.id !== userId) throw new ApiError('Profile identity did not match.', 409, 'PROFILE_MISMATCH')
-      const profile = {
-        ...this.settings.getState().profile,
-        name: userProfile.node.displayName,
-        username: userProfile.node.username,
-        email: userProfile.node.email,
-        avatar: userProfile.node.avatarUrl,
-      }
-      if (!this.settings.form.dirty) this.settings.form.reset({ ...this.settings.form.values, profile, profileUpload: null })
-      this.settings.setState({ profileStatus: 'ready', profileLoaded: true })
+      this.adopt(userProfile, userId)
     } catch (error) {
       if (scope.signal.aborted || request.signal.aborted || this.read !== request) return
       this.settings.setState({
@@ -110,6 +120,30 @@ export class ProfileController implements Contract {
     }
   }
 
+  seed(data: SettingsRouteData) {
+    if (!data.profile) return
+    this.userId = data.userId
+    this.preparation = data
+    this.adopt(data.profile.userProfile, data.userId)
+    this.seeded = true
+  }
+  private seeded = false
+  private adopt(userProfile: NonNullable<SettingsRouteData['profile']>['userProfile'], userId: string) {
+    if (!userProfile) {
+      this.settings.setState({ profileStatus: 'missing' })
+      return
+    }
+    if (userProfile.node.id !== userId) throw new ApiError('Profile identity did not match.', 409, 'PROFILE_MISMATCH')
+    const profile = {
+      ...this.settings.getState().profile,
+      name: userProfile.node.displayName,
+      username: userProfile.node.username,
+      email: userProfile.node.email,
+      avatar: userProfile.node.avatarUrl,
+    }
+    if (!this.settings.form.dirty) this.settings.form.reset({ ...this.settings.form.values, profile, profileUpload: null })
+    this.settings.setState({ profileStatus: 'ready', profileLoaded: true })
+  }
   saveProfile = async (value: { name?: string; username?: string }, file: File | null, signal: AbortSignal) => {
     const scope = this.scope
     const userId = this.userId
@@ -128,15 +162,12 @@ export class ProfileController implements Contract {
           size: file.size,
           mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[file.type],
         })
-        const selection = {
-          generateUrlAvatarUrl: {
-            __args: { input: uploadInput },
-            node: { url: true, fields: { name: true, value: true }, expiresAt: true },
-          },
-        } satisfies MutationGenqlSelection
+
         const {
           generateUrlAvatarUrl: { node },
-        } = await graphql(combined).mutation(selection)
+        } = await new SettingsProfileGenerateUrlAvatarUrlStore()
+          .mutate({ generateUrlAvatarUrlInput: uploadInput }, { fetch: graphqlClient.fetch(combined) })
+          .then(requireData)
         if (!current()) return false as const
         const form = new FormData()
         node.fields.forEach(({ name, value }) => form.append(name, value))
@@ -152,10 +183,12 @@ export class ProfileController implements Contract {
         if (!current()) return false as const
         this.uploaded = { file, userId }
       }
-      const selection = { userProfileUpdate: { __args: { input }, node: profileSelection } } satisfies MutationGenqlSelection
+
       const {
         userProfileUpdate: { node },
-      } = await graphql(combined).mutation(selection)
+      } = await new SettingsProfileUserProfileUpdateStore()
+        .mutate({ userProfileUpdateInput: input }, { fetch: graphqlClient.fetch(combined) })
+        .then(requireData)
       if (!current()) return false as const
       if (node.id !== userId) throw new ApiError('Profile identity did not match.', 409, 'PROFILE_MISMATCH')
       this.settings.form.set('profile.avatar', node.avatarUrl)

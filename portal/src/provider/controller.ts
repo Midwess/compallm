@@ -1,3 +1,13 @@
+import { cloneFormValue } from '@compallm/storybook'
+import {
+  ProviderProviderStore,
+  ProviderModelTemplateCustomizeStore,
+  ProviderModelTemplateCreateStore,
+  ProviderModelTemplateResetStore,
+  ProviderModelTemplateDeleteStore,
+  ProviderProviderCreateStore,
+  ProviderProviderLogoUploadStore,
+} from '@compallm/contract/houdini'
 import type { AppController, AppLoadingTask } from '@compallm/storybook'
 import {
   createCreateProviderStore,
@@ -10,9 +20,10 @@ import { processInSlices } from '@compallm/storybook'
 import type { OrganizationController } from '@compallm/storybook/pages/organization'
 import type { UrlController } from '../url/controller'
 import { readProviderUrl, writeProviderUrl } from './url-state'
-import { listProviders, getProvider, getModel, getGlobalModel, modelDetail } from './catalog'
+import type { ProviderRouteData } from './load'
+import { listProviders, getProvider, getModel, getGlobalModel } from './catalog'
 import { providerRow, modelRow, modelDraft } from './presentation'
-import { graphql, ApiError } from '../graphql-client'
+import { graphqlClient, requireData, ApiError } from '../graphql-client'
 import { notify } from '../notifications/toast'
 import {
   ModelTemplateCustomizeInput,
@@ -21,7 +32,6 @@ import {
   ProviderCreateFromTemplateInput,
   TextModelProtocol,
 } from '@compallm/contract/validation'
-import type { MutationGenqlSelection } from '@compallm/contract/graphql'
 
 export class CreateProviderController implements Controller {
   readonly store = createCreateProviderStore({ templatePreview: true, creationEnabled: true, protocol: 'provider_specific' })
@@ -40,6 +50,7 @@ export class CreateProviderController implements Controller {
   private localModelIds = new Map<string, string>()
   private writes = new Map<string, Promise<unknown>>()
   private uploadedLogo?: { file: File; id: string }
+  private uploadRevision = 0
   private cursor?: string
   private appendFailed = false
   private loadedProvider?: string
@@ -49,6 +60,7 @@ export class CreateProviderController implements Controller {
     url: Pick<UrlController, 'store' | 'update' | 'back'>,
     organization: Pick<OrganizationController, 'getCurrentOrganization' | 'onProviderCreated'>,
     app: Pick<AppController, 'createLoadingScope'>,
+    private readonly routeData?: () => ProviderRouteData | undefined,
   ) {
     this.loading = {
       providers: app.createLoadingScope(),
@@ -58,18 +70,40 @@ export class CreateProviderController implements Controller {
     this.url = url
     this.organization = organization
   }
+  private preparation?: ProviderRouteData
+  private consumed = new Set<string>()
+  private prepared(part: 'list' | 'provider' | 'model' | 'saved') {
+    const value = this.routeData?.()
+    if (
+      !value ||
+      value.version !== graphqlClient.readVersion ||
+      value.organizationId !== this.organization.getCurrentOrganization()?.id
+    )
+      return
+    if (this.preparation !== value) {
+      this.preparation = value
+      this.consumed.clear()
+    }
+    if (this.consumed.has(part)) return
+    this.consumed.add(part)
+    return value
+  }
   start = () => {
     this.stop()
     this.owner = new AbortController()
-    this.query = undefined
-    this.provider = undefined
-    this.model = undefined
-    this.loadedProvider = undefined
+    if (!this.seeded) {
+      this.query = undefined
+      this.provider = undefined
+      this.model = undefined
+      this.loadedProvider = undefined
+    }
+    this.seeded = false
     this.unsubscribe = this.url.store.subscribe(this.apply)
     this.apply()
     return this.stop
   }
   stop = () => {
+    this.uploadRevision++
     for (const task of this.loadingTasks.values()) task.cancel()
     this.loadingTasks.clear()
     this.owner?.abort()
@@ -84,6 +118,10 @@ export class CreateProviderController implements Controller {
     this.stop()
     const owner = new AbortController()
     this.owner = owner
+    if (this.seeded) {
+      this.seeded = false
+      return this.stop
+    }
     this.store.setState({
       intent: 'edit',
       templatePreview: true,
@@ -94,68 +132,22 @@ export class CreateProviderController implements Controller {
       providerLoading: true,
     })
     const loading = this.loading.provider.beginLoading('saved-provider')
-    const selection = {
-      provider: {
-        __args: { id },
-        node: {
-          id: true,
-          name: true,
-          description: true,
-          logoUrl: true,
-          connection: { baseUrl: true },
-          models: {
-            id: true,
-            name: true,
-            enabled: true,
-            capabilities: true,
-            inputPrice: true,
-            outputPrice: true,
-            cachedPrice: true,
-            protocol: true,
-            connection: { path: true },
-            contextTokens: true,
-            text: { input: { configuration: { maxTokens: true } }, output: { configuration: { maxTokens: true } } },
-          },
-        },
-      },
-    } satisfies import('@compallm/contract/graphql').QueryGenqlSelection
-    void graphql(owner.signal)
-      .query(selection)
+
+    const prepared = this.prepared('saved')
+    void (
+      prepared?.savedId === id && prepared.saved
+        ? Promise.resolve(prepared.saved)
+        : new ProviderProviderStore()
+            .fetch({
+              variables: { providerId: id },
+              fetch: graphqlClient.fetch(owner.signal),
+              policy: 'NoCache',
+              blocking: true,
+            })
+            .then(requireData)
+    )
       .then((result) => {
-        const value = result.provider?.node
-        if (!value || owner.signal.aborted) return
-        const models: ProviderModel[] = value.models.map((v) => ({
-          id: v.id,
-          name: v.name,
-          enabled: v.enabled,
-          protocol: (
-            {
-              OPENAI: 'openai_chat_completions',
-              OPENAI_RESPONSES: 'openai_responses',
-              ANTHROPIC: 'anthropic_messages',
-            } as Partial<Record<string, ModelDraft['protocol']>>
-          )[v.protocol],
-          path: v.connection.path ?? undefined,
-          modes: [],
-          maxContextTokens: v.contextTokens?.toString() ?? '',
-          maxInputTokens: v.text.input.configuration?.maxTokens?.toString(),
-          maxOutputTokens: v.text.output.configuration?.maxTokens?.toString(),
-          thinkingLevels: [],
-          capabilities: v.capabilities.map((c) => c.toLowerCase()) as ModelDraft['capabilities'],
-          inputPrice: v.inputPrice ?? '',
-          outputPrice: v.outputPrice ?? '',
-          cachedPrice: v.cachedPrice ?? '',
-        }))
-        const saved = {
-          id: value.id,
-          name: value.name,
-          baseUrl: value.connection.baseUrl ?? '',
-          models,
-          protocol: 'provider_specific' as const,
-          mode: 'chat_completions' as const,
-          avatarUrl: value.logoUrl,
-        }
-        this.store.setState({ ...saved, savedProvider: saved, providerLoaded: true })
+        if (!owner.signal.aborted) this.adoptSaved(result)
       })
       .catch((error) => {
         if (!owner.signal.aborted) notify.error(error)
@@ -166,6 +158,96 @@ export class CreateProviderController implements Controller {
       })
     return this.stop
   }
+  private adoptSaved(result: NonNullable<ProviderRouteData['saved']>) {
+    const value = result.provider?.node
+    if (!value) return
+    const models: ProviderModel[] = value.models.map((v) => ({
+      id: v.id,
+      name: v.name,
+      enabled: v.enabled,
+      protocol: (
+        {
+          OPENAI: 'openai_chat_completions',
+          OPENAI_RESPONSES: 'openai_responses',
+          ANTHROPIC: 'anthropic_messages',
+        } as Partial<Record<string, ModelDraft['protocol']>>
+      )[v.protocol],
+      path: v.connection.path ?? undefined,
+      modes: [],
+      maxContextTokens: v.contextTokens?.toString() ?? '',
+      maxInputTokens: v.text.input.configuration?.maxTokens?.toString(),
+      maxOutputTokens: v.text.output.configuration?.maxTokens?.toString(),
+      thinkingLevels: [],
+      capabilities: v.capabilities.map((c) => c.toLowerCase()) as ModelDraft['capabilities'],
+      inputPrice: v.inputPrice ?? '',
+      outputPrice: v.outputPrice ?? '',
+      cachedPrice: v.cachedPrice ?? '',
+    }))
+    const saved = {
+      id: value.id,
+      name: value.name,
+      baseUrl: value.connection.baseUrl ?? '',
+      models,
+      protocol: 'provider_specific' as const,
+      mode: 'chat_completions' as const,
+      avatarUrl: value.logoUrl,
+    }
+    this.store.setState({ ...saved, savedProvider: saved, providerLoaded: true })
+  }
+  seed(data: ProviderRouteData) {
+    if (data.saved) {
+      this.adoptSaved(data.saved)
+      this.store.setState({
+        intent: 'edit',
+        templatePreview: true,
+        creationEnabled: false,
+        readOnly: true,
+        step: 'configure',
+        providerLoading: false,
+      })
+    } else {
+      const { destination, list, provider, model, global } = data
+      this.store.setState({
+        step: destination.step,
+        providerQuery: destination.query,
+        modelQuery: destination.modelQuery,
+        selectedProviderId: destination.provider,
+      })
+      this.query = destination.query
+      this.provider = destination.step === 'configure' ? destination.provider : null
+      this.model = destination.model
+      if (list) {
+        this.cursor = list.pageInfo.endCursor ?? undefined
+        this.store.setState({
+          providers: list.edges.map(({ node }) => providerRow(node)),
+          providersLoaded: true,
+          providersLoading: false,
+          providersHasMore: list.pageInfo.hasNextPage,
+        })
+      }
+      if (provider) {
+        this.loadedProvider = provider.id
+        this.store.setState({
+          name: provider.name,
+          baseUrl: provider.connection.baseUrl ?? '',
+          avatarUrl: provider.logoUrl,
+          headers: provider.headers.map((v, index) => ({ id: String(index), ...v })),
+          models: provider.models.edges.map(({ node }) => modelRow(node, provider.id)),
+          providerLoaded: true,
+          providerLoading: false,
+        })
+      }
+      if (model) {
+        const draft = modelDraft(model, global)
+        this.confirmedModels.set(draft.id, cloneFormValue(draft))
+        this.store.setState({ modelDraft: draft, editingModelId: draft.id, modelLoaded: true, modelLoading: false })
+      }
+    }
+    this.seeded = true
+    this.preparation = data
+    this.consumed = new Set(['list', 'provider', 'model', 'saved'])
+  }
+  private seeded = false
   private apply = () => {
     const next = readProviderUrl(this.url.store.getState())
     const provider = next.step === 'configure' ? next.provider : null
@@ -177,7 +259,7 @@ export class CreateProviderController implements Controller {
     })
     if (
       next.step === 'choose' &&
-      (this.query !== next.query || (!this.store.getState().providers.length && !this.listRequest))
+      (this.query !== next.query || (!this.store.getState().providersLoaded && !this.listRequest))
     ) {
       this.query = next.query
       void this.loadProviders(false)
@@ -243,7 +325,7 @@ export class CreateProviderController implements Controller {
           const saved = this.confirmedModels.get(model)
           if (saved)
             this.store.setState({
-              modelDraft: structuredClone(saved),
+              modelDraft: cloneFormValue(saved),
               editingModelId: model,
               modelLoaded: true,
               modelLoading: false,
@@ -298,7 +380,11 @@ export class CreateProviderController implements Controller {
     this.appendFailed = append
     this.store.setState({ providersLoading: true, providersLoadError: null, ...(!append ? { providersHasMore: false } : {}) })
     try {
-      const data = await listProviders(query, append ? this.cursor : undefined, AbortSignal.any([owner.signal, request.signal]))
+      const prepared = !append ? this.prepared('list') : undefined
+      const data =
+        prepared?.destination.query === query && prepared.list
+          ? prepared.list
+          : await listProviders(query, append ? this.cursor : undefined, AbortSignal.any([owner.signal, request.signal]))
       if (owner.signal.aborted || request.signal.aborted || this.listRequest !== request) return
       this.cursor = data.pageInfo.endCursor ?? undefined
       this.store.setState((state) => {
@@ -321,6 +407,13 @@ export class CreateProviderController implements Controller {
 
       if (this.listRequest === request) this.store.setState({ providersLoading: false })
     }
+  }
+  providerHref = (id: string) => {
+    const org = this.organization.getCurrentOrganization()
+    const search = new URLSearchParams(this.url.store.getState().search)
+    search.set('provider', id)
+    search.delete('model')
+    return `/${encodeURIComponent(org?.name ?? '')}/providers/new/configure-provider?${search}`
   }
   onSelectProvider = (id: string) => this.navigate('configure', id)
   private back(step: 'choose' | 'configure', provider: string | null) {
@@ -353,7 +446,11 @@ export class CreateProviderController implements Controller {
     this.store.setState({ providerLoading: true, catalogError: null })
     try {
       const signal = AbortSignal.any([owner.signal, request.signal])
-      const value = await getProvider(id, signal)
+      const prepared = this.prepared('provider')
+      const value =
+        prepared?.destination.provider === id && prepared.provider !== undefined
+          ? prepared.provider
+          : await getProvider(id, signal)
       if (signal.aborted || this.providerRequest !== request || this.provider !== id) return
       if (!value) throw new Error('missing provider')
       const models: ProviderModel[] = []
@@ -376,7 +473,7 @@ export class CreateProviderController implements Controller {
       }
     } catch {
       if (!owner.signal.aborted && !request.signal.aborted && this.providerRequest === request)
-        this.store.setState({ catalogError: 'Could not load this provider template. Try again.' })
+        this.store.setState({ catalogError: 'Could not load this catalog provider. Try again.' })
     } finally {
       loading.complete()
 
@@ -389,6 +486,13 @@ export class CreateProviderController implements Controller {
     this.store.setState({ modelQuery })
     this.url.update({ model_q: modelQuery || null }, { replace: true })
   }
+  modelHref = (id: string) => {
+    const org = this.organization.getCurrentOrganization()
+    const search = new URLSearchParams(this.url.store.getState().search)
+    if (this.provider) search.set('provider', this.provider)
+    search.set('model', this.confirmedModels.get(id)?.catalogRef?.model ?? id)
+    return `/${encodeURIComponent(org?.name ?? '')}/providers/new/configure-provider?${search}`
+  }
   onEditModel = (id: string) => {
     this.departingModel = undefined
     if (!this.provider) return
@@ -396,7 +500,7 @@ export class CreateProviderController implements Controller {
     if (id.startsWith('draft:')) {
       const draft = this.confirmedModels.get(id)
       if (draft)
-        this.store.setState({ modelDraft: structuredClone(draft), editingModelId: id, modelLoaded: true, modelLoading: false })
+        this.store.setState({ modelDraft: cloneFormValue(draft), editingModelId: id, modelLoaded: true, modelLoading: false })
       else this.onCancelModel()
     }
   }
@@ -433,19 +537,25 @@ export class CreateProviderController implements Controller {
     try {
       const signal = AbortSignal.any([owner.signal, request.signal])
       const reference = this.confirmedModels.get(id)?.catalogRef?.model ?? id
+      const prepared = this.prepared('model')
+      const matches = prepared?.destination.provider === provider && prepared.destination.model === reference
       const [value, global] = await Promise.all([
-        getModel(provider, reference, signal),
-        reference.startsWith('custom:') ? Promise.resolve(null) : getGlobalModel(provider, reference, signal),
+        matches && prepared.model !== undefined ? prepared.model : getModel(provider, reference, signal),
+        matches && prepared.global !== undefined
+          ? prepared.global
+          : reference.startsWith('custom:')
+            ? Promise.resolve(null)
+            : getGlobalModel(provider, reference, signal),
       ])
       if (signal.aborted || this.modelRequest !== request || this.provider !== provider || this.model !== id) return
       if (!value) throw new Error('missing model')
       const draft = { ...modelDraft(value, global), id }
-      this.confirmedModels.set(id, structuredClone(draft))
+      this.confirmedModels.set(id, cloneFormValue(draft))
       this.store.setState(retained ? { catalogError: null } : { modelDraft: draft, modelLoaded: true, catalogError: null })
     } catch {
       if (!owner.signal.aborted && !request.signal.aborted && this.modelRequest === request) {
         request.abort()
-        this.store.setState({ catalogError: 'Could not load this model template. It may no longer be available. Try again.' })
+        this.store.setState({ catalogError: 'Could not load this catalog model. It may no longer be available. Try again.' })
       }
     } finally {
       loading.complete()
@@ -607,18 +717,23 @@ export class CreateProviderController implements Controller {
     const reference = baseline?.catalogRef?.model
     const write = (async () => {
       const response = reference
-        ? await graphql(owner.signal)
-            .mutation({
-              modelTemplateCustomize: { __args: { providerTemplateId: provider, id: reference, input }, node: modelDetail },
-            } satisfies MutationGenqlSelection)
-            .then((v) => v.modelTemplateCustomize.node)
-        : await graphql(owner.signal)
-            .mutation({
-              modelTemplateCreate: {
-                __args: { providerTemplateId: provider, input: { configuration: input } },
-                node: modelDetail,
+        ? await new ProviderModelTemplateCustomizeStore()
+            .mutate(
+              {
+                modelTemplateCustomizeProviderTemplateId: provider,
+                modelTemplateCustomizeId: reference,
+                modelTemplateCustomizeInput: input,
               },
-            } satisfies MutationGenqlSelection)
+              { fetch: graphqlClient.fetch(owner.signal) },
+            )
+            .then(requireData)
+            .then((v) => v.modelTemplateCustomize.node)
+        : await new ProviderModelTemplateCreateStore()
+            .mutate(
+              { modelTemplateCreateProviderTemplateId: provider, modelTemplateCreateInput: { configuration: input } },
+              { fetch: graphqlClient.fetch(owner.signal) },
+            )
+            .then(requireData)
             .then((v) => v.modelTemplateCreate.node)
       const saved = { ...draft, ...modelDraft(response), id: draft.id, defaults: draft.defaults ?? baseline?.defaults }
       for (const key of [
@@ -631,7 +746,7 @@ export class CreateProviderController implements Controller {
       ] as const)
         saved[key] = draft[key]
       if (owner.signal.aborted || this.provider !== provider) return saved
-      this.confirmedModels.set(draft.id, structuredClone(saved))
+      this.confirmedModels.set(draft.id, cloneFormValue(saved))
       this.store.setState((state) => ({
         models: state.models.some((v) => v.id === draft.id)
           ? state.models.map((v) => (v.id === draft.id ? { ...v, ...saved } : v))
@@ -668,17 +783,23 @@ export class CreateProviderController implements Controller {
   onResetModel = async () => {
     try {
       const draft = this.store.getState().modelDraft,
-        provider = this.provider
-      if (!draft || !provider) return
+        provider = this.provider,
+        owner = this.owner
+      if (!draft || !provider || !owner || owner.signal.aborted) return
       await this.writes.get(draft.id)?.catch(() => undefined)
+      if (owner.signal.aborted || this.owner !== owner) return
       const reference = this.confirmedModels.get(draft.id)?.catalogRef?.model ?? draft.id
       const value = (
-        await graphql(this.owner?.signal).mutation({
-          modelTemplateReset: { __args: { providerTemplateId: provider, id: reference }, node: modelDetail },
-        } satisfies MutationGenqlSelection)
+        await new ProviderModelTemplateResetStore()
+          .mutate(
+            { modelTemplateResetProviderTemplateId: provider, modelTemplateResetId: reference },
+            { fetch: graphqlClient.fetch(owner.signal) },
+          )
+          .then(requireData)
       ).modelTemplateReset.node
+      if (owner.signal.aborted || this.owner !== owner || this.model !== draft.id) return
       const next = { ...modelDraft(value), id: draft.id }
-      this.confirmedModels.set(draft.id, structuredClone(next))
+      this.confirmedModels.set(draft.id, cloneFormValue(next))
       this.store.form.set('modelDraft', next)
       this.store.setState((state) => ({ models: state.models.map((v) => (v.id === draft.id ? { ...v, ...next } : v)) }))
     } catch (error) {
@@ -689,14 +810,20 @@ export class CreateProviderController implements Controller {
   onDeleteModel = async () => {
     try {
       const draft = this.store.getState().modelDraft,
-        provider = this.provider
-      if (!draft || !provider) return
+        provider = this.provider,
+        owner = this.owner
+      if (!draft || !provider || !owner || owner.signal.aborted) return
       await this.writes.get(draft.id)?.catch(() => undefined)
+      if (owner.signal.aborted || this.owner !== owner) return
       const reference = this.confirmedModels.get(draft.id)?.catalogRef?.model
       if (reference)
-        await graphql(this.owner?.signal).mutation({
-          modelTemplateDelete: { __args: { providerTemplateId: provider, id: reference }, node: true },
-        } satisfies MutationGenqlSelection)
+        await new ProviderModelTemplateDeleteStore()
+          .mutate(
+            { modelTemplateDeleteProviderTemplateId: provider, modelTemplateDeleteId: reference },
+            { fetch: graphqlClient.fetch(owner.signal) },
+          )
+          .then(requireData)
+      if (owner.signal.aborted || this.owner !== owner || this.model !== draft.id) return
       this.confirmedModels.delete(draft.id)
       this.store.setState((state) => ({ models: state.models.filter((v) => v.id !== draft.id) }))
       this.onCancelModel()
@@ -708,7 +835,8 @@ export class CreateProviderController implements Controller {
   onTestConnection = () => {}
   onCreateProvider: Controller['onCreateProvider'] = async (values) => {
     const state = { ...this.store.getState(), ...values }
-    if (state.submitting || !this.provider) return false
+    const owner = this.owner
+    if (state.submitting || !this.provider || !owner || owner.signal.aborted) return false
     if (state.avatarFile && this.uploadedLogo?.file !== state.avatarFile) {
       notify.error(new ApiError('Wait for the logo upload to finish or choose the provider logo.', 400, 'BAD_USER_INPUT'))
       return false
@@ -730,41 +858,46 @@ export class CreateProviderController implements Controller {
     })
     this.store.setState({ submitting: true })
     try {
-      const result = await graphql(this.owner?.signal).mutation({
-        providerCreate: { __args: { input }, node: { id: true, name: true, logoUrl: true } },
-      } satisfies MutationGenqlSelection)
+      const result = await new ProviderProviderCreateStore()
+        .mutate({ providerCreateInput: input }, { fetch: graphqlClient.fetch(owner.signal) })
+        .then(requireData)
+      if (owner.signal.aborted || this.owner !== owner) return false
       this.store.setState({ apiKey: '', avatarFile: null })
       this.organization.onProviderCreated?.(result.providerCreate.node)
       return { apiKey: '' }
     } catch (error) {
-      notify.error(error)
+      if (!owner.signal.aborted) notify.error(error)
       return false
     } finally {
-      this.store.setState({ submitting: false })
+      if (this.owner === owner) this.store.setState({ submitting: false })
     }
   }
   onAvatarChanged: NonNullable<Controller['onAvatarChanged']> = (file) => {
-    if (!file) return
+    const revision = ++this.uploadRevision,
+      owner = this.owner
+    if (!file || !owner || owner.signal.aborted) return
     void (async () => {
-      const response = await graphql(this.owner?.signal).mutation({
-        providerLogoUpload: {
-          __args: {
-            input: {
+      const response = await new ProviderProviderLogoUploadStore()
+        .mutate(
+          {
+            providerLogoUploadInput: {
               size: file.size,
               mediaType: ({ 'image/png': 'PNG', 'image/jpeg': 'JPEG', 'image/webp': 'WEBP' } as const)[
                 file.type as 'image/png'
               ],
             },
           },
-          node: { id: true, upload: { url: true, fields: { name: true, value: true } } },
-        },
-      } satisfies MutationGenqlSelection)
+          { fetch: graphqlClient.fetch(owner.signal) },
+        )
+        .then(requireData)
+      if (owner.signal.aborted || this.owner !== owner || revision !== this.uploadRevision) return
       const grant = response.providerLogoUpload.node,
         form = new FormData()
       for (const { name, value } of grant.upload.fields) form.append(name, value)
       form.append('file', file)
-      const uploaded = await fetch(grant.upload.url, { method: 'POST', body: form, signal: this.owner?.signal })
+      const uploaded = await fetch(grant.upload.url, { method: 'POST', body: form, credentials: 'omit', signal: owner.signal })
       if (!uploaded.ok) throw new Error('The logo upload failed.')
+      if (owner.signal.aborted || this.owner !== owner || revision !== this.uploadRevision) return
       this.uploadedLogo = { file, id: grant.id }
     })().catch((error) => notify.error(error))
   }

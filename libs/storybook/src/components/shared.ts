@@ -1,23 +1,15 @@
-import type { Ref } from 'react'
 import { extendTailwindMerge } from 'tailwind-merge'
-
-const twMerge = extendTailwindMerge({ extend: { classGroups: { 'font-size': ['text-xsm'], 'font-weight': ['font-book'] } } })
-
-export function cx(...values: Array<string | undefined | false>) {
-  return twMerge(values.filter(Boolean).join(' '))
+import type { Snippet } from 'svelte'
+import type { ClassValue } from 'clsx'
+import { clsx } from 'clsx'
+import type { HTMLAttributes } from 'svelte/elements'
+const merge = extendTailwindMerge({ extend: { classGroups: { 'font-size': ['text-xsm'], 'font-weight': ['font-book'] } } })
+export function cx(...values: unknown[]) {
+  return merge(clsx(values as ClassValue[]))
 }
-
-export function composeRefs<T>(...refs: (Ref<T> | undefined)[]) {
-  return (element: T | null) => {
-    const cleanups = refs.map((ref) => {
-      if (typeof ref === 'function') return ref(element)
-      if (ref) ref.current = element
-    })
-    return () =>
-      refs.forEach((ref, index) => {
-        if (typeof cleanups[index] === 'function') cleanups[index]()
-        else if (typeof ref === 'function') ref(null)
-        else if (ref) ref.current = null
-      })
-  }
+export type Content = Snippet | string | number
+export type ElementProps = HTMLAttributes<HTMLElement> & { children?: Snippet; element?: HTMLElement }
+export function call(event: Event, handler?: (event: Event) => void) {
+  handler?.(event)
+  return !event.defaultPrevented
 }

@@ -1,9 +1,4 @@
-import { readFile, writeFile, readdir, rm } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import ts from 'typescript'
-import { spawnSync } from 'node:child_process'
+import { readFile, writeFile, rm } from 'node:fs/promises'
 import { format } from 'prettier'
 import { checkValidationCompatibility } from './validation-compatibility.mjs'
 import {
@@ -324,62 +319,5 @@ for (const name of ordered) {
 }
 const output = lines.join('\n') + '\n'
 await writeTypescript(new URL('./validation.ts', import.meta.url), output)
-const generated = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'generate:graphql'], {
-  cwd: new URL('.', import.meta.url),
-  stdio: 'inherit',
-})
-if (generated.status !== 0) throw new Error('Genql CLI generation failed')
-// Genql emits extensionless imports. Normalize generated source so TypeScript's
-// rewriteRelativeImportExtensions produces valid ESM, including directory imports.
-async function normalizeGeneratedImports(directory) {
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = resolve(directory, entry.name)
-    if (entry.isDirectory()) {
-      await normalizeGeneratedImports(path)
-      continue
-    }
-    if (entry.name.endsWith('.graphql')) {
-      const schema = await format(await readFile(path, 'utf8'), {
-        parser: 'graphql',
-      })
-      await writeFile(path, schema.replace(/[\t ]+$/gm, ''))
-      continue
-    }
-    if (!entry.name.endsWith('.ts')) continue
-    let source = await readFile(path, 'utf8')
-    const ast = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
-    const replacements = []
-    for (const statement of ast.statements) {
-      if (!(ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement))) continue
-      const specifier = statement.moduleSpecifier
-      if (!specifier || !ts.isStringLiteral(specifier) || !specifier.text.startsWith('.')) continue
-      const name = specifier.text
-      if (/\.[cm]?[jt]s$/.test(name)) continue
-      const target = resolve(dirname(path), name)
-      const suffix = existsSync(`${target}.ts`)
-        ? '.ts'
-        : existsSync(resolve(target, 'index.ts'))
-          ? '/index.ts'
-          : undefined
-      if (!suffix) throw new Error(`Unresolved generated import: ${name} in ${path}`)
-      replacements.push({
-        start: specifier.getStart(ast) + 1,
-        end: specifier.getEnd() - 1,
-        value: name + suffix,
-      })
-    }
-    for (const change of replacements.reverse())
-      source = source.slice(0, change.start) + change.value + source.slice(change.end)
-    await writeTypescript(path, source)
-  }
-}
-await normalizeGeneratedImports(fileURLToPath(new URL('./graphql', import.meta.url)))
-
-await writeTypescript(new URL('./graphql.ts', import.meta.url), banner + "export * from './graphql/index.ts'\n")
 // Clear compiled artifacts so removed legacy modules cannot survive a generation.
 await rm(new URL('./dist', import.meta.url), { recursive: true, force: true })
-const build = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build'], {
-  cwd: new URL('.', import.meta.url),
-  stdio: 'inherit',
-})
-if (build.status !== 0) throw new Error('Generated contract TypeScript build failed')

@@ -1,7 +1,4 @@
-import { useContext } from 'react'
-import { resolveCodeAppearance, useSystemLight } from '../../../../components/code-appearance'
-import { useFormStore, type FormStore } from '../../../../components/form'
-import { UserPreferenceControllerContext } from '../../../../context'
+import { type FormStore } from '../../../../components/form'
 import type { PreferenceDraft, UserPreferenceValues } from './values'
 
 export interface UserPreferenceState {
@@ -15,19 +12,15 @@ export interface UserPreferenceController {
   cancel(): void
   update(patch: Partial<PreferenceDraft>, signal: AbortSignal): Promise<Partial<PreferenceDraft>>
 }
-export function useUserPreferenceController() {
-  const controller = useContext(UserPreferenceControllerContext)
-  if (!controller) throw new Error('User preferences require UserPreferenceControllerContext.')
-  return controller
-}
+
+import { getUserPreferenceController } from '../../../../context'
+import { readStore, systemLight } from '../../../page-state.svelte'
+import { resolveCodeAppearance } from '../../../../components/code-appearance'
+export const useUserPreferenceController = getUserPreferenceController
 export function useUserPreference<T>(selector: (state: UserPreferenceState) => T, names: readonly string[] = []) {
-  return useFormStore(useUserPreferenceController().store, selector, names)
+  return readStore(getUserPreferenceController().store, selector, names)
 }
 export function useCodeAppearance() {
-  const selected = useUserPreference((s) => s.draft.codeTheme, ['draft.codeTheme']),
-    appTheme = useUserPreference((s) => s.draft.theme, ['draft.theme']),
-    font = useUserPreference((s) => s.draft.codeFont, ['draft.codeFont']),
-    size = useUserPreference((s) => s.draft.codeFontSize, ['draft.codeFontSize']),
-    light = useSystemLight()
-  return resolveCodeAppearance(selected, appTheme, font, size, light)
+  const draft = getUserPreferenceController().store.getState().draft
+  return resolveCodeAppearance(draft.codeTheme, draft.theme, draft.codeFont, draft.codeFontSize, systemLight())
 }

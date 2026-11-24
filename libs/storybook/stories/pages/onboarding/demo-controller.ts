@@ -1,4 +1,4 @@
-import { createStore } from 'zustand/vanilla'
+import { createStore } from '../../../src/state.svelte'
 import { UserProfileUpdateInput, OrganizationProfileUpdateInput } from '@compallm/contract/validation'
 import type { OnboardingController, OnboardingState, OnboardingStep } from '../../../src/pages/onboarding'
 

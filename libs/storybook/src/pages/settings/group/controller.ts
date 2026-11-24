@@ -1,6 +1,5 @@
-import { useFormStore } from '../../../components/form'
 import type { FormStore } from '../../../components/form'
-import { useSettingsController } from '../controller'
+
 import type { GroupDraft } from '../types'
 
 export interface GroupState {
@@ -24,9 +23,12 @@ export interface GroupController {
   rolesChanged?(ids: string[]): void
   updateGroup(draft: GroupDraft, names: string[], signal: AbortSignal): Promise<GroupDraft | false>
 }
+
+import { getSettingsController } from '../../../context'
+import { readStore } from '../../page-state.svelte'
 export function useGroupController() {
-  return useSettingsController().pages.group
+  return getSettingsController().pages.group
 }
 export function useGroup<T>(selector: (state: GroupState) => T, names: readonly string[] = []) {
-  return useFormStore(useGroupController().store, selector, names)
+  return readStore(useGroupController().store, selector, names)
 }

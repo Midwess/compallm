@@ -1,188 +1,196 @@
-import { createSignupStore, type SignupController } from '../../src/pages/signup'
-import { createSigninStore, type SigninController } from '../../src/pages/signin'
-import type { AuthInitialState, AuthOperation, AuthResult, AuthState } from '../../src/pages/auth/types'
 import { emailRequestSchema, otpRequestSchema } from '@compallm/contract/auth'
-import type { EmailInput } from '@compallm/contract/graphql'
+import { createAuthStore, createAuthForm } from '../../src/pages/auth/store'
+import type { AuthController, AuthDraft, AuthMode, AuthOperation, AuthState } from '../../src/pages/auth/types'
 
 export type AuthDemoScenario = 'default' | 'network-error' | 'throttled' | 'expired' | 'pending'
-
-function initialValues(initial?: AuthInitialState): Partial<AuthState> {
-  return {
-    step: initial?.step ?? 'email',
-    email: initial?.email ?? '',
-    error: initial?.error ?? null,
-    code: initial?.step === 'code' ? (initial.code ?? '') : '',
-    remaining: initial?.step === 'code' ? (initial.retryAfterSeconds ?? 0) : 0,
-  }
+export interface AuthDemoOptions {
+  mode?: AuthMode
+  scenario?: AuthDemoScenario
+  initial?: Partial<AuthState>
+  draft?: Partial<AuthDraft>
+  waiting?: boolean
+  passkeySucceeds?: boolean
+  onNavigate?: (mode: AuthMode) => void
 }
-
-export class DemoAuthController implements SignupController, SigninController {
-  readonly store: ReturnType<typeof createSignupStore>
-  private readonly mode: 'signup' | 'signin'
-  private readonly scenario: AuthDemoScenario
+export class DemoAuthController implements AuthController {
+  readonly store
+  readonly form
+  readonly links = { signin: '#signin', signup: '#signup' }
   private generation = 0
-  private verificationCode = ''
-  private lastAttempt: string | undefined
-  private failedOperation: AuthOperation | null = null
-  private attempts = 0
+  private request?: AbortController
+  private timer?: ReturnType<typeof setInterval>
   private retryAt = 0
-  private timer: ReturnType<typeof setInterval> | undefined
-
-  constructor(mode: 'signup' | 'signin', scenario: AuthDemoScenario = 'default', initial?: AuthInitialState) {
-    this.mode = mode
-    this.scenario = scenario
-    this.store = (mode === 'signup' ? createSignupStore : createSigninStore)({
-      ...initialValues(initial),
-      ...(!initial && mode === 'signin' ? { step: 'choose' } : {}),
-    })
-    this.lastAttempt = initial?.step === 'code' && initial.error ? initial.code : undefined
+  private challengeUntil = 0
+  private failedOperation: AuthOperation | null = null
+  private verificationCode = ''
+  private attempts = 0
+  private releaseForm?: () => void
+  private readonly onNavigate?: (mode: AuthMode) => void
+  private readonly mode: AuthMode
+  private readonly scenario: AuthDemoScenario
+  private readonly waiting: boolean
+  private readonly passkeySucceeds: boolean
+  constructor(options: AuthDemoOptions = {}) {
+    this.onNavigate = options.onNavigate
+    this.mode = options.mode ?? 'signin'
+    this.scenario = options.scenario ?? 'default'
+    this.waiting = options.waiting ?? false
+    this.passkeySucceeds = options.passkeySucceeds ?? false
+    this.store = createAuthStore({ step: this.mode === 'signin' ? 'choose' : 'email', ...options.initial })
+    this.form = createAuthForm(this, this.mode, options.draft)
   }
-
   start = () => {
+    this.releaseForm = this.form.mount()
     this.retryAt = Date.now() + this.store.getState().remaining * 1000
-    this.scheduleCountdown()
+    if (this.store.getState().step === 'code') this.challengeUntil = Date.now() + 600_000
+    this.countdown()
     return this.stop
   }
-
   stop = () => {
-    this.generation += 1
-    if (this.timer !== undefined) clearInterval(this.timer)
+    this.generation++
+    this.request?.abort()
+    this.request = undefined
+    clearInterval(this.timer)
     this.timer = undefined
-    // A stopped pending demo can be mounted again safely (including React StrictMode).
+    this.releaseForm?.()
+    this.releaseForm = undefined
+    this.form.stop()
     this.store.setState({ pending: null })
   }
-
-  ensureCurrentUser = async () => this.store.getState().currentUser
   signOut = async () => {
     this.stop()
     this.store.setState({ currentUser: null, status: 'anonymous' })
   }
-  refreshCurrentUser = async () => this.store.getState().currentUser
-
-  private scheduleCountdown() {
-    if (this.timer !== undefined) clearInterval(this.timer)
+  clearError = () => this.store.setState({ error: null, serverError: null })
+  navigate = (href: string) => {
+    this.onNavigate?.(href === this.links.signin ? 'signin' : 'signup')
+  }
+  private countdown() {
+    clearInterval(this.timer)
     this.timer = undefined
-    if (this.store.getState().remaining === 0) return
+    if (!this.store.getState().remaining) return
     this.timer = setInterval(() => {
       const remaining = Math.max(0, Math.ceil((this.retryAt - Date.now()) / 1000))
       if (remaining !== this.store.getState().remaining) this.store.setState({ remaining })
-      if (remaining === 0 && this.timer !== undefined) {
+      if (!remaining) {
         clearInterval(this.timer)
         this.timer = undefined
       }
     }, 250)
   }
-
-  private applyDelay(result: AuthResult) {
-    if (result.retryAfterSeconds === undefined) return
-    const remaining = Math.max(0, result.retryAfterSeconds)
-    this.retryAt = Date.now() + remaining * 1000
-    this.store.setState({ remaining })
-    this.scheduleCountdown()
+  private delay(seconds: number) {
+    this.retryAt = Date.now() + seconds * 1000
+    this.store.setState({ remaining: seconds })
+    this.countdown()
   }
-
-  clearError = () => this.store.setState({ error: null, serverError: null })
-  onInvalidEmail = () => this.store.setState({ error: 'invalid-email' })
-  verifyCode = (code: string) => {
-    this.verificationCode = code
-    return this.verifyCodeValue(false, code)
+  private begin(operation: AuthOperation) {
+    this.request?.abort()
+    this.request = new AbortController()
+    const generation = ++this.generation
+    this.store.setState({ pending: operation, error: null, serverError: null })
+    return { generation, signal: this.request.signal }
   }
-  requestCode = (email: string) => this.request('request', email)
+  private wait(signal: AbortSignal, frozen = false) {
+    return new Promise<boolean>((resolve) => {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const finish = (accepted: boolean) => {
+        clearTimeout(timer)
+        signal.removeEventListener('abort', abort)
+        resolve(accepted)
+      }
+      const abort = () => finish(false)
+      if (signal.aborted) return resolve(false)
+      signal.addEventListener('abort', abort, { once: true })
+      if (!frozen) timer = setTimeout(() => finish(true), 500)
+    })
+  }
   useEmailCode = async () => {
-    this.generation += 1
-    this.store.setState({ step: 'email', pending: null, serverError: null })
+    this.generation++
+    this.request?.abort()
+    this.store.setState({
+      step: this.challengeUntil > Date.now() ? 'code' : 'email',
+      pending: null,
+      error: null,
+      serverError: null,
+    })
   }
   backToMethods = () => {
-    this.generation += 1
-    this.store.setState({ step: 'choose', pending: null, serverError: null })
+    this.generation++
+    this.request?.abort()
+    this.store.setState({ step: 'choose', pending: null, error: null, serverError: null })
   }
-  verifyPasskey = async () => {
-    const generation = ++this.generation
-    this.store.setState({ step: 'passkey', pending: 'passkey', serverError: null })
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    if (generation === this.generation)
-      this.store.setState({
-        pending: null,
-        serverError: 'Passkey verification was cancelled. Try again or continue with email.',
-      })
-  }
-  resendCode = () => this.request('resend')
-  showResend = () => this.store.setState({ resendRevealed: true })
-
   useDifferentEmail = () => {
     if (this.store.getState().pending) return
-    this.generation += 1
-    this.lastAttempt = undefined
+    this.challengeUntil = 0
     this.failedOperation = null
-    this.store.setState({ step: 'email', code: '', error: null, pending: null, resendRevealed: false })
+    this.form.reset({ email: this.store.getState().email, code: '' })
+    this.store.setState({ step: 'email', error: null, serverError: null })
   }
-
-  retry = async () => {
-    if (this.store.getState().error !== 'unavailable') return
-    if (this.failedOperation === 'resend') await this.resendCode()
-    else if (this.failedOperation === 'request') await this.requestCode(this.store.getState().email)
-    else await this.verifyCodeValue(true)
-  }
-
-  private async request(operation: 'request' | 'resend', emailValue = this.store.getState().email) {
+  requestCode = (email: string) => this.send('request', email)
+  resendCode = () => this.send('resend', this.store.getState().email)
+  private async send(operation: 'request' | 'resend', email: string) {
     const state = this.store.getState()
     if (state.pending || state.remaining > 0 || state.step === 'complete') return
-    if ((operation === 'request' && state.step !== 'email') || (operation === 'resend' && state.step !== 'code')) return
-    const input = emailRequestSchema(this.mode).safeParse({ email: emailValue } satisfies EmailInput)
-    if (!input.success) {
-      this.onInvalidEmail()
+    if (operation === 'request' ? state.step !== 'email' : state.step !== 'code') return
+    const parsed = emailRequestSchema(this.mode).safeParse({ email })
+    if (!parsed.success) return
+    const { generation, signal } = this.begin(operation)
+    if (!(await this.wait(signal, this.scenario === 'pending')) || generation !== this.generation) return
+    if (this.mode === 'signup' && parsed.data.email === 'registered@example.com') {
+      this.store.setState({
+        error: 'email-registered',
+        serverError: 'Email already registered. Sign in instead.',
+        pending: null,
+      })
       return
     }
-    const generation = ++this.generation
-    const email = input.data.email
-    this.store.setState({ email, error: null, pending: operation })
-    try {
-      if (this.scenario === 'pending') await new Promise<never>(() => {})
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      if (generation !== this.generation) return
-      const result: AuthResult =
-        this.mode === 'signup' && email === 'registered@example.com'
-          ? { ok: false, reason: 'email-registered' }
-          : this.scenario === 'throttled'
-            ? { ok: false, reason: 'throttled', retryAfterSeconds: 5 }
-            : { ok: true, retryAfterSeconds: 5 }
-      this.applyDelay(result)
-      if (result.ok) {
-        this.lastAttempt = undefined
-        this.failedOperation = null
-        this.store.setState({ step: 'code', code: '', error: null, resendRevealed: false })
-      } else {
-        this.failedOperation = operation
-        this.store.setState({ error: result.reason })
-      }
-    } finally {
-      if (generation === this.generation) this.store.setState({ pending: null })
+    if (this.scenario === 'throttled') {
+      this.delay(5)
+      this.store.setState({ error: 'throttled', pending: null })
+      return
+    }
+    this.challengeUntil = Date.now() + 600_000
+    this.failedOperation = null
+    this.form.set('code', '')
+    this.delay(5)
+    this.store.setState({ step: 'code', email: parsed.data.email, pending: null })
+  }
+  verifyCode = async (code: string) => {
+    const state = this.store.getState()
+    if (state.pending || state.step !== 'code') return
+    const parsed = otpRequestSchema(this.mode).safeParse({ code })
+    if (!parsed.success) return
+    this.verificationCode = parsed.data.code
+    const { generation, signal } = this.begin('verify')
+    if (!(await this.wait(signal, this.scenario === 'pending')) || generation !== this.generation) return
+    if (this.scenario === 'network-error' && this.attempts++ === 0) {
+      this.failedOperation = 'verify'
+      this.store.setState({ error: 'unavailable', serverError: 'Could not verify your code. Please try again.', pending: null })
+    } else if (this.scenario === 'expired') this.store.setState({ error: 'expired-code', pending: null })
+    else if (parsed.data.code !== '123456') this.store.setState({ error: 'incorrect-code', pending: null })
+    else {
+      this.failedOperation = null
+      this.store.setState({ step: 'complete', pending: null, lastLoginMethod: 'email' })
     }
   }
-
-  private async verifyCodeValue(retry = false, code = this.verificationCode) {
-    const state = this.store.getState()
-    if (state.pending || state.step !== 'code' || !otpRequestSchema(this.mode).safeParse({ code }).success) return
-    if (!retry && this.lastAttempt === code) return
-    this.lastAttempt = code
-    const generation = ++this.generation
-    this.store.setState({ error: null, pending: 'verify' })
-    try {
-      if (this.scenario === 'pending') await new Promise<never>(() => {})
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      if (generation !== this.generation) return
-      if (this.scenario === 'network-error' && this.attempts++ === 0) {
-        this.failedOperation = 'verify'
-        this.store.setState({ error: 'unavailable' })
-      } else if (this.scenario !== 'expired' && code === '123456') {
-        this.failedOperation = null
-        this.store.setState({ step: 'complete' })
-      } else {
-        this.failedOperation = 'verify'
-        this.store.setState({ error: this.scenario === 'expired' ? 'expired-code' : 'incorrect-code' })
-      }
-    } finally {
-      if (generation === this.generation) this.store.setState({ pending: null })
-    }
+  verifyPasskey = async () => {
+    const { generation, signal } = this.begin('passkey')
+    this.store.setState({ step: 'passkey' })
+    if (!(await this.wait(signal, this.waiting)) || generation !== this.generation) return
+    this.store.setState(
+      this.passkeySucceeds
+        ? { step: 'complete', pending: null, lastLoginMethod: 'passkey' }
+        : { pending: null, serverError: 'Passkey verification was cancelled. Try again or continue with email.' },
+    )
+  }
+  retry = async () => {
+    if (this.failedOperation === 'verify') await this.verifyCode(this.verificationCode)
+    else if (this.failedOperation === 'resend') await this.resendCode()
+    else if (this.failedOperation === 'request') await this.requestCode(this.form.values.email)
+  }
+  cancelVerification = () => {
+    this.request?.abort()
+    this.generation++
+    this.store.setState({ verificationActive: false, pending: null })
   }
 }

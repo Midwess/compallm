@@ -1,3 +1,5 @@
+import type { AuthUser } from '@compallm/storybook/pages/auth'
+import { PermissionMeStore } from '@compallm/contract/houdini'
 import {
   createPermissionStore,
   permissionKey,
@@ -6,8 +8,8 @@ import {
   type PermissionCheck,
   type PermissionFacts,
 } from '@compallm/storybook'
-import { ApiError, graphql } from '../graphql-client'
-import type { QueryGenqlSelection } from '@compallm/contract/graphql'
+import { ApiError, graphqlClient, requireData } from '../graphql-client'
+
 import { cedarWorker } from '../workers/cedar-client'
 import type { CedarOperations } from '../workers/cedar-protocol'
 
@@ -21,6 +23,15 @@ export class PermissionController implements Contract {
   private batch?: { checks: Map<string, PermissionCheck>; operation: Promise<void>; generation: number }
   private generation = 0
   private active = true
+  private identity?: Pick<AuthUser, 'id' | 'userId' | 'organizationId'>
+  matches(user: AuthUser) {
+    return (
+      this.active &&
+      this.identity?.id === user.id &&
+      this.identity.userId === user.userId &&
+      this.identity.organizationId === user.organizationId
+    )
+  }
   evaluate = async (checks: PermissionCheck[]) => {
     if (!this.active) return
     const scope = this.scope
@@ -50,15 +61,14 @@ export class PermissionController implements Contract {
     }
     const scope = this.scope
     const checks = new Map([[permissionKey(check), check]])
-    const authority = this.authority
     const operation = Promise.resolve()
       .then(async () => {
         if (this.batch?.operation === operation) this.batch = undefined
         const requested = [...checks.values()]
         let results: CedarOperations['evaluatePermissions']['result']
         try {
-          if (!authority) throw new Error('Permissions are unavailable.')
-          const verified = await authority
+          if (!this.authority) throw new Error('Permissions are unavailable.')
+          const verified = await this.authority
           if (scope.signal.aborted || !this.active) return
           results = await cedarWorker.request(
             'evaluatePermissions',
@@ -104,29 +114,64 @@ export class PermissionController implements Contract {
       )
     }
   }
-  start = () => {
+  seed(user: AuthUser, node: import('@compallm/contract/houdini').PortalAuthority$result['me']['node']) {
+    this.identity = user
+    this.active = true
+    this.seeded = {
+      userId: node.id,
+      organizationId: node.organizationId,
+      source: node.cedarSource,
+      entities: node.cedarEntities,
+    }
+    this.authority = Promise.resolve(this.seeded)
+    this.store.setState({
+      entries: Object.fromEntries(
+        node.organizationPermissions.map(({ action, allowed }) => {
+          const check = { action, resourceType: 'Organization' as const }
+          return [permissionKey(check), { check, status: allowed ? ('allowed' as const) : ('denied' as const) }]
+        }),
+      ),
+    })
+  }
+  private seeded?: Authority
+  start = (user?: AuthUser) => {
+    if (user && this.identity && !this.matches(user)) this.stop()
+    this.identity = user
     this.active = true
     if (this.authority) return
     const scope = this.scope
-    const selection = {
-      me: { node: { id: true, organizationId: true, cedarSource: true, cedarEntities: true } },
-    } satisfies QueryGenqlSelection
-    this.authority = graphql(scope.signal)
-      .query(selection)
-      .then(async ({ me: { node } }) => {
-        const authority = {
-          userId: node.id,
-          organizationId: node.organizationId,
-          source: node.cedarSource,
-          entities: node.cedarEntities,
-        }
-        await cedarWorker.request('evaluatePermissions', [authority, [], []], scope.signal)
-        return authority
-      })
+
+    this.authority = (
+      this.seeded
+        ? Promise.resolve({
+            me: {
+              node: {
+                id: this.seeded.userId,
+                organizationId: this.seeded.organizationId,
+                cedarSource: this.seeded.source,
+                cedarEntities: this.seeded.entities,
+              },
+            },
+          })
+        : new PermissionMeStore()
+            .fetch({ fetch: graphqlClient.fetch(scope.signal), policy: 'NoCache', blocking: true })
+            .then(requireData)
+    ).then(async ({ me: { node } }) => {
+      const authority = {
+        userId: node.id,
+        organizationId: node.organizationId,
+        source: node.cedarSource,
+        entities: node.cedarEntities,
+      }
+      await cedarWorker.request('evaluatePermissions', [authority, [], []], scope.signal)
+      return authority
+    })
     void this.authority.catch(() => undefined)
   }
 
   stop = () => {
+    this.identity = undefined
+    this.seeded = undefined
     this.active = false
     this.scope.abort()
     this.scope = new AbortController()

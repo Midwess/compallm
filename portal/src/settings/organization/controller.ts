@@ -1,16 +1,20 @@
+import type { SettingsRouteData } from '../load'
+import {
+  SettingsOrganizationOrganizationProfileStore,
+  SettingsOrganizationGenerateOrgAvatarUrlStore,
+  SettingsOrganizationOrganizationProfileUpdateStore,
+} from '@compallm/contract/houdini'
 import { requirePermissions } from '../../permission/controller'
 import type { PermissionController } from '@compallm/storybook'
 import type { OrganizationController as Contract, SettingsController } from '@compallm/storybook/pages/settings'
 import type { AuthController } from '@compallm/storybook'
-import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
+
 import { ImageUploadInput, OrganizationProfileUpdateInput } from '@compallm/contract/validation'
-import { ApiError, graphql } from '../../graphql-client'
+import { ApiError, graphqlClient, requireData } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 import { beginRequest } from '../../request-activity'
 
 export type OrganizationAuth = Partial<Pick<AuthController, 'store'>>
-
-const organizationSelection = { id: true, name: true, avatarUrl: true, canUpdateProfile: true } as const
 
 export class OrganizationController implements Contract {
   private scope = new AbortController()
@@ -18,6 +22,8 @@ export class OrganizationController implements Contract {
   private organizationId?: string
   private identity?: string
   private active = false
+  private preparation?: SettingsRouteData
+  routeData?: () => SettingsRouteData | undefined
   private uploaded?: { file: File; organizationId: string }
   private readonly permissions?: PermissionController
   private readonly settings: SettingsController['store']
@@ -44,7 +50,8 @@ export class OrganizationController implements Contract {
   }
 
   start = () => {
-    this.cancel()
+    if (!this.seeded) this.cancel()
+    this.seeded = false
     this.active = true
     this.scope = new AbortController()
     const synchronize = () => {
@@ -102,30 +109,26 @@ export class OrganizationController implements Contract {
     this.read = request
     this.settings.setState({ organizationProfileStatus: 'loading' })
     try {
-      const selection = {
-        organizationProfile: { __args: { id: organizationId }, node: organizationSelection },
-      } satisfies QueryGenqlSelection
-      const { organizationProfile } = await graphql(AbortSignal.any([scope.signal, request.signal])).query(selection)
+      const prepared = this.routeData?.()
+      const usable =
+        prepared &&
+        prepared !== this.preparation &&
+        prepared.version === graphqlClient.readVersion &&
+        prepared.organizationId === organizationId &&
+        prepared.organization
+      this.preparation = prepared
+      const { organizationProfile } = usable
+        ? prepared.organization!
+        : await new SettingsOrganizationOrganizationProfileStore()
+            .fetch({
+              variables: { organizationProfileId: organizationId },
+              fetch: graphqlClient.fetch(AbortSignal.any([scope.signal, request.signal])),
+              policy: 'NoCache',
+              blocking: true,
+            })
+            .then(requireData)
       if (scope.signal.aborted || this.read !== request) return
-      if (!organizationProfile) {
-        this.settings.setState({ organizationProfileStatus: 'missing' })
-        return
-      }
-      if (organizationProfile.node.id !== organizationId)
-        throw new ApiError('Organization identity did not match.', 409, 'ORGANIZATION_MISMATCH')
-      const organization = {
-        ...this.settings.getState().organization,
-        name: organizationProfile.node.name,
-        logo: organizationProfile.node.avatarUrl,
-      }
-      if (!this.settings.form.dirty)
-        this.settings.form.reset({ ...this.settings.form.values, organization, organizationUpload: null })
-      this.settings.setState({
-        organizationProfileStatus: 'ready',
-        organizationProfileLoaded: true,
-        organizationCanUpdateProfile: organizationProfile.node.canUpdateProfile,
-        organizationSavedName: organizationProfile.node.name,
-      })
+      this.adopt(organizationProfile, organizationId)
     } catch (error) {
       if (scope.signal.aborted || request.signal.aborted || this.read !== request) return
       this.settings.setState({
@@ -139,6 +142,39 @@ export class OrganizationController implements Contract {
     }
   }
 
+  seed(data: SettingsRouteData) {
+    if (!data.organization) return
+    this.organizationId = data.organizationId
+    this.identity = `${data.userId}:${data.organizationId}`
+    this.preparation = data
+    this.adopt(data.organization.organizationProfile, data.organizationId)
+    this.seeded = true
+  }
+  private seeded = false
+  private adopt(
+    organizationProfile: NonNullable<SettingsRouteData['organization']>['organizationProfile'],
+    organizationId: string,
+  ) {
+    if (!organizationProfile) {
+      this.settings.setState({ organizationProfileStatus: 'missing' })
+      return
+    }
+    if (organizationProfile.node.id !== organizationId)
+      throw new ApiError('Organization identity did not match.', 409, 'ORGANIZATION_MISMATCH')
+    const organization = {
+      ...this.settings.getState().organization,
+      name: organizationProfile.node.name,
+      logo: organizationProfile.node.avatarUrl,
+    }
+    if (!this.settings.form.dirty)
+      this.settings.form.reset({ ...this.settings.form.values, organization, organizationUpload: null })
+    this.settings.setState({
+      organizationProfileStatus: 'ready',
+      organizationProfileLoaded: true,
+      organizationCanUpdateProfile: organizationProfile.node.canUpdateProfile,
+      organizationSavedName: organizationProfile.node.name,
+    })
+  }
   saveProfile = async (value: { name?: string }, file: File | null, signal: AbortSignal) => {
     const scope = this.scope
     const organizationId = this.organizationId
@@ -165,15 +201,12 @@ export class OrganizationController implements Contract {
           size: file.size,
           mediaType: ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WEBP' } as Record<string, string>)[file.type],
         })
-        const selection = {
-          generateOrgAvatarUrl: {
-            __args: { input: uploadInput },
-            node: { url: true, fields: { name: true, value: true }, expiresAt: true },
-          },
-        } satisfies MutationGenqlSelection
+
         const {
           generateOrgAvatarUrl: { node },
-        } = await graphql(combined).mutation(selection)
+        } = await new SettingsOrganizationGenerateOrgAvatarUrlStore()
+          .mutate({ generateOrgAvatarUrlInput: uploadInput }, { fetch: graphqlClient.fetch(combined) })
+          .then(requireData)
         if (!current()) return false as const
         const form = new FormData()
         node.fields.forEach(({ name, value }) => form.append(name, value))
@@ -193,12 +226,12 @@ export class OrganizationController implements Contract {
         if (!current()) return false as const
         this.uploaded = { file, organizationId }
       }
-      const selection = {
-        organizationProfileUpdate: { __args: { input }, node: organizationSelection },
-      } satisfies MutationGenqlSelection
+
       const {
         organizationProfileUpdate: { node },
-      } = await graphql(combined).mutation(selection)
+      } = await new SettingsOrganizationOrganizationProfileUpdateStore()
+        .mutate({ organizationProfileUpdateInput: input }, { fetch: graphqlClient.fetch(combined) })
+        .then(requireData)
       if (!current()) return false as const
       if (node.id !== organizationId) throw new ApiError('Organization identity did not match.', 409, 'ORGANIZATION_MISMATCH')
       this.settings.form.set('organization.logo', node.avatarUrl)

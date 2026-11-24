@@ -1,5 +1,5 @@
 import type { SettingsState } from '@compallm/storybook/pages/settings'
-import type { StoreApi } from 'zustand/vanilla'
+import type { StateStore as StoreApi } from '@compallm/storybook/state'
 
 export class SearchController {
   private readonly store: StoreApi<SettingsState>

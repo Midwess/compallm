@@ -1,5 +1,6 @@
-import type { StoreApi } from 'zustand/vanilla'
-import type { PreferenceAppearanceMode, User } from '@compallm/contract/graphql'
+import type { StateStore } from '../../state.svelte'
+import type { PreferenceAppearanceMode$options as PreferenceAppearanceMode } from '@compallm/contract/houdini'
+import type { User } from '../api-types'
 import type { UserProfileUpdateInputFormOutput } from '@compallm/contract/validation'
 
 export type OnboardingStep =
@@ -28,7 +29,7 @@ export interface OnboardingState {
   error: string | null
 }
 export interface OnboardingController {
-  store: StoreApi<OnboardingState>
+  store: StateStore<OnboardingState>
   reopen?(): void
   next(): void | Promise<void>
   back(): void | Promise<void>

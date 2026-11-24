@@ -1,4 +1,19 @@
 {
-  "files": [],
-  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
+  "extends": "$app/tsconfig",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "moduleResolution": "bundler",
+    "paths": {
+      "$houdini": ["../libs/contract/houdini/generated/index.ts"],
+      "$houdini/*": ["../libs/contract/houdini/generated/*"]
+    }
+  },
+  "include": ["src", "*.ts", "*.js"],
+  "exclude": ["src/service-worker"]
 }

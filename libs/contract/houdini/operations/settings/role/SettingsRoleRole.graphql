@@ -1,0 +1,13 @@
+query SettingsRoleRole($roleId: ID!, $includeRoleNodeCedarSource: Boolean! = false) {
+  role(id: $roleId) {
+    node {
+      id
+      name
+      description
+      color
+      canReadPolicy
+      cedarSource @include(if: $includeRoleNodeCedarSource)
+      owner
+    }
+  }
+}

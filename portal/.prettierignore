@@ -1,6 +1,8 @@
-node_modules/
-dist/
+node_modules
+dist
+.svelte-kit
+storybook-static
 package-lock.json
-pnpm-lock.yaml
-test-results/
-playwright-report/
+static/assets/providers
+
+build/

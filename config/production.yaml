@@ -1,4 +1,8 @@
 settings:
+  frontend:
+    port: <%= get_env(name="FRONTEND_PORT", default="7887") %>
+    managed: <%= get_env(name="FRONTEND_MANAGED", default="true") %>
+    public_origin: "<%= get_env(name="AUTH_PUBLIC_ORIGIN", default="") %>"
   smtp:
     concurrency: <%= get_env(name="SMTP_CONCURRENCY", default="10") %>
     queue_capacity: <%= get_env(name="SMTP_QUEUE_CAPACITY", default="1024") %>

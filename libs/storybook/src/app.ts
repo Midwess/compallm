@@ -1,5 +1,4 @@
-import type { StoreApi } from 'zustand/vanilla'
-
+import type { StateStore } from './state.svelte'
 export interface AppState {
   loading: boolean
   error: string | null
@@ -11,10 +10,9 @@ export interface AppLoadingTask {
 }
 export interface LoadingController {
   beginLoading(key: string): AppLoadingTask
-  store: StoreApi<AppState>
+  store: StateStore<AppState>
   retry(): Promise<void>
 }
-
 export interface AppController extends LoadingController {
   createLoadingScope(): LoadingController
 }

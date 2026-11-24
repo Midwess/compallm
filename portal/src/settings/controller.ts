@@ -1,3 +1,12 @@
+import type { AuthController } from '@compallm/storybook/pages/auth'
+import {
+  SettingsMeAndOrganizationAndRolesAndGroupsStore,
+  SettingsSessionsStore,
+  SettingsSessionRevokeOtherStore,
+  SettingsSessionRevokeOthersStore,
+  SettingsRoleCreateStore,
+  SettingsGroupCreateStore,
+} from '@compallm/contract/houdini'
 import { permissionKey, type PermissionController } from '@compallm/storybook'
 import { requirePermissions } from '../permission/controller'
 import {
@@ -7,32 +16,17 @@ import {
   type SettingsDestination,
   type UserPreferenceController,
 } from '@compallm/storybook/pages/settings'
-import type { UrlController, AuthController } from '@compallm/storybook'
+import type { UrlController } from '@compallm/storybook'
 import { notify } from '../notifications/toast'
 import { codeExamples } from './code-examples'
-import { graphql } from '../graphql-client'
-import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
+import { graphqlClient, requireData } from '../graphql-client'
+
 import { RoleCreateInput, GroupCreateInput } from '@compallm/contract/validation'
 import { createSettingsPages } from './pages'
 import { lookupSessionLocation } from './session-location'
 
-export const settingsPages = [
-  'blank',
-  'general',
-  'messaging',
-  'code',
-  'profile',
-  'access',
-  'security',
-  'api-keys',
-  'organization',
-  'organization-onboarding',
-  'members',
-  'usage-limits',
-  'member-limits',
-  'usage-explorer',
-  'audit',
-] as const satisfies readonly SettingsDestination[]
+import { settingsPages } from './destinations'
+export { settingsPages } from './destinations'
 
 export class SettingsController implements Controller {
   reopenOnboarding?: () => void
@@ -50,7 +44,7 @@ export class SettingsController implements Controller {
   readonly pages: ReturnType<typeof createSettingsPages>
   readonly role: ReturnType<typeof createSettingsPages>['role']
   readonly group: ReturnType<typeof createSettingsPages>['group']
-  private readonly url: Pick<UrlController, 'navigate' | 'back'> & Partial<Pick<UrlController, 'store'>>
+  private readonly url: Pick<UrlController, 'navigate'> & Partial<Pick<UrlController, 'store'>>
   private readonly auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>
   private readonly initialName: string
   private stopOrganization?: () => void
@@ -74,6 +68,7 @@ export class SettingsController implements Controller {
   private readonly deletedRoles = new Set<string>()
 
   start = () => {
+    const stopDialogs = this.pages.dialogs.start()
     this.stopProfile?.()
     this.stopProfile = undefined
     this.stopOrganization?.()
@@ -87,7 +82,10 @@ export class SettingsController implements Controller {
     const generation = ++this.generation
     this.store.setState({ navigationLoading: true, navigationLoadError: false })
     if (this.store.getState().location.page === 'members') this.pages.members.start()
-    void this.loadPermissions(controller.signal, generation)
+    if (this.navigationSeeded) {
+      this.navigationSeeded = false
+      this.store.setState({ navigationLoading: false })
+    } else void this.loadPermissions(controller.signal, generation)
     const location = this.store.getState().location
     if (location.page === 'organization') this.stopOrganization = this.pages.organization.start()
     if (location.page === 'profile') this.stopProfile = this.pages.profile.start()
@@ -98,6 +96,7 @@ export class SettingsController implements Controller {
     if (location.page === 'role' && location.id) void this.role.load(location.id)
     if (location.page === 'group' && location.id) void this.group.load(location.id)
     return () => {
+      stopDialogs()
       this.stopProfile?.()
       this.stopProfile = undefined
       this.stopOrganization?.()
@@ -132,76 +131,16 @@ export class SettingsController implements Controller {
       if (signal.aborted || generation !== this.generation) return
       const allowed = (index: number) =>
         !this.permissions || this.permissions.store.getState().entries[permissionKey(checks[index])]?.status === 'allowed'
-      const selection = {
-        me: { node: { id: true, organizationOwner: true } },
-        ...(allowed(2) ? { organization: { node: { ownerMemberIds: true } } } : {}),
-        ...(allowed(0) ? { roles: { edges: { node: { id: true, name: true, color: true, owner: true } } } } : {}),
-        ...(allowed(1)
-          ? {
-              groups: {
-                edges: {
-                  node: {
-                    id: true,
-                    name: true,
-                    ...(allowed(0) ? { roles: { edges: { node: { id: true } } } } : {}),
-                  },
-                },
-              },
-            }
-          : {}),
-      } satisfies QueryGenqlSelection
-      if (!Object.keys(selection).length) {
-        this.store.setState({ roles: [], groups: [], navigationLoaded: true })
-        return
-      }
-      const result = await graphql(signal).query(selection)
-      const roles = result.roles ?? { edges: [] }
-      const groups = result.groups ?? { edges: [] }
-      if (signal.aborted || generation !== this.generation) return
-      this.permissions?.setFacts?.(
-        groups.edges.flatMap(({ node }) =>
-          node.roles
-            ? [
-                {
-                  resourceType: 'Group' as const,
-                  id: node.id,
-                  roleIds: node.roles.edges.map(({ node }) => node.id),
-                },
-              ]
-            : [],
-        ),
-      )
-      this.store.setState((state) => ({
-        navigationLoaded: true,
-        currentMemberId: result.me?.node.id,
-        actorIsOwner: result.me?.node.organizationOwner ?? false,
-        ownerMemberIds: result.organization?.node.ownerMemberIds ?? [],
-        roles: [
-          ...roles.edges
-            .filter(({ node }) => !this.deletedRoles.has(node.id))
-            .map(({ node: role }) => ({ ...role, description: '', source: '' })),
-          ...state.roles.filter(
-            (role) => this.knownEmptyRoles.has(role.id) && !roles.edges.some(({ node }) => node.id === role.id),
-          ),
-        ],
-        groups: [
-          ...groups.edges
-            .filter(({ node }) => !this.deletedGroups.has(node.id))
-            .map(
-              ({ node }) =>
-                state.groups.find((group) => group.id === node.id) ?? {
-                  ...node,
-                  description: '',
-                  roleIds: node.roles?.edges.map(({ node }) => node.id) ?? [],
-                  memberIds: [],
-                  color: '',
-                },
-            ),
-          ...state.groups.filter(
-            (group) => this.createdGroups.has(group.id) && !groups.edges.some(({ node }) => node.id === group.id),
-          ),
-        ],
-      }))
+
+      const result = await new SettingsMeAndOrganizationAndRolesAndGroupsStore()
+        .fetch({
+          variables: { includeFields: allowed(2), includeFields2: allowed(0), includeFields3: allowed(1) },
+          fetch: graphqlClient.fetch(signal),
+          policy: 'NoCache',
+          blocking: true,
+        })
+        .then(requireData)
+      this.adoptNavigation(result)
     } catch (error) {
       if (!signal.aborted && generation === this.generation) {
         this.store.setState({ navigationLoadError: true })
@@ -214,9 +153,84 @@ export class SettingsController implements Controller {
     }
   }
 
+  seedNavigation(result: import('@compallm/contract/houdini').SettingsMeAndOrganizationAndRolesAndGroups$result) {
+    this.adoptNavigation(result)
+    this.navigationSeeded = true
+    this.store.setState({ navigationLoading: false })
+  }
+  private navigationSeeded = false
+  private adoptNavigation(result: import('@compallm/contract/houdini').SettingsMeAndOrganizationAndRolesAndGroups$result) {
+    const roles = result.roles ?? { edges: [] }
+    const groups = result.groups ?? { edges: [] }
+    this.permissions?.setFacts?.(
+      groups.edges.flatMap(({ node }) =>
+        node.roles
+          ? [
+              {
+                resourceType: 'Group' as const,
+                id: node.id,
+                roleIds: node.roles.edges.map(({ node }) => node.id),
+              },
+            ]
+          : [],
+      ),
+    )
+    this.store.setState((state) => ({
+      navigationLoaded: true,
+      currentMemberId: result.me?.node.id,
+      actorIsOwner: result.me?.node.organizationOwner ?? false,
+      ownerMemberIds: result.organization?.node.ownerMemberIds ?? [],
+      roles: [
+        ...roles.edges
+          .filter(({ node }) => !this.deletedRoles.has(node.id))
+          .map(({ node: role }) => ({ ...role, description: '', source: '' })),
+        ...state.roles.filter(
+          (role) => this.knownEmptyRoles.has(role.id) && !roles.edges.some(({ node }) => node.id === role.id),
+        ),
+      ],
+      groups: [
+        ...groups.edges
+          .filter(({ node }) => !this.deletedGroups.has(node.id))
+          .map(
+            ({ node }) =>
+              state.groups.find((group) => group.id === node.id) ?? {
+                ...node,
+                description: '',
+                roleIds: node.roles?.edges.map(({ node }) => node.id) ?? [],
+                memberIds: [],
+                color: '',
+              },
+          ),
+        ...state.groups.filter(
+          (group) => this.createdGroups.has(group.id) && !groups.edges.some(({ node }) => node.id === group.id),
+        ),
+      ],
+    }))
+  }
+  seedSessions(result: import('@compallm/contract/houdini').SettingsSessions$result) {
+    const user = this.auth.store?.getState().currentUser
+    this.sessionsCursor = result.sessions.pageInfo.endCursor ?? null
+    this.store.setState({
+      sessionsLoaded: true,
+      sessionsLoading: false,
+      sessionsHasNextPage: result.sessions.pageInfo.hasNextPage,
+      otherSessions: result.sessions.edges
+        .filter(({ node }) => node.id !== user?.id)
+        .map(({ node }) => ({
+          id: node.id,
+          ipAddress: node.ipAddress,
+          browser: describeSessionBrowser(node.userAgent),
+          signedInAt: node.signedInAt,
+          lastSeenAt: node.lastSeenAt,
+          location: null,
+        })),
+    })
+    this.sessionsSeeded = true
+  }
+  private sessionsSeeded = false
   constructor(
     organizationName: string,
-    url: Pick<UrlController, 'navigate' | 'back'> & Partial<Pick<UrlController, 'store'>>,
+    url: Pick<UrlController, 'navigate'> & Partial<Pick<UrlController, 'store'>>,
     auth: Pick<AuthController, 'signOut'> & Partial<Pick<AuthController, 'store'>>,
     page: SettingsDestination,
     preferences: UserPreferenceController,
@@ -297,6 +311,10 @@ export class SettingsController implements Controller {
     if (this.store.getState().sessionsHasNextPage && !this.store.getState().sessionsLoading) void this.loadSessions(true)
   }
   private loadSessions = async (append = false) => {
+    if (this.sessionsSeeded && !append) {
+      this.sessionsSeeded = false
+      return
+    }
     const user = this.auth.store?.getState().currentUser
     if (!user) return
     this.sessionsRequest?.abort()
@@ -305,14 +323,14 @@ export class SettingsController implements Controller {
     if (!append) this.sessionsCursor = null
     this.store.setState({ sessionsLoading: true, sessionsError: false })
     try {
-      const selection = {
-        sessions: {
-          __args: { first: 20, ...(append && this.sessionsCursor ? { after: this.sessionsCursor } : {}) },
-          edges: { node: { id: true, ipAddress: true, userAgent: true, signedInAt: true, lastSeenAt: true } },
-          pageInfo: { endCursor: true, hasNextPage: true },
-        },
-      } satisfies QueryGenqlSelection
-      const result = await graphql(request.signal).query(selection)
+      const result = await new SettingsSessionsStore()
+        .fetch({
+          variables: { sessionsAfter: append ? this.sessionsCursor : undefined },
+          fetch: graphqlClient.fetch(request.signal),
+          policy: 'NoCache',
+          blocking: true,
+        })
+        .then(requireData)
       if (request.signal.aborted || this.sessionsRequest !== request || this.auth.store?.getState().currentUser?.id !== user.id)
         return
       const records = result.sessions.edges
@@ -357,26 +375,31 @@ export class SettingsController implements Controller {
 
   revokeSession = (id: string) => {
     const user = this.auth.store?.getState().currentUser
-    if (!user || id === user.id) return
+    const owner = this.request
+    if (!user || id === user.id || !owner || owner.signal.aborted) return
     void (async () => {
       try {
-        const selection = { sessionRevokeOther: { __args: { id }, node: true } } satisfies MutationGenqlSelection
-        await graphql().mutation(selection)
-        if (this.auth.store?.getState().currentUser?.id !== user.id) return
+        await new SettingsSessionRevokeOtherStore()
+          .mutate({ sessionRevokeOtherId: id }, { fetch: graphqlClient.fetch(owner.signal) })
+          .then(requireData)
+        if (owner.signal.aborted || this.auth.store?.getState().currentUser?.id !== user.id) return
         this.revokedSessions.add(id)
         this.store.setState((state) => ({ otherSessions: state.otherSessions.filter((s) => s.id !== id) }))
       } catch (error) {
-        notify.error(error)
+        if (!owner.signal.aborted) notify.error(error)
       }
     })()
   }
 
   private revokeOtherSessions = async () => {
     const user = this.auth.store?.getState().currentUser
-    if (!user) return
-    const selection = { sessionRevokeOthers: { node: true } } satisfies MutationGenqlSelection
-    await graphql().mutation(selection)
-    if (this.auth.store?.getState().currentUser?.id !== user.id) return
+    const owner = this.request
+    if (!user || !owner || owner.signal.aborted) return
+
+    await new SettingsSessionRevokeOthersStore()
+      .mutate(undefined, { fetch: graphqlClient.fetch(owner.signal) })
+      .then(requireData)
+    if (owner.signal.aborted || this.auth.store?.getState().currentUser?.id !== user.id) return
     this.sessionsRequest?.abort()
     this.sessionsRequest = undefined
     this.sessionsCursor = null
@@ -384,6 +407,8 @@ export class SettingsController implements Controller {
   }
 
   setPage = (page: SettingsDestination, id?: string) => {
+    const current = this.store.getState().location
+    if (this.request && current.page === page && current.id === id) return
     this.locationRequest?.abort()
     this.locationRequest = undefined
     this.sessionsRequest?.abort()
@@ -436,12 +461,12 @@ export class SettingsController implements Controller {
           { action: 'role.create', resourceType: 'Organization' },
         ])
       if (signal.aborted || generation !== this.generation) return
-      const selection = {
-        roleCreate: { __args: { input }, node: { id: true, name: true, description: true, color: true } },
-      } satisfies MutationGenqlSelection
+
       const {
         roleCreate: { node },
-      } = await graphql(signal).mutation(selection)
+      } = await new SettingsRoleCreateStore()
+        .mutate({ roleCreateInput: input }, { fetch: graphqlClient.fetch(signal) })
+        .then(requireData)
       if (signal.aborted || generation !== this.generation) return
       this.knownEmptyRoles.add(node.id)
       this.store.setState((state) => ({
@@ -484,10 +509,12 @@ export class SettingsController implements Controller {
           { action: 'group.create', resourceType: 'Organization' },
         ])
       if (request.signal.aborted || generation !== this.generation) return
-      const selection = { groupCreate: { __args: { input }, node: { id: true, name: true } } } satisfies MutationGenqlSelection
+
       const {
         groupCreate: { node },
-      } = await graphql(request.signal).mutation(selection)
+      } = await new SettingsGroupCreateStore()
+        .mutate({ groupCreateInput: input }, { fetch: graphqlClient.fetch(request.signal) })
+        .then(requireData)
       if (request.signal.aborted || generation !== this.generation) return
       this.createdGroups.add(node.id)
       this.store.setState((state) => ({
@@ -507,6 +534,7 @@ export class SettingsController implements Controller {
       this.creatingGroup = false
     }
   }
+  href = (page: SettingsDestination, id?: string) => `${this.base}/settings/${page}${id ? '/' + encodeURIComponent(id) : ''}`
   navigate = (page: SettingsDestination, id?: string) => {
     if (page === 'new-group') void this.createGroup()
     else if (page === 'new-role') void this.createRole()
@@ -525,7 +553,7 @@ export class SettingsController implements Controller {
   signOut = () => {
     void this.auth.signOut()
   }
-  leaveSettings = () => this.url.back(`${this.base}/chat`)
+  leaveSettings = () => this.url.navigate(`${this.base}/chat`)
   apiError = (error: unknown, retry?: () => void) => {
     if (retry) notify.apiError(error, retry)
     else notify.error(error)

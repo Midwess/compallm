@@ -1,3 +1,4 @@
+import { cloneFormValue } from '../../../components/form-model.svelte'
 import { ProviderModelFields } from '@compallm/contract/provider'
 import { effortLevels } from '../../../components/effort-mapping'
 import type { CreateProviderState, ModelCapability, ModelDraft, ProviderModel, TextModelProtocol } from './types'
@@ -51,7 +52,7 @@ export function initializeModelDraft(model: ModelDraft): ModelDraft {
     inputPriceEnabled: model.inputPriceEnabled ?? true,
     outputPriceEnabled: model.outputPriceEnabled ?? true,
     cachedPriceEnabled: model.cachedPriceEnabled ?? true,
-    templatePrices: model.templatePrices ?? {
+    catalogPrices: model.catalogPrices ?? {
       inputPrice: model.inputPrice,
       outputPrice: model.outputPrice,
       cachedPrice: model.cachedPrice,
@@ -70,7 +71,7 @@ export function initializeModelDraft(model: ModelDraft): ModelDraft {
   if (!draft.defaults) {
     const { defaults: omitted, ...defaults } = draft
     void omitted
-    draft.defaults = structuredClone(defaults)
+    draft.defaults = cloneFormValue(defaults)
   }
   return draft
 }
@@ -84,7 +85,7 @@ export const priceEnabledFields = {
 } as const
 export type ModelPriceField = keyof typeof priceEnabledFields
 export function effectiveModelPrice(model: ModelDraft, key: ModelPriceField): string {
-  return model[priceEnabledFields[key]] === false ? (model.templatePrices?.[key] ?? '') : model[key]
+  return model[priceEnabledFields[key]] === false ? (model.catalogPrices?.[key] ?? '') : model[key]
 }
 export function joinModelEndpoint(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`

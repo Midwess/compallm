@@ -1,9 +1,10 @@
-import type { FieldsSelection, PreferenceRelativeFontSize, ThemePreferences } from '@compallm/contract/graphql'
+import type { PreferenceRelativeFontSize$options as PreferenceRelativeFontSize } from '@compallm/contract/houdini'
+type ThemePreferences =
+  import('@compallm/contract/houdini').PreferenceUserUserPreferences$result['userPreferences']['node']['theme']
 import { userPreferenceDefaults } from '@compallm/contract/preference'
 
 export class AppearanceController {
-  private theme: FieldsSelection<ThemePreferences, { mode: true; palettes: { light: true; dark: true } }> =
-    userPreferenceDefaults.theme
+  private theme: ThemePreferences = userPreferenceDefaults.theme
 
   start = () => {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
@@ -24,6 +25,7 @@ export class AppearanceController {
     root.dataset.theme = this.theme.palettes[dark ? 'dark' : 'light'].toLowerCase().replaceAll('_', '-')
     root.dataset.appearance = dark ? 'dark' : 'light'
     root.classList.toggle('dark', dark)
+    document.cookie = `compallm-appearance=${dark ? 'dark' : 'light'}; Path=/; SameSite=Lax; Max-Age=31536000${window.location.protocol === 'https:' ? '; Secure' : ''}`
   }
 
   setTextSize = (size: PreferenceRelativeFontSize) => {

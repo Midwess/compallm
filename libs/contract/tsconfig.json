@@ -8,8 +8,11 @@
     "skipLibCheck": true,
     "declaration": true,
     "rewriteRelativeImportExtensions": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "paths": {
+      "$houdini/*": ["./houdini/generated/*"]
+    }
   },
-  "include": ["*.ts", "graphql/**/*.ts"],
+  "include": ["*.ts"],
   "exclude": ["dist", "node_modules"]
 }

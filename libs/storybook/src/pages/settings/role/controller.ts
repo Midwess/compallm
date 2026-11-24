@@ -1,6 +1,5 @@
-import { useFormStore } from '../../../components/form'
 import type { FormStore } from '../../../components/form'
-import { useSettingsController } from '../controller'
+
 import type { RoleDraft } from '../types'
 
 export interface RoleState {
@@ -29,9 +28,12 @@ export interface RoleController {
   saveRole(): void
   resetRole(): void
 }
+
+import { getSettingsController } from '../../../context'
+import { readStore } from '../../page-state.svelte'
 export function useRoleController() {
-  return useSettingsController().pages.role
+  return getSettingsController().pages.role
 }
 export function useRole<T>(selector: (state: RoleState) => T, names: readonly string[] = []) {
-  return useFormStore(useRoleController().store, selector, names)
+  return readStore(useRoleController().store, selector, names)
 }

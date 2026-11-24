@@ -1,13 +1,10 @@
-import { useContext } from 'react'
-import { useStore } from 'zustand'
-import { OnboardingControllerContext } from '../../context'
 import type { OnboardingState } from './types'
 
+import { getOnboardingController } from '../../context'
+import { readStore } from '../page-state.svelte'
 export function useOnboardingController() {
-  const controller = useContext(OnboardingControllerContext)
-  if (!controller) throw new Error('Onboarding requires OnboardingControllerContext.')
-  return controller
+  return getOnboardingController()
 }
-export function useOnboarding<T>(selector: (state: OnboardingState) => T) {
-  return useStore(useOnboardingController().store, selector)
+export function useOnboarding<T>(selector: (state: OnboardingState) => T, names: readonly string[] = []) {
+  return readStore(useOnboardingController().store, selector, names)
 }

@@ -1,4 +1,4 @@
-import type { ProviderModelConfiguration as ModelConfiguration } from '@compallm/contract/graphql'
+import type { ProviderModelConfiguration as ModelConfiguration } from '@compallm/contract/houdini'
 import { ProviderCreateFromTemplateInput, ProviderModelConfiguration, ProviderCreateInput } from '@compallm/contract/validation'
 import { ProviderFields, ProviderModelFields, ProviderInputRules } from '@compallm/contract/provider'
 import { headersAreValid, acceptsHeaderInput } from '@compallm/contract/provider'

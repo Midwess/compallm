@@ -1,9 +1,9 @@
 import { userPreferenceSidebarDestinations, userPreferenceDefaults } from '@compallm/contract/preference'
-import { createStore } from 'zustand/vanilla'
+import { createStore } from '../../state.svelte'
 import type { OrganizationState } from './types'
 
 export function createOrganizationStore(initial: Partial<OrganizationState> = {}) {
-  return createStore<OrganizationState>()(() => ({
+  return createStore<OrganizationState>(() => ({
     organizationId: '',
     organizations: [],
     providers: [],

@@ -1,7 +1,5 @@
-node_modules/
-dist/
-storybook-static/
-test-results/
-playwright-report/
+node_modules
+dist
+.svelte-kit
+storybook-static
 package-lock.json
-LICENSE

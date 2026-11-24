@@ -1,0 +1,211 @@
+[
+  {
+    "family": "Form",
+    "stories": [
+      "ButtonOnly",
+      "CommitOnBlur",
+      "CommitOnChange",
+      "Debounced",
+      "Rejected",
+      "ValidationFeedback",
+      "ValidationAtRightEdge"
+    ]
+  },
+  {
+    "family": "Navigation",
+    "stories": ["BreadcrumbTrail", "BackBreadcrumb", "ViewPill", "AgentDock", "NavigationTab", "ToolbarAction", "DragHandle"]
+  },
+  {
+    "family": "Data",
+    "stories": [
+      "ProjectTableHeader",
+      "ProjectTableRow",
+      "ProjectIcon",
+      "ProjectHealth",
+      "ProjectProgress",
+      "ResourceAction",
+      "MilestoneAddAction",
+      "ActivityEvent",
+      "PropertyChip",
+      "PropertyRow"
+    ]
+  },
+  {
+    "family": "Forms",
+    "stories": ["FormIntroduction", "FormStepMarker", "FormStepHeading", "FormStepConnector", "FormFieldLabel", "LabeledField"]
+  },
+  {
+    "family": "Foundations",
+    "stories": ["Mapping", "Colors", "Typography", "Spacing", "RuntimeTokens", "InteractionColors", "ThemeBalance"]
+  },
+  {
+    "family": "ProviderControls",
+    "stories": ["Headers", "EmptyHeaders", "Efforts", "Avatar", "CompactEfforts", "TokenCapacityRuler"]
+  },
+  {
+    "family": "Toast",
+    "stories": ["Info", "Error", "Warning", "Success", "Loading", "LongMessage", "MessageOnly", "Narrow"]
+  },
+  {
+    "family": "Icons",
+    "stories": ["Phosphor", "Providers", "Capabilities"]
+  },
+  {
+    "family": "Primitives",
+    "stories": [
+      "DialogComposition",
+      "AlertComposition",
+      "PopupComposition",
+      "TableComposition",
+      "CategorizedTable",
+      "ControlsComposition",
+      "RichMessageContent",
+      "FilterSubmenus",
+      "FilterAtContainerEdge",
+      "ChildComposition",
+      "ResponsiveColumns",
+      "DialogRerender"
+    ]
+  },
+  {
+    "family": "Settings",
+    "stories": ["PageTitle", "SectionHeader", "Divider", "Composition"]
+  },
+  {
+    "family": "ChoicePicker",
+    "stories": ["Default", "Empty", "Disabled", "Composition"]
+  },
+  {
+    "family": "Content",
+    "stories": [
+      "SectionHeading",
+      "SettingsRow",
+      "Avatar",
+      "Badge",
+      "CodePreview",
+      "DiffLine",
+      "MemberRow",
+      "EditTimestamp",
+      "ChangedFile",
+      "DocumentIcon"
+    ]
+  },
+  {
+    "family": "PageProgress",
+    "stories": ["Requests", "Loading", "Idle", "AboveDialog", "Light"]
+  },
+  {
+    "family": "AppLoadingOverlay",
+    "stories": ["Loading", "ReducedMotion", "Failure"]
+  },
+  {
+    "family": "Dropdowns",
+    "stories": [
+      "SelectComposition",
+      "SelectInDialog",
+      "Select",
+      "Dropdown",
+      "ThemeMenu",
+      "DiagramMenu",
+      "DiagramDropdown",
+      "MenuGroupHeading",
+      "SelectOption",
+      "RepeatedSelection"
+    ]
+  },
+  {
+    "family": "Feedback",
+    "stories": [
+      "HelperText",
+      "InlineError",
+      "Tooltip",
+      "DisabledTooltip",
+      "KeyboardKey",
+      "EmptyState",
+      "Callout",
+      "Popover",
+      "CodeError",
+      "EmailRegistrationError",
+      "DropInsertionIndicator",
+      "FieldHelp",
+      "ComposedOverlays"
+    ]
+  },
+  {
+    "family": "TextFields",
+    "stories": [
+      "TextField",
+      "UrlPreview",
+      "PrefixedTextField",
+      "MultilineField",
+      "SearchField",
+      "EmailField",
+      "CodeField",
+      "CodeEntry",
+      "GuidanceEditor",
+      "InlineTitleEditor",
+      "InlineSummaryEditor",
+      "DescriptionEditor",
+      "DocumentTitleEditor",
+      "DocumentBodyEditor",
+      "InvitationRecipients"
+    ]
+  },
+  {
+    "family": "Buttons",
+    "stories": ["Button", "ContentButton", "TextLink", "AccountPrompt", "ResendPrompt", "CircularIconButton"]
+  },
+  {
+    "family": "PageHeader",
+    "stories": ["Default", "LongTitle"]
+  },
+  {
+    "family": "Surfaces",
+    "stories": ["SectionSurface"]
+  },
+  {
+    "family": "Permission",
+    "stories": ["Allowed", "Denied", "Failed", "Reactive"]
+  },
+  {
+    "family": "Scrollbars",
+    "stories": ["Universal"]
+  },
+  {
+    "family": "Sidebar",
+    "stories": [
+      "Expanded",
+      "Collapsed",
+      "Selected",
+      "LongWorkspaceName",
+      "NestedDisclosureAndAdding",
+      "SettingsNavigation",
+      "Resizable"
+    ]
+  },
+  {
+    "family": "Selection",
+    "stories": [
+      "Switch",
+      "Checkbox",
+      "Radio",
+      "ChoiceCard",
+      "CheckboxOption",
+      "CompactCheckbox",
+      "TransitionsAndReset",
+      "RestoredInStrictMode"
+    ]
+  },
+  {
+    "family": "Collections",
+    "stories": ["EditableTable", "Categories", "VariableHeights", "WindowList"]
+  },
+  {
+    "family": "CodeBlock",
+    "stories": ["Reference", "EditableCedar", "ShortCedar", "LongCedar", "Light", "PlainFallback"]
+  },
+  {
+    "family": "Loading",
+    "stories": ["FirstLoad", "Loaded", "Refreshing", "RecoverableError", "Empty"]
+  }
+]

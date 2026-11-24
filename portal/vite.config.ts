@@ -1,29 +1,31 @@
-import react from '@vitejs/plugin-react'
+import adapter from '@sveltejs/adapter-node'
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
+import graphql from '@compallm/contract/houdini/vite'
+import { defineConfig, loadEnv } from 'vite'
+import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
-import { fileURLToPath } from 'node:url'
-import { defaultClientConditions, defineConfig, searchForWorkspaceRoot } from 'vite'
-
-// https://vite.dev/config/
-export default defineConfig(({ command }) => ({
-  cacheDir: 'node_modules/.vite-portal',
-  plugins: [react(), ...(command === 'serve' ? [tailwindcss()] : [])],
-  resolve: {
-    dedupe: ['react', 'react-dom'],
-    conditions: command === 'serve' ? ['compallm-source', ...defaultClientConditions] : [...defaultClientConditions],
-  },
-  optimizeDeps: {
-    exclude: ['@compallm/contract', '@cedar-policy/cedar-wasm'],
-    include: ['@compallm/contract > zod'],
-  },
-  server: {
-    fs: {
-      allow: [
-        searchForWorkspaceRoot(process.cwd()),
-        fileURLToPath(new URL('../libs/storybook', import.meta.url)),
-        fileURLToPath(new URL('../libs/contract', import.meta.url)),
-      ],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  return {
+    plugins: [
+      graphql(),
+      tailwindcss(),
+      sveltekit({
+        preprocess: vitePreprocess(),
+        compilerOptions: { experimental: { async: true } },
+        experimental: { forkPreloads: true },
+        serviceWorker: { register: false },
+        adapter: adapter({ out: 'build' }),
+      }),
+    ],
+    resolve: { dedupe: ['svelte'] },
+    optimizeDeps: { exclude: ['@cedar-policy/cedar-wasm'] },
+    server: {
+      port: Number(env.FRONTEND_PORT || 7887),
+      strictPort: true,
+      proxy: { '/api': { target: env.RUST_API_ORIGIN || 'http://127.0.0.1:3000' } },
+      fs: { allow: ['..'] },
     },
-    port: 41868,
-    strictPort: true,
-  },
-}))
+    cacheDir: 'node_modules/.vite-svelte-portal',
+  }
+})

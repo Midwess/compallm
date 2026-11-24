@@ -10,96 +10,104 @@ See the [Compallm Wiki](https://github.com/Midwess/compallm/wiki) and [product o
 
 ## Development
 
-The frontend uses React with Vite, and the Rust server uses Loco and Axum. PostgreSQL is accessed through SeaORM. GraphQL is served at `POST /api/graphql` through Juniper and its Axum adapter, with Rust definitions under `api/src/graphql`. The authenticated session query and email-login, explicit refresh and signout mutations preserve credential policies, access freshness and cookie renewal. Portal uses the generated Genql client for authentication and role/group summaries. Protected role/group metadata reads use flat role/roles and group/groups fields, with roleCreate and groupCreate mutations, member role replacement, group membership changes, and invitations. Each member has one required direct role and can join multiple groups; groups cannot grant Owner. Provider creation and saved-provider reads are integrated through GraphQL, with private user/organization model defaults. Existing-provider updates and inference execution remain pending. Core services and offline component previews remain available.
+Portal uses Svelte 5 and SvelteKit SSR with adapter-node. Rust/Loco/Axum owns `/api` and `/api/*` and streams every other request to the private Svelte server. Rust retains authentication, authorization, validation, database access, and business operations. Svelte renders pages and calls Rust for initial data; browser controllers handle interactive commands.
 
-Axum serves the frontend in both local development and production. In development, it proxies the Vite dev server, including hot reload. In production, it directly serves Vite's built static files. The frontend and API share the same public origin.
-
-Requires Rust, Node.js 22.18 or newer, and Docker Compose. From the repository root:
+Requires Rust, Node.js 24.13 or newer, and Docker Compose. From the repository root:
 
 ```bash
+npm --prefix libs/contract ci
+npm --prefix libs/contract run build
+npm --prefix libs/storybook ci
+npm --prefix libs/storybook run build
 npm --prefix portal ci
+npm --prefix portal run build
 docker compose up -d
-cargo run -p compallm-api -- start
+FRONTEND_PORT=7888 cargo run -p compallm-api -- start
 ```
 
-Provider creation requires `PROVIDER_CREDENTIAL_SECRET`, a server-only secret of at least 32 bytes. It encrypts stored provider API keys; keep it stable across restarts. Missing or invalid configuration makes creation unavailable.
+The API configuration owns `settings.frontend.port`, default `7887`, overridden with `FRONTEND_PORT`.
+The existing Compose PostgreSQL mapping also uses `7887`; the example uses `7888` for Svelte so both can run.
+Axum binds its public port first, passes the actual API origin to Node, starts `portal/build/index.js`, and checks readiness.
+Frontend binding is strict. `FRONTEND_MANAGED=false` connects to an independently supervised loopback Node server on the configured port.
+Set its `RUST_API_ORIGIN` to the internal API address, `HOST=127.0.0.1`, `PORT` to the frontend port,
+`HOST_HEADER=x-forwarded-host`, and `PROTOCOL_HEADER=x-forwarded-proto`.
 
-Access and Security settings request approximate city labels directly from the public location service. Lookup failures leave location unknown and never affect authentication. Portal uses the Railway endpoint directly. To run the DB-IP service locally:
+Browse the URL logged by Axum, normally `http://localhost:3000`. Restarting reuses recently closed addresses;
+only an occupied API port causes an upward scan. `PORT` selects the starting API port. The frontend port never scans.
+Use localhost for development passkeys; 127.0.0.1 is a different WebAuthn domain.
+For production set `AUTH_PUBLIC_ORIGIN` to the public HTTPS origin, retain secure cookies, configure the signing and provider secrets,
+and supervise both processes. Deploy the complete `portal/build` output beside the API binary's Portal directory, with its Node runtime dependencies.
+Node is required in production; Vite is build/development tooling. API-managed startup uses the built Node server in both environments.
+Rebuild and restart it after frontend edits. Standalone `npm --prefix portal run dev` offers Vite development on port 7887;
+its API target defaults to port 3000 and can be overridden with `RUST_API_ORIGIN`.
+
+Provider creation requires a stable server-only `PROVIDER_CREDENTIAL_SECRET` of at least 32 bytes.
+MailDev exposes the development inbox at http://localhost:1080 and SMTP on 1025.
+GraphiQL is available only in Development at `/api/graphiql`, targeting `/api/graphql`.
+Approximate session location lookup failures leave location unknown and do not affect authentication.
+
+## Portal and Storybook
+
+`portal` is the official SvelteKit app. `libs/storybook` exports `@compallm/storybook` and provides offline previews on port 6007.
+React reference projects and Genql have been removed. The UI library owns Tailwind foundations, six palettes, fonts, and artwork;
+Portal compiles its own utilities. Public provider assets and attribution live in `portal/static`.
+Storybook uses those assets offline and never invokes business APIs or device credentials.
 
 ```bash
-./geolocation/download-dbip.sh
-cargo run -p compallm-geolocation
+npm --prefix libs/storybook start
 ```
 
-See [browser sessions](https://github.com/Midwess/compallm/wiki/Login-session) for deployment and data updates.
+The library includes 220 page scenarios across authentication, invitations, passkeys, workspace, providers/models, onboarding,
+settings, and form coordination. Stable typed contexts supply consumer-owned controllers. Nested controllers use constructor dependencies.
+Native deep rune state provides property reactivity. Forms retain Rust-generated validation, partial commits, queues, response reconciliation,
+retry, cancellation, and drafts. Tables/lists render loaded rows normally with bounded continuation and accessible Load more/Retry.
 
-Compose starts the backing services, including PostgreSQL on port `7887`. Debug builds start the backend and Vite with frontend hot reload. Use `cargo run -r -p compallm-api -- start` to serve prebuilt `portal/dist` assets without Vite; build the Portal assets first. Vite uses internal port `41868` with strict binding; browse through the API origin. Open the URL logged by the API server: it prefers port `3000`, reuses recently closed addresses on restart, and chooses the next available port when another listener occupies it. `PORT` or the server CLI port option sets the starting point, within `1–50100`. The API listens on all IPv4/IPv6 interfaces in development and production; deployment port mappings must match the selected port.
+Initial server loads verify identity, renew Rust-owned cookies, read essential sidebar/page data, and return serializable generated results.
+Component-local controllers adopt those results before rendering and continue after hydration without repeating initial reads.
+No request-specific authentication, controller, or transport state is shared between SSR requests.
+Protected loaders verify authority independently; a route name cannot select organization authority.
+Private HTML and route data are no-store and noindex. Public authentication pages include metadata.
 
-In the development environment, open `/api/graphiql` on the API server to browse the schema and run GraphQL requests. It uses `/api/graphql`; protected operations require a valid login cookie or an Authorization header.
+Native SvelteKit routing and experimental fork preloads retain workspace shells, sidebar disclosure/scroll, and drafts.
+Shared Preload links opt into hover data preparation. Hover stays silent; accepted navigation shows progress while unfinished.
+Explicit API calls retain ordinary progress. Browser reads use the service worker, cancellation, and authority/read versions.
+Authentication and uncertain writes are never replayed. Onboarding presentation and credential ceremonies remain browser commands.
+Inference, saved-provider updates, and other unavailable backend features remain pending.
 
-Regenerate the Rust-owned GraphQL schema, Genql and Houdini clients, and Rust-owned validation rules/constraints without starting the application or accessing the database:
+## Shared contracts
+
+Rust definitions under `api/src/graphql` export the SDL and validation contracts into `libs/contract`.
+Houdini is the sole API type/client generator. Shared Zod validation, normalization, defaults, constraints, and messages remain Rust-owned.
+The offline generation command starts no app, database connection, or migration:
 
 ```bash
 npm --prefix libs/contract ci
-npm --prefix libs/graphql-svelte ci
 cargo run -p compallm-api -- generate
 ```
 
-Development email uses MailDev: SMTP on `1025`, inbox at http://127.0.0.1:1080. See [mailing](https://github.com/Midwess/compallm/wiki/Mailing) for queue limits and [email login](https://github.com/Midwess/compallm/wiki/Login-email) for SMTP environment variables.
+Generation exports SDL/validation metadata, checks compatibility, emits validators, generates Houdini, and builds the contract package.
+Author operations/fragments beside consumers or under `libs/contract/houdini/operations`; generated outputs always stay in
+`libs/contract/houdini/generated`. The canonical SDL is `libs/contract/schema.graphql`.
+After document changes run `npm --prefix libs/contract run generate:houdini`.
+`check:houdini` validates every document and schema-wide inputs, enums, output objects, and fields. Schema pulling/polling is disabled.
+Server reads use those same generated artifacts/types through a request-local executor; browser commands use generated stores.
 
-To run the component library previews independently of the backend:
+## Checks and network worker
 
-```bash
-cd libs/storybook
-npm ci
-npm start
-```
+Both Portal and Storybook provide `lint:check`, `lint:fix`, `format`, `format:check`, `check`, and `build`.
+Storybook also provides `build:storybook`; Portal provides existing consumer flow checks with `npm --prefix portal test`.
+ESLint applies official Svelte recommended rules; Prettier owns formatting. Generated builds/dependencies are excluded.
+Storybook is inspected manually and has no automated interaction/browser suite.
 
-Open `http://localhost:6006` and use Codex CLI from the repository root to iterate.
+SvelteKit bundles `portal/src/service-worker/index.ts` to `/service-worker.js`. `src/network/service.ts` owns execution,
+response validation, independent waiter cancellation, and grouping eligible identical in-flight queries.
+Successful eligible results remain reusable for 100 ms after completion. There is no persistent response cache.
+Matching includes document, canonical variables, browser client, authority epoch, and read/invalidation version.
+Authentication, credentials, permission source, and mutations bypass reuse. Writes and authority changes invalidate entries.
+The bridge falls back locally only before dispatch; a posted uncertain write is never resent.
+Compression uses one shared bounded gzip implementation. Worker types are checked separately by the normal check command.
 
-## Parallel Svelte workspace
-
-The React applications remain active. `portal-svelte` is an empty SvelteKit static SPA;
-`libs/storybook-svelte` contains an offline foundations preview with the existing six Tailwind palettes and fonts.
-Use Node.js 24.13 or newer for these projects. From the repository root:
-
-```bash
-npm --prefix libs/contract ci
-npm --prefix libs/graphql-svelte ci
-npm --prefix libs/storybook-svelte ci
-npm --prefix portal-svelte ci
-cargo run -p compallm-api -- generate
-npm --prefix libs/storybook-svelte start
-npm --prefix portal-svelte run dev
-```
-
-Storybook uses `http://127.0.0.1:6007`; Portal uses `http://127.0.0.1:41869`.
-Neither opens a browser automatically. Portal proxies `/api` to `http://127.0.0.1:3000` during development;
-set `RUST_API_ORIGIN` when Rust uses another origin. The scaffold makes no requests automatically.
-Existing Axum startup and React serving remain unchanged. Deploying the Svelte output through Axum is a later step.
-
-Queries and fragments belong beside their consumers in the new Portal and UI library. The shared
-`libs/graphql-svelte` package generates their Houdini stores/types from Rust's exported schema.
-After changing documents, rerun its `generate` script; after changing Rust contracts, run the Cargo command above.
-The Vite adapter transforms documents but leaves generation under the explicit command's control.
-Schema pulling and polling are disabled. Shared Zod validators remain in `@compallm/contract`.
-
-Houdini outputs live in `libs/graphql-svelte/.houdini`: `schema.graphql` is the complete Rust-exported schema,
-`graphql/inputs.ts` and `graphql/enums.ts` contain schema-wide inputs/enums, `runtime/generated.ts` contains all output
-cache types/fields, and `artifacts/` plus `plugins/houdini-svelte/stores/` contain operation result/variable types and stores.
-The package root exports operation stores/types, input types, enums, and `SchemaCacheTypes`; use operation result types
-for selected response data. These follow Houdini's model rather than recreating Genql's query-builder interfaces.
-
-Every current React Portal selection has an authored `.graphql` equivalent under the corresponding `portal-svelte/src`
-feature folder. `portal-svelte/operation-coverage.json` maps each document to its source selection and variable expressions.
-Permission conditions become Boolean variables defaulting to false; preference-update category flags preserve partial
-result selections. No document runs automatically. The `check:coverage` script verifies each source selection is covered,
-each document validates, and all Rust input objects, enums, output objects, and fields occur in Houdini's generated types.
-Generation and CI run these checks. Retire the React-source coverage check when removing the old Portal.
-
-Both new projects provide `check`, `lint:check`, and `build` scripts. The library also provides `build:storybook`.
-The UI library owns the new theme source and exports `theme.css` and compiled `styles.css`;
-Portal compiles its own Tailwind utilities from those foundations. Stories remain outside published production CSS scanning.
+Architecture and operational details live in the [Compallm Wiki](https://github.com/Midwess/compallm/wiki/Portal).
 
 ## License
 

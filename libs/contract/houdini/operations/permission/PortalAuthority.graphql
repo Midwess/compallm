@@ -1,0 +1,14 @@
+query PortalAuthority {
+  me {
+    node {
+      id
+      organizationId
+      organizationPermissions {
+        action
+        allowed
+      }
+      cedarSource
+      cedarEntities
+    }
+  }
+}

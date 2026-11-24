@@ -1,15 +1,18 @@
+import type { AuthController } from '@compallm/storybook/pages/auth'
+import { OrganizationProvidersStore } from '@compallm/contract/houdini'
 import {
   createOrganizationStore,
   type OrganizationController as Controller,
   type OrganizationState,
 } from '@compallm/storybook/pages/organization'
-import type { AuthController, UrlController } from '@compallm/storybook'
-import find from 'lodash-es/find'
+import type { UrlController } from '@compallm/storybook'
+import find from 'lodash-es/find.js'
 import type { AuthUser } from '@compallm/storybook'
 import { notify } from '../notifications/toast'
-import type { PreferenceDestination } from '@compallm/contract/graphql'
-import { graphql, ApiError } from '../graphql-client'
-import type { QueryGenqlSelection } from '@compallm/contract/graphql'
+import type { PreferenceDestination$options as PreferenceDestination } from '@compallm/contract/houdini'
+
+import { graphqlClient, requireData, ApiError } from '../graphql-client'
+
 import { organizationHome, organizationRoot } from './paths'
 
 export class OrganizationController implements Controller {
@@ -25,44 +28,67 @@ export class OrganizationController implements Controller {
   }
 
   private providerRequest?: AbortController
+  private providerCursor?: string
+  private seeded = false
+  seed(result: import('@compallm/contract/houdini').OrganizationProviders$result) {
+    const organization = this.getCurrentOrganization()!
+    this.seeded = true
+    this.providerCursor = result.providers.pageInfo.endCursor ?? undefined
+    this.store.setState({
+      providers: result.providers.edges.map(({ node }) => ({
+        ...node,
+        href: `/${encodeURIComponent(organization.name)}/providers/${node.id}`,
+      })),
+      providersHasMore: result.providers.pageInfo.hasNextPage,
+      providersLoading: false,
+    })
+  }
   start = () => {
-    void this.loadProviders()
+    if (!this.seeded) void this.loadProviders()
     return this.stop
   }
   stop = () => {
     this.providerRequest?.abort()
   }
-  private async loadProviders() {
+  onLoadMoreProviders = () => {
+    if (this.store.getState().providersHasMore && !this.store.getState().providersLoading) void this.loadProviders(true)
+  }
+  onRetryProviders = () => {
+    void this.loadProviders(!!this.providerCursor)
+  }
+  private async loadProviders(append = false) {
     this.providerRequest?.abort()
     const request = new AbortController(),
       organization = this.getCurrentOrganization()
     if (!organization) return
     this.providerRequest = request
-    this.store.setState({ providersLoading: true })
+    this.store.setState({ providersLoading: true, providersLoadError: false })
     try {
-      let after: string | undefined
-      do {
-        const selection = {
-          providers: {
-            __args: { first: 100, after },
-            edges: { node: { id: true, name: true } },
-            pageInfo: { endCursor: true, hasNextPage: true },
-          },
-        } satisfies QueryGenqlSelection
-        const result = (await graphql(request.signal).query(selection)).providers
+      const after = append ? this.providerCursor : undefined
+      {
+        const result = (
+          await new OrganizationProvidersStore()
+            .fetch({
+              variables: { providersAfter: after },
+              fetch: graphqlClient.fetch(request.signal),
+              policy: 'NoCache',
+              blocking: true,
+            })
+            .then(requireData)
+        ).providers
         if (request.signal.aborted || this.getCurrentOrganization()?.id !== organization.id) return
         this.store.setState((state) => {
-          const rows = new Map(state.providers.map((value) => [value.id, value]))
+          const rows = new Map((append ? state.providers : []).map((value) => [value.id, value]))
           for (const { node } of result.edges)
             if (!rows.has(node.id))
               rows.set(node.id, { ...node, href: `/${encodeURIComponent(organization.name)}/providers/${node.id}` })
-          return { providers: [...rows.values()] }
+          return { providers: [...rows.values()], providersHasMore: result.pageInfo.hasNextPage }
         })
-        after = result.pageInfo.hasNextPage ? (result.pageInfo.endCursor ?? undefined) : undefined
-      } while (after)
+        this.providerCursor = result.pageInfo.endCursor ?? undefined
+      }
     } catch (error) {
       if (!request.signal.aborted && (!(error instanceof ApiError) || error.status !== 403))
-        notify.apiError(error, () => void this.loadProviders())
+        this.store.setState({ providersLoadError: true })
     } finally {
       if (this.providerRequest === request) this.store.setState({ providersLoading: false })
     }
@@ -79,6 +105,7 @@ export class OrganizationController implements Controller {
     if (state.organizationId === id && state.organizations[0]?.name === user.organizationName) return
     this.store.setState({
       organizationId: id,
+      links: { ...state.links, members: `${organizationRoot(user)}/settings/members` },
       organizations: [{ id, name: user.organizationName }],
       ...(state.organizationId !== id ? { providers: [], models: [], conversations: [], selectedDestination: null } : {}),
     })
@@ -129,8 +156,12 @@ export class OrganizationController implements Controller {
   onSearch = () => {
     notify.info('Workspace search is not available yet.')
   }
-  onOpenDestination = () => {
-    notify.info('This feature is not available yet.')
+  onOpenDestination = (id: string) => {
+    const state = this.store.getState()
+    const destination = [...state.providers, ...state.models].find((entry) => entry.id === id)
+    if (id === 'members') this.url.navigate(state.links.members)
+    else if (destination) this.url.navigate(destination.href)
+    else notify.info('This feature is not available yet.')
   }
   onProviderCreated = (provider: { id: string; name: string }) => {
     const organization = this.getCurrentOrganization()

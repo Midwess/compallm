@@ -6,7 +6,9 @@
   "license": "Elastic-2.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "generate:graphql": "genql --schema schema.graphql --output graphql --sort --scalar ContextTokens:number"
+    "generate:houdini": "node houdini/generate.mjs",
+    "check:houdini": "node houdini/check-coverage.mjs",
+    "lint:houdini": "prettier houdini --check"
   },
   "exports": {
     "./preference": {
@@ -29,22 +31,34 @@
       "types": "./dist/provider.d.ts",
       "import": "./dist/provider.js"
     },
-    "./graphql": {
-      "types": "./dist/graphql.d.ts",
-      "import": "./dist/graphql.js"
-    },
     "./invitation": {
       "types": "./dist/invitation.d.ts",
       "import": "./dist/invitation.js"
-    }
+    },
+    "./houdini": "./houdini/index.ts",
+    "./houdini/*": "./houdini/generated/*",
+    "./houdini/client": "./houdini/client.ts",
+    "./houdini/vite": {
+      "types": "./houdini/vite.d.mts",
+      "import": "./houdini/vite.mjs"
+    },
+    "./schema.graphql": "./schema.graphql"
   },
   "dependencies": {
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "svelte": "5.59.1",
+    "houdini": "2.0.13"
   },
   "devDependencies": {
-    "@genql/cli": "^6.3.4",
-    "graphql": "^16.15.0",
+    "graphql": "16.15.0",
     "prettier": "^3.9.10",
-    "typescript": "~6.0.3"
+    "typescript": "6.0.3",
+    "houdini-svelte": "3.0.7",
+    "vite": "8.3.4",
+    "@sveltejs/kit": "3.4.0",
+    "@sveltejs/vite-plugin-svelte": "7.0.0"
+  },
+  "engines": {
+    "node": ">=24.13"
   }
 }

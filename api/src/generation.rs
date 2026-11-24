@@ -20,13 +20,20 @@ pub fn generate() -> Result<(), Box<dyn Error>> {
     if !status.success() {
         return Err("contract generation failed".into());
     }
-    let houdini = root.join("libs/graphql-svelte");
+    let houdini = contract.join("houdini");
     let status = Command::new("node")
         .arg(houdini.join("generate.mjs"))
         .current_dir(&houdini)
         .status()?;
     if !status.success() {
-        return Err("Houdini generation failed; install libs/graphql-svelte dependencies".into());
+        return Err("Houdini generation failed; install libs/contract dependencies".into());
+    }
+    let status = Command::new("npm")
+        .args(["run", "build"])
+        .current_dir(&contract)
+        .status()?;
+    if !status.success() {
+        return Err("contract TypeScript build failed".into());
     }
     Ok(())
 }
@@ -72,7 +79,9 @@ fn generate_preference_defaults(contract: &Path) -> Result<(), Box<dyn Error>> {
         contract.join("preference.ts"),
         format!(
             "// Generated from Rust. Do not edit; run cargo run -p compallm-api -- generate.\n\
-             import type {{ PreferenceDestination, UserPreferences }} from './graphql.ts'\n\
+             import type {{ PreferenceDestination$options as PreferenceDestination }} from './houdini/generated/graphql/enums'\n\
+             import type {{ PreferenceUserUserPreferences$result }} from './houdini/generated/artifacts/PreferenceUserUserPreferences'\n\
+             type UserPreferences = PreferenceUserUserPreferences$result['userPreferences']['node']\n\
              type PreferenceValues<T> = T extends readonly (infer U)[] ? readonly PreferenceValues<U>[] : T extends object ? {{ [K in keyof T as K extends '__typename' ? never : K]: PreferenceValues<T[K]> }} : T\n\
              export const userPreferenceDefaults = {} as const satisfies PreferenceValues<UserPreferences>\n\
              export const userPreferenceHomeDestinations = {} as const satisfies readonly PreferenceDestination[]\n\

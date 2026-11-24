@@ -1,215 +1,32 @@
-# Portal design workspace
+# Svelte component library
 
-Read the root agent instructions and the [Portal architecture](https://github.com/Midwess/compallm/wiki/Portal) and relevant
-focused Wiki pages in full before component work. Follow the root Wiki workflow for documentation updates. Keep user prompting
-in Codex CLI. Use the local Storybook MCP tools to inspect available components and stories when connected; source files remain
-authoritative and can be edited directly.
+This is the official Svelte UI library, published as `@compallm/storybook`. This package supplies reusable Svelte components and offline previews; it must not
+import Portal source, contact live APIs, authenticate, or add feature operations without an explicit feature task.
 
-- `npm start` launches the workbench at `http://localhost:6006`, with MCP at `/mcp`.
-- Base-component previews live under `Components`, organized by Penpot Design foundations family. Keep feature screens separate
-  and use sample data. Do not connect prototypes to APIs, authentication, Rust, or databases unless the user authorizes that
-  work.
-- This npm library owns all reusable components in `src/components/` and page compositions in `src/pages/`. Preview each in
-  Storybook first. The portal consumes package exports later; never import portal source.
-- Preview demos and sample data belong in `stories/`, grouped under Components or Pages. Reusable page implementations belong in
-  `src/pages/`.
-- Main design: dark neutral surfaces, violet primary actions, Inter typography, and Phosphor Regular SVG icons. Reuse the shared
-  Tailwind v4 theme in `src/styles/theme.css`.
-- Use semantic colors from `src/styles/theme.css` for all page, component, and preview surfaces, text, borders, icons, badges,
-  and avatars. Never hardcode colors to match one palette. Derive softer or alternate tones with CSS `color-mix()` using
-  existing theme variables, or Tailwind opacity utilities. Verify contrast, hover, selected, and disabled states in light and
-  dark palettes; do not introduce new color tokens when mixing existing colors is sufficient.
-- Always consider transition consistency when designing or changing components and pages. Reuse the shared Motion presets and
-  helpers in `src/components/motion.tsx` for interaction feedback, entrances, exits, disclosure, and reordering. Keep equivalent
-  interactions consistent in timing, easing, and movement. Adjust shared presets centrally; do not introduce component-specific
-  timing, CSS animations, CSS transitions, or direct browser animation calls. Respect reduced motion and preserve keyboard,
-  focus, and native control behavior, including during interrupted transitions.
-- Compose menus and filters from the shared `Popup` parts. `Popup.Item` performs an action and closes, `Popup.RadioItem` selects
-  one value and closes, and `Popup.CheckboxItem` stays open for multiple choices. Select fields compose `Select.Root`,
-  `Select.Trigger`, `Select.Value`, `Select.Content`, and `Select.Item`; searchable multiple selections use `ChoicePicker`.
-  These base components own dismissal, positioning, keyboard navigation, focus, and animation. Pages supply values and domain
-  callbacks; never duplicate menu event handling, timers, popovers, or library primitives in page compositions.
-- Keep the compact hover-background inset scoped to sidebar navigation items and folders. Workspace header buttons and dropdown
-  items retain their full hover area.
-- Disabled controls must remain hoverable and expose a tooltip explaining why they are disabled; provide a keyboard-accessible
-  explanation.
-- Tables must fit their container before using horizontal scrolling. Define responsive visibility once through `Table.Content`
-  column definitions, such as `visibilityClassName: 'hidden md:table-cell'`, and reference the same column ID on its header and
-  cells. Keep the base cell gutters intact. Long values must truncate with an ellipsis or use an explicit two-line clamp; text
-  and controls must never overlap adjacent columns.
-- Add meaningful variants for loading, empty, disabled, and error states where relevant. Keep semantic HTML, keyboard focus, and
-  responsive behavior.
-- Use Tailwind’s default spacing scale in half steps for dimensions, spacing, gaps, and offsets: `0.5` is 2px at the default
-  root size. Preserve existing design dimensions where possible and review any rounding. Keep functional and visual exceptions
-  narrowly scoped with a reason beside the lint suppression. Do not add custom spacing tokens or override `--spacing`.
-- Use Tailwind utilities directly in components, pages, and previews. Do not add custom CSS selectors, component stylesheets, or
-  `@apply` wrappers. CSS files are limited to Tailwind entry points, theme configuration, and font imports.
-- `npm run build` builds the optimized UI package. `npm run build:storybook` builds the separate preview site. Exclude stories
-  and tests from the production Tailwind scan.
-- Run `npm run lint`, `npm run check`, `npm run build`, `npm run build:storybook`, and relevant browser checks. `npm run lint`
-  applies lint fixes and formatting; keep source lines at most 128 characters. Do not run the portal's backend-backed build
-  merely to verify stories.
+Use Svelte 5 props, events, snippets, context, and element bindings. Retain familiar compound names and the existing design,
+semantic HTML, accessibility, loading, keyboard, and focus contracts. Keep Tailwind utilities and the six shared palettes;
+production scanning excludes stories and preview utilities. Selective icon and language imports keep unused modules out.
 
-Consumers own page controller instances and wrap pages in the public context from `src/context.ts` using React’s context
-provider directly. Pages consume context; do not create providers inside pages or pass controllers as page props. The consumer
-owns lifecycle setup and cleanup.
+Consumers create stable controllers and supply typed Svelte context. Controllers own domain operations, confirmed state,
+and navigation; Houdini owns confirmed GraphQL data. Forms own editable values and errors through NativeFormControl and
+the shared save coordinator. Compose Rust-generated schemas/constraints from @compallm/contract/validation. Never duplicate
+API models or validation rules. Preserve commit modes, partial patches, queued snapshots, versioned response reconciliation,
+retry/reset, independent scopes, and cancellation. Detaching controls never flushes a write.
 
-Define all public React contexts once in `src/context.ts` and export them through `@compallm/storybook/context`. Do not add
-provider wrapper components or per-page context definition files.
+Use Bits UI through shared wrappers for composite widgets and native dialogs for modal focus. Floaters belong inside the
+active dialog boundary. Preserve event cancellation, disabled restrictions, reduced motion, and focus restoration. Initial
+loading uses inert placeholders and shared delayed presentation; refresh retains drafts, focus, confirmed values, and scroll.
 
-## Fields and form ownership
+Render all loaded Table/List rows in normal page flow. Do not add TanStack, virtualization, spacers, or a new scroll owner.
+Use shared guarded near-bottom paging plus accessible Load more/Retry. Controllers retain cursor, cancellation, permission,
+and stale-response responsibilities. Keep options lazy and application processing cancellable through shared scheduling.
 
-Follow [Form ownership](https://github.com/Midwess/compallm/wiki/Portal-form) and
-[shared validation](https://github.com/Midwess/compallm/wiki/Portal-validation) when developing editable controls.
+Use Node 24.13+. Validate formatting/lint, Svelte/TypeScript checks, the library build, static Storybook build, and consumer
+builds. Inspect previews manually. Add no unit, automated browser, interaction suites, or Storybook test runner. Do not
+activate desktop applications or browser windows/tabs. Follow the repository writing skill for comments and prose.
 
-- Use the shared React Hook Form integration. Form owns editable values, validation, commit policy, submitted snapshots, queues,
-  and response reconciliation. Zustand owns workflow state and shared confirmed entities; never duplicate drafts there.
-- Named fields bind to their nearest Form and report changes, blur, and commit intent. Form decides when to call the controller.
-  Outside Form, callers retain ordinary value and listener ownership. Fields never call GraphQL themselves.
-- Register native text inputs through refs and events without subscribing to their values. Use `useController` for composite
-  controls, `useFieldArray` for collection structure, and stable row identities. Compose caller and registration refs.
-- Subscribe to named paths and the metadata a component actually displays. Avoid global `watch()`, whole-form subscriptions, and
-  rebuilding combined controller snapshots on each keystroke. Keep preview and status observers separate from input trees.
-- Preserve server rendering and initial field values without browser globals. Set up browser observers, timers, and listeners
-  during lifecycle effects; clean them up on unmount. Programmatic reconciliation and local reset must update native inputs.
-
-## Commit behavior and GraphQL
-
-- Default to explicit button submission. Button-only forms suppress blur, debounce, completion, and implicit Enter commits;
-  keyboard activation of the submit button remains available. Other flows explicitly choose change, blur/Enter, debounce, or
-  completion behavior. Preserve multiline Enter and IME composition.
-- Controllers accept explicit validated snapshots, perform domain/API operations, and return confirmed values. Request the
-  changed values in the mutation response so Form can reconcile canonical server state. Follow the root GraphQL conventions and
-  freshly fetched Wiki guidelines before changing operations; use typed Genql selections checked with `satisfies`.
-- Partial updates submit only the triggered changed fields or commit group. Preserve omission and permit null only where the
-  contract allows clearing. Keep independent operations in separate commit groups; one failed group cannot undo another's
-  confirmed baseline. Keep one root mutation per request.
-- Queue triggered snapshots only. An older response must never overwrite newer typing or submit uncommitted edits. Apply
-  returned values to the confirmed baseline and replace visible values only when their edit versions still match.
-- Failed operations retain drafts and allow explicit retry with the latest intended values. Never automatically replay
-  authentication or uncertain writes. Cancel unsent work on record changes/unmount; never flush because a component unmounts.
-- Keep unavailable production operations unavailable. Offline stories consume generated contracts and mock controller results;
-  importing contracts does not authorize live requests, database access, migrations, or implementation of missing APIs.
-
-## Contract validation and messages
-
-- Rust API inputs under `api/src/graphql` own validation, normalization, defaults, and messages through Validify and
-  `ExportValidation`. Import generated validators, constraints, input guards, and inferred values from `@compallm/contract`.
-  Never duplicate business rules, API interfaces, or validation wording in components and stories.
-- Supply useful Validify `message = "..."` literals in Rust. ExportValidation carries supported messages through
-  `x-compallm-messages` into generated validators. Use separate minimum/maximum rules when their wording differs. Extend the
-  exporter/runtime for unsupported rules rather than silently weakening validation or adding a frontend-only fallback.
-- Use the official Zod resolver for complete form boundaries. Parse partial patches against generated update schemas and send
-  parsed output. Keep cross-field refinements within their complete group; triggering one field does not scope a full resolver.
-- Local draft adapters may preserve incomplete numeric text and display labels, then convert to generated wire types. Keep
-  normalized submission values separate from newer visible drafts. Parser state must settle even when wire formatting differs.
-- Validate on blur or submission; after failure, revalidate the relevant boundary on change. Map issue paths to the correct
-  field/group, including collection entries. Each failed revalidation must reopen its error message even if wording is
-  unchanged.
-- Regenerate contracts with `cargo run -p compallm-api -- generate` after Rust input changes; never edit generated artifacts.
-  Register actual missing input types without placeholder operations. Leave unresolved business rules explicit.
-
-## Field error presentation
-
-- Compose `Form.Error` or `FormField.Error` explicitly for each editable field/group. Reuse the shared implementation so page
-  code does not add its own positioning, timers, tooltips, or animations. API operation errors use toasts; Cedar parser
-  diagnostics remain beside their editor.
-- Invalid fields have a red border and a red circular badge containing Phosphor's filled white `WarningIcon`. Keep the icon 12px
-  (`size-3`), with 4px padding (`p-1`). Inset the badge from the field border; preserve field dimensions, alignment, and room
-  for entered text. Error feedback must not move rows or vertically shift switches.
-- The badge itself expands into one red capsule with white text. Reveal outward from the icon to the right; flip left near the
-  viewport edge. Show for five seconds on first failure and each failed revalidation, then collapse to the badge. Hover or
-  keyboard focus reopens it; Escape dismisses it. Remove the indicator when the field becomes valid.
-- Preserve labels, `aria-invalid`, accessible error descriptions, keyboard access, and dialog boundaries. Error feedback must
-  not steal focus. Use shared Motion presets and respect reduced motion.
-
-## Practice and verification
-
-- Keep one consolidated Form Practice page for learning commit modes, partial updates, returned values, normalization, delayed
-  responses, retained drafts, retry, scoped dialogs, standalone fields, validation, and large-form behavior.
-- Reuse offline controller mocks and generated contracts. Preserve the current UI unless a visual change is explicitly asked
-  for. Include focused component previews for first display, collapsed/hover/focus errors, and viewport-edge expansion.
-- Validate Storybook changes with lint, type checks, builds, and manual inspection. Do not add Storybook unit tests, automated
-  browser/interaction suites, play-test runners, or `libs/storybook/tests`. Keep meaningful consumer business-flow tests in
-  their application's `tests/` directory, subject to the root testing policy.
-- For subscription changes, inspect a large form: native typing must not rerender the form root or unrelated fields, broadcast
-  through workflow stores, or validate unrelated boundaries. Describe measured behavior accurately; RHF can still check its
-  internal observers. Verify reset, SSR, stale responses, failure recovery, and repeated field commits when affected.
-
-## Bounded collection rendering
-
-- Growing tables use data-driven `Table.Body` or `Table.Category` with `items`, stable `getKey`, and a row-render function.
-  These parts virtualize automatically. Growing lists use `List.Root` and `List.Items`. Do not eagerly map all records to JSX.
-- Preserve the existing design and vertical scroll owner. Shared collection primitives own viewport observation, measured row
-  heights, spacers, two-row overscan, sticky/category layout, accessibility positions, keyboard boundaries, and load detection.
-- Feature controllers own confirmed data and cursor/request state. Editable virtual rows use a controller-owned CollectionForms
-  registry passed to Table.Root; use distinct useManagedForm keys for multiple forms in one row. Do not discard dirty drafts or
-  cancel pending saves just because a row scrolls offscreen. Dispose registries when the feature/identity ends.
-- Base controls retain focused rows and open editors automatically. Keep option content and option-specific permission checks
-  lazy. Memoize stable rows and column definitions; do not broadcast unrelated drafts or permissions through collection roots.
-- Reconcile confirmed mutations in place, preserving unchanged record references and loaded cursors. Workflow selectors must
-  preserve those references; clone snapshots only for declared editable form paths. Do not reload a directory after a row edit.
-- Use yieldToBrowser/processInSlices for cancellable application work; never add feature-specific timer or frame loops for row
-  mounting. Shared row reveal uses batches of at most three; processing slices start at four milliseconds.
-- Profile the same loading/scroll interaction. Target no collection task above 50ms and incremental rendering p95 below 5ms;
-  these are review budgets, not guarantees that JavaScript can interrupt React commits. Keep profiling UI out of product flows.
-
-## Loading and skeletons
-
-- Keep page headers, breadcrumbs, section surfaces, widths, padding, and the existing scroll owner mounted while data loads. The
-  loaded UI must retain its current design. Loading messages must not insert or remove layout space above content.
-- Use `LoadingRegion` with an explicit confirmed-data `ready` flag and a scoped loading controller. The startup loading
-  controller owns the application overlay; page/section scopes never block the whole application. Preserve confirmed content
-  during refreshes. Empty, zero, null, and empty collections are valid data and never imply loading.
-- Use the shared Radix-backed `Skeleton` from `components/loading`; never import Radix Skeleton directly in pages. Fields and
-  data-driven tables consume their nearest loading region. Prefer component-owned placeholders sharing real geometry over a
-  separate full-page skeleton implementation. Table loading rows use the real columns and row height; content-sized columns
-  provide a representative loading width. Keep placeholders bounded rather than rendering a full catalog.
-- Mount structure early, but never create fake domain records or initialize editable form defaults from placeholders. Wait for
-  authoritative data before configuring validation/autosave/default reconciliation. Skeletons are inert and hidden from
-  assistive technology; announce loading once per region. Keep navigation outside inert regions and retry actions usable.
-- Initial loading uses skeletons; background refresh keeps content, drafts, focus, and scroll. Provider search/pagination may
-  opt into `LoadingRegion.refreshing` to mask existing cells after the shared delay without unmounting rows or controls. Show an
-  empty state only after a successful empty response. Failure retains the layout and exposes explicit retry feedback; never
-  automatically replay writes.
-- Reserve loading geometry immediately. Reveal skeleton decoration after the shared 180 ms delay in `animation.skeleton`; keep
-  one reveal timer per region, with the shared adapter handling standalone skeletons. Fast requests show no skeleton flash. Once
-  revealed, keep the skeleton presentation visible for at least the shared 180 ms minimum to avoid a brief flash. Reads
-  completing before the reveal delay show content immediately. The hold is visual only; do not delay requests.
-- Shared skeletons use a slow, low-contrast moving highlight with a broad rounded falloff. Keep motion in the shared Motion
-  helper, retain the loaded component geometry, and use a static highlight for reduced motion.
-- Page/section request state ends as soon as the request settles; the shared presentation owns any remaining visual hold. Keep
-  the shared request-progress bar. Do not add per-page timers, forced waiting periods, spinners on every field, a theme reset,
-  or independent loading animations. Use shared Motion helpers for optional loading motion and respect reduced motion.
-- Provide offline first-load, loaded, refresh, empty, and error previews when changing data-backed UI. Inspect delayed reads,
-  cancellation, failure recovery, keyboard focus, and geometry in Safari/WebKit and Chromium. Follow Portal-rendering for
-  performance traces. Do not add Storybook browser/interaction test suites.
-
-- Apply loading regions to every implemented asynchronous read surface, including Members/invitations, profile, organization,
-  preferences, sessions/passkeys, onboarding settings, role/group details, and both main/settings sidebar catalogs. Unknown
-  permissions remain denied; show neutral `SidebarLoading` placeholders until permission facts arrive, never protected data. Do
-  not invent loading states for destinations without a backend read. Table categories use DOM-free LoadingScope so loading never
-  introduces invalid div/tbody nesting. Initial-load errors expose retry outside inert regions; confirmed refresh errors retain
-  rows and drafts. No empty state before the first successful response.
-
-## Provider model overrides
-
-- Provider/model write constraints and error messages come from Rust-generated contracts. Read slider and price bounds from
-  exported constraints; do not hardcode a second min/max policy in controls. Keep inherited catalog values outside editable
-  ranges valid when the override is off.
-- Validate the complete effective context/input/output group. Each cap must fit known context, but their sum may exceed it. Keep
-  invalid values visible without clamping. Target the enabled context field when its reduction conflicts with an inherited cap
-  whose input is hidden. Unknown defaults remain unknown; missing prices never become zero.
-- Model text commits on blur/Enter, selections on change, and sliders on release. Submit only triggered fields or their related
-  group. Incomplete new models remain local. Reset cancels unsent commits before deleting the personal override; pending writes
-  must settle before reset/delete. Provider Create uses last saved model configuration independently of pending drafts.
-
-## Search and browser history
-
-- Searches submit explicitly; clearing a submitted query removes its filter. Keep confirmed rows during refresh and cancel
-  obsolete reads. Search normalization, bounds, matching, and database predicates belong to the backend; pages do not scan
-  remote catalogs.
-- Back actions call the root URL controller's history operation. Parent URLs serve direct-entry/reload fallback only. Preserve
-  native Back/Forward and horizontal browser gestures; contain only vertical overscroll in page/sidebar/menu scrollers.
-- Provider breadcrumbs have three steps: Choose provider, Configure, Edit model/New model. Derive edit intent from saved
-  identity. Reset requires a confirmation dialog before removing the personal model override.
+Lint every authored `.svelte`, `.svelte.ts`, and `.svelte.js` file, including stories and preview configuration, with the
+Svelte recommended preset and rune-aware Svelte parser. Keep generated outputs and dependencies excluded. Compiler warnings,
+unused suppressions, and debug directives must fail checks. Prettier owns formatting through prettier-plugin-svelte; retain
+the Svelte Prettier preset to avoid conflicting lint rules. Use `lint:check` for read-only verification, `lint:fix` for available
+ESLint fixes followed by formatting, `format` for formatting only, and `check` for Svelte/TypeScript diagnostics.

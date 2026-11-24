@@ -1,5 +1,19 @@
 use crate::{graphql::GraphqlContext, http::authorization::AuthorizationContext};
 
+pub struct OrganizationPermission {
+    pub action: String,
+    pub allowed: bool,
+}
+#[juniper::graphql_object(context = GraphqlContext)]
+impl OrganizationPermission {
+    fn action(&self) -> &str {
+        &self.action
+    }
+    fn allowed(&self) -> bool {
+        self.allowed
+    }
+}
+
 pub struct Me(pub compallm_core::authentication::Session);
 #[juniper::graphql_object(context = GraphqlContext)]
 impl Me {
@@ -16,6 +30,32 @@ impl Me {
             .await
             .map_err(compallm_core::authorization::error::AuthorizationError::from)?
             .contains(&permission.user_id()))
+    }
+    async fn organization_permissions(
+        &self,
+        #[graphql(context)] authority: &AuthorizationContext,
+    ) -> Result<Vec<OrganizationPermission>, crate::graphql::error::Error> {
+        use compallm_core::authorization::{
+            MemberPermissionError,
+            condition::CheckPermission,
+            policy::{Action, EntityType},
+        };
+        let permission = authority.member_permission().await?;
+        let mut allowed = Vec::new();
+        for action in Action::ALL.iter().filter(|action| {
+            action.resource() == EntityType::Organization && action.context().is_none()
+        }) {
+            let permitted = match action.check_permission(&permission) {
+                Ok(()) => true,
+                Err(MemberPermissionError::Denied) => false,
+                Err(_) => return Err(crate::graphql::error::Error::internal()),
+            };
+            allowed.push(OrganizationPermission {
+                action: action.name().to_owned(),
+                allowed: permitted,
+            });
+        }
+        Ok(allowed)
     }
     fn id(&self) -> juniper::ID {
         juniper::ID::new(self.0.user_id.to_string())

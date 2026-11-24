@@ -5,19 +5,6 @@ use app::App;
 use compallm_postgres::Migrator;
 use loco_rs::cli;
 use std::error::Error;
-#[cfg(debug_assertions)]
-use std::path::{Path, PathBuf};
-
-#[cfg(debug_assertions)]
-pub(crate) fn node_binary(root: &Path, name: &str) -> PathBuf {
-    let executable = if cfg!(windows) {
-        format!("{name}.cmd")
-    } else {
-        name.to_owned()
-    };
-    root.join("node_modules").join(".bin").join(executable)
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     if std::env::args().nth(1).as_deref() == Some("generate") {

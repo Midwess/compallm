@@ -1,3 +1,0 @@
-query ScaffoldCheck {
-  __typename
-}

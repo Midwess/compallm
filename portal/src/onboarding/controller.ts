@@ -1,41 +1,34 @@
-import { createStore } from 'zustand/vanilla'
+import type { AuthController } from '@compallm/storybook/pages/auth'
+import {
+  OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfileStore,
+  OnboardingOnboardingPresentStore,
+  OnboardingOnboardingAdvanceStore,
+  OnboardingOnboardingCompleteStore,
+  OnboardingGenerateUrlAvatarUrlStore,
+  OnboardingUserProfileUpdateStore,
+  OnboardingOrganizationProfileUpdateStore,
+  OnboardingAnalyticUserProfilePutStore,
+} from '@compallm/contract/houdini'
+import { createStore } from '@compallm/storybook/state'
 import type { OnboardingController as Contract, OnboardingState } from '@compallm/storybook/pages/onboarding'
-import type { AuthController, UrlController, AuthUser, PermissionController } from '@compallm/storybook'
-import type {
-  FieldsSelection,
-  OnboardingContext,
-  MutationGenqlSelection,
-  QueryGenqlSelection,
-} from '@compallm/contract/graphql'
+import type { UrlController, AuthUser, PermissionController } from '@compallm/storybook'
+type OnboardingContext = NonNullable<
+  import('@compallm/contract/houdini').OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$result['onboardingContext']
+>['node']
 import {
   UserProfileUpdateInput,
   OrganizationProfileUpdateInput,
   AnalyticUserProfilePutInput,
   ImageUploadInput,
 } from '@compallm/contract/validation'
-import { graphql, ApiError } from '../graphql-client'
+import { graphqlClient, requireData, ApiError } from '../graphql-client'
 import { notify, apiErrorMessage } from '../notifications/toast'
 import { beginRequest } from '../request-activity'
-import { userPreferenceController } from '../preference/user/controller'
+import type { UserPreferenceController } from '../preference/user/controller'
 import { requirePermissions } from '../permission/controller'
 import { organizationRoot } from '../organization/paths'
 
-export const onboardingSelection = {
-  required: true,
-  hasBeenPresented: true,
-  flow: true,
-  step: true,
-  settings: {
-    welcome: true,
-    links: { label: true, href: true },
-    destination: true,
-    artworkColor: true,
-    requireFullName: true,
-    requireAvatar: true,
-  },
-} as const
-const profileSelection = { displayName: true, username: true, email: true, avatarUrl: true } as const
-type Context = FieldsSelection<OnboardingContext, typeof onboardingSelection>
+type Context = OnboardingContext
 export class OnboardingController implements Contract {
   readonly store = createStore<OnboardingState & { visible: boolean; firstPresentation: boolean }>(() => ({
     step: 'profile',
@@ -62,13 +55,22 @@ export class OnboardingController implements Contract {
   private readonly auth: AuthController
   private readonly url: UrlController
   private readonly permissions?: PermissionController
-  constructor(auth: AuthController, url: UrlController, permissions?: PermissionController) {
+  constructor(
+    auth: AuthController,
+    url: UrlController,
+    permissions?: PermissionController,
+    private readonly preferences?: UserPreferenceController,
+  ) {
     this.auth = auth
     this.url = url
     this.permissions = permissions
   }
   private get user() {
     return this.auth.store.getState().currentUser!
+  }
+  private prepared?: import('@compallm/contract/houdini').OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$result
+  seed(result: NonNullable<typeof this.prepared>) {
+    this.prepared = result
   }
   start = () => {
     this.scope = new AbortController()
@@ -106,12 +108,18 @@ export class OnboardingController implements Contract {
     const signal = AbortSignal.any([this.scope.signal, read.signal])
     const reminderKey = this.reminderKey
     try {
-      const selection = {
-        onboardingContext: { node: onboardingSelection },
-        userProfile: { __args: { id: this.user.userId }, node: profileSelection },
-        analyticUserProfile: { __args: { key: 'work' }, node: { value: true } },
-      } satisfies QueryGenqlSelection
-      const result = await graphql(signal).query(selection)
+      const prepared = this.prepared
+      this.prepared = undefined
+      const result: import('@compallm/contract/houdini').OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$result =
+        prepared ??
+        (await new OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfileStore()
+          .fetch({
+            variables: { userProfileId: this.user.userId },
+            fetch: graphqlClient.fetch(signal),
+            policy: 'NoCache',
+            blocking: true,
+          })
+          .then(requireData))
       if (signal.aborted || this.read !== read) return
       const context = result.onboardingContext?.node
       if (!context?.required) {
@@ -122,9 +130,9 @@ export class OnboardingController implements Contract {
         }
       }
       if (!manual && this.deferReminder(reminderKey)) return
-      const presented = await graphql(signal).mutation({
-        onboardingPresent: { __args: { manual }, node: onboardingSelection },
-      } satisfies MutationGenqlSelection)
+      const presented = await new OnboardingOnboardingPresentStore()
+        .mutate({ onboardingPresentManual: manual }, { fetch: graphqlClient.fetch(signal) })
+        .then(requireData)
       if (signal.aborted || this.read !== read) return
       this.manual = manual
       this.apply(presented.onboardingPresent.node)
@@ -136,7 +144,7 @@ export class OnboardingController implements Contract {
         completed: false,
         profile: result.userProfile?.node ?? this.store.getState().profile,
         workType: result.analyticUserProfile?.node.value ?? '',
-        appearance: userPreferenceController.store.getState().saved?.theme.mode ?? 'SYSTEM',
+        appearance: this.preferences?.store.getState().saved?.theme.mode ?? 'SYSTEM',
         organization: { ...this.store.getState().organization, name: this.user.organizationName },
       })
     } catch (error) {
@@ -197,8 +205,10 @@ export class OnboardingController implements Contract {
         this.store.setState({ step: steps[back ? Math.max(0, index - 1) : Math.min(1, index + 1)] })
         return
       }
-      const selection = { onboardingAdvance: { __args: { back }, node: onboardingSelection } } satisfies MutationGenqlSelection
-      const { onboardingAdvance } = await graphql(this.scope.signal).mutation(selection)
+
+      const { onboardingAdvance } = await new OnboardingOnboardingAdvanceStore()
+        .mutate({ onboardingAdvanceBack: back }, { fetch: graphqlClient.fetch(this.scope.signal) })
+        .then(requireData)
       if (!this.scope.signal.aborted) this.apply(onboardingAdvance.node)
     } catch (error) {
       if (!this.scope.signal.aborted) this.store.setState({ error: apiErrorMessage(error) })
@@ -216,9 +226,9 @@ export class OnboardingController implements Contract {
     this.store.setState({ pending: true, error: null })
     try {
       if (this.current?.required) {
-        const result = await graphql(this.scope.signal).mutation({
-          onboardingComplete: { node: onboardingSelection },
-        } satisfies MutationGenqlSelection)
+        const result = await new OnboardingOnboardingCompleteStore()
+          .mutate(undefined, { fetch: graphqlClient.fetch(this.scope.signal) })
+          .then(requireData)
         if (this.scope.signal.aborted) return
         this.apply(result.onboardingComplete.node)
       }
@@ -266,9 +276,9 @@ export class OnboardingController implements Contract {
         })
         const {
           generateUrlAvatarUrl: { node },
-        } = await graphql(combined).mutation({
-          generateUrlAvatarUrl: { __args: { input }, node: { url: true, fields: { name: true, value: true } } },
-        } satisfies MutationGenqlSelection)
+        } = await new OnboardingGenerateUrlAvatarUrlStore()
+          .mutate({ generateUrlAvatarUrlInput: input }, { fetch: graphqlClient.fetch(combined) })
+          .then(requireData)
         const body = new FormData()
         node.fields.forEach((f) => body.append(f.name, f.value))
         body.append('file', file)
@@ -284,9 +294,9 @@ export class OnboardingController implements Contract {
       const input = UserProfileUpdateInput.parse({ ...value, avatarUploaded: Boolean(file) })
       const {
         userProfileUpdate: { node },
-      } = await graphql(combined).mutation({
-        userProfileUpdate: { __args: { input }, node: profileSelection },
-      } satisfies MutationGenqlSelection)
+      } = await new OnboardingUserProfileUpdateStore()
+        .mutate({ userProfileUpdateInput: input }, { fetch: graphqlClient.fetch(combined) })
+        .then(requireData)
       if (combined.aborted) return
       this.store.setState({ profile: node })
       const user = this.user
@@ -300,9 +310,9 @@ export class OnboardingController implements Contract {
       const input = OrganizationProfileUpdateInput.parse({ name })
       const {
         organizationProfileUpdate: { node },
-      } = await graphql(combined).mutation({
-        organizationProfileUpdate: { __args: { input }, node: { name: true } },
-      } satisfies MutationGenqlSelection)
+      } = await new OnboardingOrganizationProfileUpdateStore()
+        .mutate({ organizationProfileUpdateInput: input }, { fetch: graphqlClient.fetch(combined) })
+        .then(requireData)
       if (combined.aborted) return
       const user: AuthUser = this.user
       const root = organizationRoot(user)
@@ -321,14 +331,14 @@ export class OnboardingController implements Contract {
   saveWorkType: Contract['saveWorkType'] = (value, signal) =>
     this.save(signal, async (combined) => {
       const input = AnalyticUserProfilePutInput.parse({ key: 'work', value })
-      const result = await graphql(combined).mutation({
-        analyticUserProfilePut: { __args: { input }, node: { value: true } },
-      } satisfies MutationGenqlSelection)
+      const result = await new OnboardingAnalyticUserProfilePutStore()
+        .mutate({ analyticUserProfilePutInput: input }, { fetch: graphqlClient.fetch(combined) })
+        .then(requireData)
       if (!combined.aborted) this.store.setState({ workType: result.analyticUserProfilePut.node.value })
     })
   saveAppearance: Contract['saveAppearance'] = (value, signal) =>
     this.save(signal, async (combined) => {
-      await userPreferenceController.update({ theme: value }, combined)
+      await this.preferences?.update({ theme: value }, combined)
       if (!combined.aborted) this.store.setState({ appearance: value })
     })
 }

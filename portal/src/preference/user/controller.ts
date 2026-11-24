@@ -1,3 +1,4 @@
+import { PreferenceUserUserPreferencesStore, PreferenceUserUserPreferencesUpdateStore } from '@compallm/contract/houdini'
 import {
   createUserPreferenceStore,
   initialPreferenceDraft,
@@ -8,15 +9,14 @@ import {
   type UserPreferenceController as Contract,
   type PreferenceDraft,
 } from '@compallm/storybook/pages/settings'
-import { appController } from '../../app/controller'
 import { appearanceController } from '../../appearance/controller'
 import { userPreferenceDefaults } from '@compallm/contract/preference'
 import type { AppController, AppLoadingTask } from '@compallm/storybook'
 import type { OrganizationController } from '../../organization/controller'
 import type { UrlController } from '@compallm/storybook'
 import type { AuthController } from '@compallm/storybook'
-import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
-import { ApiError, graphql } from '../../graphql-client'
+
+import { ApiError, graphqlClient, requireData } from '../../graphql-client'
 import { notify } from '../../notifications/toast'
 
 export class UserPreferenceController implements Contract {
@@ -30,6 +30,10 @@ export class UserPreferenceController implements Contract {
     this.app = app
   }
 
+  seed(node: NonNullable<ReturnType<typeof this.store.getState>['saved']>) {
+    this.store.form.reset({ draft: loadedPreferenceDraft(node, this.store.form.values.draft!.codeLanguage) })
+    this.store.setState({ saved: node, status: 'ready' })
+  }
   connectOrganization = (
     navigation: Pick<OrganizationController, 'onOpenHome' | 'setSidebarOrder' | 'setSidebarLayout'>,
     url: Pick<UrlController, 'store'>,
@@ -81,7 +85,11 @@ export class UserPreferenceController implements Contract {
       if (next) void this.load()
     }
     const unsubscribe = auth.store.subscribe(synchronize)
-    synchronize()
+    const initial = auth.store.getState().currentUser?.userId
+    if (initial && this.store.getState().status === 'ready') {
+      userId = initial
+      this.applySettings()
+    } else synchronize()
     return () => {
       unsubscribe()
       this.cancel()
@@ -109,10 +117,15 @@ export class UserPreferenceController implements Contract {
     this.loading = loading
     this.store.setState({ status: 'loading' })
     try {
-      const selection = { userPreferences: { node: preferenceSelection } } satisfies QueryGenqlSelection
       const {
         userPreferences: { node },
-      } = await graphql(AbortSignal.any([scope.signal, request.signal])).query(selection)
+      } = await new PreferenceUserUserPreferencesStore()
+        .fetch({
+          fetch: graphqlClient.fetch(AbortSignal.any([scope.signal, request.signal])),
+          policy: 'NoCache',
+          blocking: true,
+        })
+        .then(requireData)
       if (scope.signal.aborted || this.read !== request) {
         loading?.cancel()
         return
@@ -146,14 +159,26 @@ export class UserPreferenceController implements Contract {
     this.read?.abort()
     this.loading?.cancel()
     this.read = undefined
-    const nodeSelection: Partial<typeof preferenceSelection> = {}
-    for (const category of categories) Object.assign(nodeSelection, { [category]: preferenceSelection[category] })
-    const selection = {
-      userPreferencesUpdate: { __args: { input: parsed.input }, node: nodeSelection },
-    } satisfies MutationGenqlSelection
+
     const {
       userPreferencesUpdate: { node },
-    } = await graphql(AbortSignal.any([signal, scope.signal])).mutation(selection)
+    } = await new PreferenceUserUserPreferencesUpdateStore()
+      .mutate(
+        {
+          userPreferencesUpdateInput: parsed.input,
+          includeNavigation: categories.includes('navigation'),
+          includeMemberDisplay: categories.includes('memberDisplay'),
+          includeCalendar: categories.includes('calendar'),
+          includeTheme: categories.includes('theme'),
+          includeTypography: categories.includes('typography'),
+          includeAccessibility: categories.includes('accessibility'),
+          includeMessageComposition: categories.includes('messageComposition'),
+          includeCodeAppearance: categories.includes('codeAppearance'),
+          includeSidebar: categories.includes('sidebar'),
+        },
+        { fetch: graphqlClient.fetch(AbortSignal.any([signal, scope.signal])) },
+      )
+      .then(requireData)
     if (scope.signal.aborted || signal.aborted || this.scope !== scope) throw new DOMException('Cancelled', 'AbortError')
     const saved = this.store.getState().saved
     if (!saved) throw new Error('Preferences have not been loaded')
@@ -167,5 +192,3 @@ export class UserPreferenceController implements Contract {
     return confirmedPreferenceDraft(confirmed, patch)
   }
 }
-
-export const userPreferenceController = new UserPreferenceController(appController)

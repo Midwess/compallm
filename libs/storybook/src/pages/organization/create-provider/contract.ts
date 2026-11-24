@@ -4,7 +4,7 @@ import {
   TextModelProtocol,
   ProviderModelCapability,
 } from '@compallm/contract/validation'
-import type { ProviderModelConfiguration, ProviderModelWrite } from '@compallm/contract/graphql'
+import type { ProviderModelConfiguration, ProviderModelWrite } from '@compallm/contract/houdini'
 import { contextTokensFromText } from '@compallm/contract/provider'
 import { modelPath, modelProtocol, effectiveContextTokens, effectiveModelPrice } from './model-options'
 import type { CreateProviderState, ProviderModel } from './types'

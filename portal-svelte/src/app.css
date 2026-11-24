@@ -1,5 +1,0 @@
-@import 'tailwindcss' source(none);
-@import '@compallm/storybook-svelte/foundations.css';
-@source './';
-@source '../../libs/storybook-svelte/src/components';
-@source '../../libs/storybook-svelte/src/pages';

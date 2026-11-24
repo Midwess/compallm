@@ -51,3 +51,5 @@ url.workspace = true
 webauthn-authenticator-rs = { version = "0.5.5", features = ["softpasskey"] }
 
 webauthn-rs-core.workspace = true
+
+futures-util = { workspace = true, features = ["std"] }

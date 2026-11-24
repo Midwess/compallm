@@ -1,13 +1,12 @@
-import { createStore } from 'zustand/vanilla'
-
-export const requestActivity = createStore(() => ({ pending: 0 }))
-
+import { graphqlClient } from './graphql-client'
+export const requestActivity = graphqlClient.activity
 export function beginRequest() {
-  requestActivity.setState(({ pending }) => ({ pending: pending + 1 }))
   let finished = false
+  requestActivity.setState((state) => ({ pending: state.pending + 1 }))
   return () => {
-    if (finished) return
-    finished = true
-    requestActivity.setState(({ pending }) => ({ pending: pending - 1 }))
+    if (!finished) {
+      finished = true
+      requestActivity.setState((state) => ({ pending: state.pending - 1 }))
+    }
   }
 }

@@ -1,7 +1,5 @@
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
-#[cfg(debug_assertions)]
-use axum_frontend::{DevConfig, shutdown_requested};
 use compallm_postgres::{Migrator, init_id_generator};
 use loco_rs::boot::ServeParams;
 use loco_rs::{
@@ -18,7 +16,6 @@ use std::path::Path;
 
 use compallm_api::di::Di;
 
-#[cfg(debug_assertions)]
 const PORTAL_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../portal");
 
 pub struct App;
@@ -50,7 +47,7 @@ impl App {
             .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
         let address = listener.local_addr()?;
         tracing::info!(requested_port=start,port=address.port(),binding=%address.ip(),
-            url=%format!("http://127.0.0.1:{}",address.port()),"API server listening");
+            url=%format!("http://localhost:{}",address.port()),"API server listening");
         Ok(listener)
     }
 }
@@ -87,20 +84,22 @@ impl Hooks for App {
         use std::net::SocketAddr;
 
         let listener = Self::tcp_listener(serve_params.port).await?;
-        #[cfg(debug_assertions)]
-        let dev_server = {
-            let vite = crate::node_binary(Path::new(PORTAL_ROOT), "vite")
-                .to_string_lossy()
-                .into_owned();
-            DevConfig::vite()
-                .command([vite])
-                .cwd(PORTAL_ROOT)
-                .port(41868)
-                .spawn()
-                .await?
-        };
-        #[cfg(debug_assertions)]
-        let app = app.merge(dev_server.router(["/"]));
+        let frontend = compallm_api::http::frontend::Frontend::start(
+            Path::new(PORTAL_ROOT),
+            listener.local_addr()?.port(),
+            serde_json::from_value(
+                ctx.config
+                    .settings
+                    .as_ref()
+                    .and_then(|settings| settings.get("frontend"))
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::json!({})),
+            )
+            .map_err(|error| loco_rs::Error::Message(error.to_string()))?,
+        )
+        .await
+        .map_err(|error| loco_rs::Error::Message(error.to_string()))?;
+        let app = app.fallback_service(frontend.router());
 
         let app = app.layer(
             tower_http::compression::CompressionLayer::new()
@@ -109,34 +108,17 @@ impl Hooks for App {
                 .quality(tower_http::CompressionLevel::Precise(4)),
         );
 
-        #[cfg(debug_assertions)]
-        {
-            tokio::select! {
-                result = axum::serve(
-                    listener,
-                    app.into_make_service_with_connect_info::<SocketAddr>(),
-                ) => result?,
-                () = shutdown_requested() => {}
-            }
-
-            drop(dev_server);
-            Self::on_shutdown(ctx).await;
-        }
-
-        #[cfg(not(debug_assertions))]
-        {
-            let shutdown_context = ctx.clone();
-            axum::serve(
-                listener,
-                app.into_make_service_with_connect_info::<SocketAddr>(),
-            )
-            .with_graceful_shutdown(async move {
-                loco_rs::boot::shutdown_signal().await;
-                tracing::info!("shutting down...");
-                Self::on_shutdown(&shutdown_context).await;
-            })
-            .await?;
-        }
+        let shutdown_context = ctx.clone();
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .with_graceful_shutdown(async move {
+            loco_rs::boot::shutdown_signal().await;
+            Self::on_shutdown(&shutdown_context).await;
+        })
+        .await?;
+        drop(frontend);
         Ok(())
     }
 
@@ -250,17 +232,6 @@ impl Hooks for App {
         let router = Self::with_api_fallback(router).layer(axum::middleware::from_fn(
             compallm_api::http::invitation::redact_query,
         ));
-        #[cfg(not(debug_assertions))]
-        {
-            use axum_frontend::static_router;
-
-            return Ok(router.merge(static_router(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/../portal/dist"
-            ))));
-        }
-
-        #[cfg(debug_assertions)]
         Ok(router)
     }
 

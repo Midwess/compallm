@@ -1,4 +1,4 @@
-import type { Invitation, Group, Role } from '@compallm/contract/graphql'
+import type { Invitation, Group, Role } from '../api-types'
 import type { UserPreferenceController } from './preferences/user/controller'
 import type { FormStore } from '../../components/form'
 import type { RoleController } from './role/controller'
@@ -251,6 +251,7 @@ export interface SettingsController {
   group: GroupController
   reopenOnboarding?(): void
   pages: SettingsPageControllers
+  href?(page: SettingsDestination, id?: string): string
   navigate(page: SettingsDestination, id?: string): void
   setNavigationQuery(value: string): void
   reloadNavigation?(): void

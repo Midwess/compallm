@@ -1,38 +1,51 @@
-import type { UrlController } from './url'
-import { createContext, type RefObject } from 'react'
+import { createContext } from 'svelte'
 import type { AuthController } from './pages/auth/types'
-import type { OrganizationController } from './pages/organization/types'
-import type { ChatController } from './pages/organization/chat/types'
-import type { CreateProviderController } from './pages/organization/create-provider/types'
-import type { UserPreferenceController } from './pages/settings/preferences/user/controller'
+import type { FormModel } from './components/form-model.svelte'
+import type { CollectionForms } from './components/collection-forms'
+import type { PermissionController } from './permission'
+export const [getFormContext, setFormContext] = createContext<FormModel<object> | null>()
+export const [getFieldContext, setFieldContext] = createContext<string>()
+export const [getSectionContext, setSectionContext] = createContext<string>()
+export const [getFloatingContainer, setFloatingContainer] = createContext<() => HTMLElement | null>()
+export const [getLoadingContext, setLoadingContext] = createContext<{
+  readonly initial: boolean
+  readonly visible: boolean
+  readonly refreshing: boolean
+}>()
+export const [getCollectionContext, setCollectionContext] = createContext<{
+  forms: CollectionForms
+  readonly scrollElement: HTMLElement | null
+}>()
+export const [getCollectionRow, setCollectionRow] = createContext<{ key: string; index: number; forms: CollectionForms }>()
+export const [getPermissionController, setPermissionController] = createContext<PermissionController>()
+export const [getCodeAppearance, setCodeAppearance] =
+  createContext<() => { theme: 'dark' | 'light'; fontSize: number; fontFamily: string }>()
+
+export const [getAuthController, setAuthController] = createContext<AuthController>()
+
 import type { SettingsController } from './pages/settings/types'
-import type { FormScope } from './components/form-model'
-import type { AppController } from './app'
+export const [getSettingsController, setSettingsController] = createContext<SettingsController>()
 
-export const LoadingRegionContext = createContext<{ initial: boolean; visible: boolean; refreshing: boolean } | null>(null)
+import type { UserPreferenceController } from './pages/settings/preferences/user/controller'
+export const [getUserPreferenceController, setUserPreferenceController] = createContext<UserPreferenceController>()
 
-export const AppControllerContext = createContext<AppController | null>(null)
+import type { OnboardingController } from './pages/onboarding/types'
+export const [getOnboardingController, setOnboardingController] = createContext<OnboardingController>()
 
-export const FormContext = createContext<FormScope | null>(null)
+import type { CreateProviderController } from './pages/organization/create-provider/types'
+export const [getCreateProviderController, setCreateProviderController] = createContext<CreateProviderController>()
 
-export const AuthControllerContext = createContext<AuthController | null>(null)
-export const OrganizationControllerContext = createContext<OrganizationController | null>(null)
-export const ChatControllerContext = createContext<ChatController | null>(null)
-export const CreateProviderControllerContext = createContext<CreateProviderController | null>(null)
-export const UserPreferenceControllerContext = createContext<UserPreferenceController | null>(null)
-export const SettingsControllerContext = createContext<SettingsController | null>(null)
+import type { OrganizationController } from './pages/organization/types'
+export const [getOrganizationController, setOrganizationController] = createContext<OrganizationController>()
 
-export const UrlControllerContext = createContext<UrlController | null>(null)
+import type { PasskeyController } from './pages/passkey/types'
+export const [getPasskeyController, setPasskeyController] = createContext<PasskeyController>()
 
-export const FloatingContainerContext = createContext<RefObject<HTMLElement | null> | undefined>(undefined)
+import type { InvitationController } from './pages/invitation'
+export const [getInvitationController, setInvitationController] = createContext<InvitationController>()
 
-export const PermissionControllerContext = createContext<import('./permission').PermissionController | null>(null)
+import type { UrlController } from './url'
+export const [getUrlController, setUrlController] = createContext<UrlController>()
 
-export const InvitationControllerContext = createContext<import('./pages/invitation').InvitationController | null>(null)
-
-export const OnboardingControllerContext = createContext<import('./pages/onboarding').OnboardingController | null>(null)
-
-export const CollectionContext = createContext<import('./components/collection-types').CollectionScope | null>(null)
-export const CollectionRowContext = createContext<import('./components/collection-types').CollectionRowScope | null>(null)
-
-export const PasskeyControllerContext = createContext<import('./pages/passkey/types').PasskeyController | null>(null)
+import type { ChatController } from './pages/organization/chat/types'
+export const [getChatController, setChatController] = createContext<ChatController>()

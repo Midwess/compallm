@@ -1,19 +1,45 @@
+import type { SettingsRouteData } from '../load'
+import { memberSelection, readMembers, readInvitations } from './read'
+import {
+  SettingsMembersGroupUpdateStore,
+  SettingsMembersRoleAssignStore,
+  SettingsMembersInvitationCreateManyStore,
+  SettingsMembersInvitationCreateStore,
+  SettingsMembersInvitationRevokeStore,
+} from '@compallm/contract/houdini'
 import { CollectionForms } from '@compallm/storybook'
-import { type PermissionCheck, permissionKey, type PermissionController, type FormStore } from '@compallm/storybook'
+import { type PermissionCheck, type PermissionController, type FormStore } from '@compallm/storybook'
 import type { SettingsState } from '@compallm/storybook/pages/settings'
-import type { MutationGenqlSelection, QueryGenqlSelection } from '@compallm/contract/graphql'
+
 import { GroupUpdateInput, InvitationCreateInput } from '@compallm/contract/validation'
 import { invitationBatchInput } from '@compallm/contract/invitation'
-import { graphql } from '../../graphql-client'
+import { graphqlClient, requireData } from '../../graphql-client'
 import { requirePermissions } from '../../permission/controller'
 import type { ProfileAuth } from '../profile/controller'
 import { notify } from '../../notifications/toast'
 
-const invitationNode = { id: true, email: true, status: true, expiresAt: true, issuedAt: true } as const
-const pageInfo = { endCursor: true, hasNextPage: true } as const
-const issuedNode = { invitation: invitationNode, url: true, emailAdmitted: true } as const
-
 export class MembersController {
+  routeData?: () => SettingsRouteData | undefined
+  private preparation?: SettingsRouteData
+  private consumed = new Set<'members' | 'invitations'>()
+  private prepared(part: 'members' | 'invitations') {
+    const data = this.routeData?.()
+    const user = this.auth.store?.getState().currentUser
+    if (
+      !data?.members ||
+      data.version !== graphqlClient.readVersion ||
+      data.userId !== user?.userId ||
+      data.organizationId !== user?.organizationId
+    )
+      return
+    if (this.preparation !== data) {
+      this.preparation = data
+      this.consumed.clear()
+    }
+    if (this.consumed.has(part)) return
+    this.consumed.add(part)
+    return data.members
+  }
   readonly forms = new CollectionForms()
   private request?: AbortController
   private invitationsRequest?: AbortController
@@ -49,10 +75,10 @@ export class MembersController {
           ])
         if (owner.signal.aborted) return false
         const input = GroupUpdateInput.parse(add ? { addMemberIds: [memberId] } : { removeMemberIds: [memberId] })
-        const selection = {
-          groupUpdate: { __args: { id, input }, node: { id: true, memberIds: true } },
-        } satisfies MutationGenqlSelection
-        const result = await graphql(owner.signal).mutation(selection)
+
+        const result = await new SettingsMembersGroupUpdateStore()
+          .mutate({ groupUpdateId: id, groupUpdateInput: input }, { fetch: graphqlClient.fetch(owner.signal) })
+          .then(requireData)
         if (owner.signal.aborted || this.lifecycle !== owner) return false
         confirmed = result.groupUpdate.node.memberIds?.includes(memberId)
           ? [...new Set([...confirmed, id])]
@@ -126,9 +152,9 @@ export class MembersController {
       if (this.permissions) await requirePermissions(this.permissions, checks)
       if (owner.signal.aborted) return false
       const role = (
-        await graphql(owner.signal).mutation({
-          roleAssign: { __args: { id, memberId }, node: { id: true, name: true, description: true, color: true, owner: true } },
-        } satisfies MutationGenqlSelection)
+        await new SettingsMembersRoleAssignStore()
+          .mutate({ roleAssignId: id, roleAssignMemberId: memberId }, { fetch: graphqlClient.fetch(owner.signal) })
+          .then(requireData)
       ).roleAssign.node
       if (owner.signal.aborted || this.lifecycle !== owner) return false
       this.store.setState((state) => ({
@@ -171,7 +197,7 @@ export class MembersController {
     this.lifecycle = new AbortController()
     this.appliedQuery = this.store.getState().query.trim()
     this.store.setState({ invitationBusy: false })
-    this.invitationCursor = undefined
+    if (!this.seeded) this.invitationCursor = undefined
     this.stop = this.store.subscribe((next, previous) => {
       if (next.memberOrder !== previous.memberOrder || next.filters.memberRole !== previous.filters.memberRole) {
         this.store.setState({
@@ -181,8 +207,11 @@ export class MembersController {
         void this.load()
       }
     })
-    void this.load()
-    void this.loadInvitations(false)
+    if (this.seeded) this.seeded = false
+    else {
+      void this.load()
+      void this.loadInvitations(false)
+    }
     return this.cancel
   }
   cancel = () => {
@@ -228,82 +257,19 @@ export class MembersController {
         ...(role && role !== 'all' ? { roleId: { eq: role } } : {}),
       }
       const direction = this.store.getState().memberOrder === 'ASC_NULLS_LAST' ? 'AscNullsLast' : 'DescNullsLast'
-      const relationshipChecks = (['group.read', 'role.read'] as const).map((action) => ({
-        action,
-        resourceType: 'Organization' as const,
-      }))
-      if (this.permissions) await this.permissions.evaluate(relationshipChecks)
+      const selection = await memberSelection(this.permissions)
       if (request.signal.aborted || owner.signal.aborted) return
-      const includeRoles =
-        !this.permissions ||
-        this.permissions.store.getState().entries[permissionKey(relationshipChecks[1])]?.status === 'allowed'
-      const includeGroups =
-        !this.permissions ||
-        this.permissions.store.getState().entries[permissionKey(relationshipChecks[0])]?.status === 'allowed'
-      const selection = {
-        me: { node: { id: true, organizationOwner: true } },
-        organization: { node: { ownerMemberIds: true } },
-        members: {
-          __args: { first: 20, after, filter, currentUserFirst: true, orderBy: [{ displayName: direction }] },
-          edges: {
-            node: {
-              id: true,
-              displayName: true,
-              email: true,
-              available: true,
-              joinedAt: true,
-              ...(includeRoles ? { role: { id: true, name: true, description: true, color: true, owner: true } } : {}),
-              ...(includeGroups ? { groups: { id: true, name: true, description: true } } : {}),
-              ...(includeGroups && includeRoles ? { effectiveRoleIds: true } : {}),
-            },
-          },
-          pageInfo,
-        },
-      } satisfies QueryGenqlSelection
-      const result = await graphql(AbortSignal.any([request.signal, owner.signal])).query(selection)
+      const prepared =
+        !append && !q && (!role || role === 'all') && direction === 'AscNullsLast' ? this.prepared('members') : undefined
+      const result =
+        prepared && JSON.stringify(prepared.selection) === JSON.stringify(selection)
+          ? prepared.result
+          : await readMembers(
+              { membersAfter: after, membersFilter: filter, membersOrderBy: [{ displayName: direction }], ...selection },
+              AbortSignal.any([request.signal, owner.signal]),
+            )
       if (this.request !== request || request.signal.aborted || owner.signal.aborted) return
-      this.permissions?.setFacts?.(
-        result.members.edges.flatMap(({ node }) =>
-          node.effectiveRoleIds && node.groups
-            ? [
-                {
-                  resourceType: 'Member' as const,
-                  id: node.id,
-                  roleIds: node.effectiveRoleIds,
-                  groupIds: node.groups.map((group) => group.id),
-                },
-              ]
-            : [],
-        ),
-      )
-      this.store.setState((state) => ({
-        membersLoaded: true,
-        actorIsOwner: result.me?.node.organizationOwner ?? false,
-        currentMemberId: result.me?.node.id ?? this.auth.store?.getState().currentUser?.userId,
-        ownerMemberIds: result.organization?.node.ownerMemberIds ?? [],
-        members: [
-          ...new Map(
-            [
-              ...(append ? state.members : []),
-              ...result.members.edges.map(({ node }) => ({
-                id: node.id,
-                name: node.displayName || 'Member',
-                email: node.email,
-                role: node.role && 'id' in node.role && 'name' in node.role && 'description' in node.role ? node.role : null,
-                groups: node.groups,
-                available: node.available,
-                joinedAt: node.joinedAt,
-                limitUsd: null,
-                currentUsageUsd: null,
-                previousUsageUsd: null,
-              })),
-            ].map((member) => [member.id, member]),
-          ).values(),
-        ],
-        membersComplete: !result.members.pageInfo.hasNextPage,
-        membersEndCursor: result.members.pageInfo.endCursor,
-        membersHasNextPage: result.members.pageInfo.hasNextPage,
-      }))
+      this.adoptMembers(result, append)
     } catch (error) {
       if (!request.signal.aborted && !owner.signal.aborted && this.request === request) {
         this.store.setState({ membersLoadError: true })
@@ -315,6 +281,67 @@ export class MembersController {
       if (this.request === request) this.store.setState({ membersLoading: false })
     }
   }
+  private adoptMembers(result: NonNullable<SettingsRouteData['members']>['result'], append = false) {
+    this.permissions?.setFacts?.(
+      result.members.edges.flatMap(({ node }) =>
+        node.effectiveRoleIds && node.groups
+          ? [
+              {
+                resourceType: 'Member' as const,
+                id: node.id,
+                roleIds: node.effectiveRoleIds,
+                groupIds: node.groups.map((group) => group.id),
+              },
+            ]
+          : [],
+      ),
+    )
+    this.store.setState((state) => ({
+      membersLoaded: true,
+      actorIsOwner: result.me?.node.organizationOwner ?? false,
+      currentMemberId: result.me?.node.id ?? this.auth.store?.getState().currentUser?.userId,
+      ownerMemberIds: result.organization?.node.ownerMemberIds ?? [],
+      members: [
+        ...new Map(
+          [
+            ...(append ? state.members : []),
+            ...result.members.edges.map(({ node }) => ({
+              id: node.id,
+              name: node.displayName || 'Member',
+              email: node.email,
+              role: node.role && 'id' in node.role && 'name' in node.role && 'description' in node.role ? node.role : null,
+              groups: node.groups,
+              available: node.available,
+              joinedAt: node.joinedAt,
+              limitUsd: null,
+              currentUsageUsd: null,
+              previousUsageUsd: null,
+            })),
+          ].map((member) => [member.id, member]),
+        ).values(),
+      ],
+      membersComplete: !result.members.pageInfo.hasNextPage,
+      membersEndCursor: result.members.pageInfo.endCursor,
+      membersHasNextPage: result.members.pageInfo.hasNextPage,
+    }))
+  }
+  seed(data: SettingsRouteData) {
+    if (!data.members) return
+    this.preparation = data
+    this.consumed = new Set(['members', 'invitations'])
+    this.adoptMembers(data.members.result)
+    const result = data.members.invitations
+    this.invitationCursor = result.invitations.pageInfo.endCursor ?? undefined
+    this.store.setState({
+      invitationsLoaded: true,
+      invitationsLoading: false,
+      membersLoading: false,
+      invitations: result.invitations.edges.map(({ node }) => node),
+      invitationsHasNextPage: result.invitations.pageInfo.hasNextPage,
+    })
+    this.seeded = true
+  }
+  private seeded = false
   loadMoreInvitations = () => {
     const state = this.store.getState()
     if (state.invitationsHasNextPage && !state.invitationsLoading && !state.invitationBusy) void this.loadInvitations(true)
@@ -330,14 +357,11 @@ export class MembersController {
       if (this.permissions)
         await requirePermissions(this.permissions, [{ action: 'member.read', resourceType: 'Organization' }])
       if (request.signal.aborted || owner.signal.aborted) return
-      const selection = {
-        invitations: {
-          __args: { first: 20, after: append ? this.invitationCursor : undefined },
-          edges: { node: invitationNode },
-          pageInfo,
-        },
-      } satisfies QueryGenqlSelection
-      const result = await graphql(AbortSignal.any([request.signal, owner.signal])).query(selection)
+
+      const prepared = !append ? this.prepared('invitations') : undefined
+      const result =
+        prepared?.invitations ??
+        (await readInvitations(append ? this.invitationCursor : undefined, AbortSignal.any([request.signal, owner.signal])))
       if (this.invitationsRequest !== request || request.signal.aborted || owner.signal.aborted) return
       this.invitationCursor = result.invitations.pageInfo.endCursor ?? undefined
       this.store.setState((state) => ({
@@ -373,10 +397,10 @@ export class MembersController {
       if (this.permissions)
         await requirePermissions(this.permissions, [{ action: 'member.invite', resourceType: 'Organization' }])
       if (owner.signal.aborted) return false
-      const selection = {
-        invitationCreateMany: { __args: { input }, edges: { node: issuedNode } },
-      } satisfies MutationGenqlSelection
-      const result = await graphql(owner.signal).mutation(selection)
+
+      const result = await new SettingsMembersInvitationCreateManyStore()
+        .mutate({ invitationCreateManyInput: input }, { fetch: graphqlClient.fetch(owner.signal) })
+        .then(requireData)
       if (owner.signal.aborted || this.lifecycle !== owner) return false
       const links = result.invitationCreateMany.edges.map(({ node }) => ({
         email: node.invitation.email,
@@ -407,10 +431,15 @@ export class MembersController {
       if (this.permissions)
         await requirePermissions(this.permissions, [{ action: 'member.invite', resourceType: 'Organization' }])
       if (owner.signal.aborted) return false
-      const selection = {
-        invitationCreate: { __args: { input: InvitationCreateInput.parse({ email: invitation.email }) }, node: issuedNode },
-      } satisfies MutationGenqlSelection
-      const result = (await graphql(owner.signal).mutation(selection)).invitationCreate.node
+
+      const result = (
+        await new SettingsMembersInvitationCreateStore()
+          .mutate(
+            { invitationCreateInput: InvitationCreateInput.parse({ email: invitation.email }) },
+            { fetch: graphqlClient.fetch(owner.signal) },
+          )
+          .then(requireData)
+      ).invitationCreate.node
       if (owner.signal.aborted || this.lifecycle !== owner) return false
       this.store.setState({ invitationLink: result.url, invitationEmailAdmitted: result.emailAdmitted })
       void this.loadInvitations(false)
@@ -431,8 +460,10 @@ export class MembersController {
       if (this.permissions)
         await requirePermissions(this.permissions, [{ action: 'member.invite', resourceType: 'Organization' }])
       if (owner.signal.aborted) return
-      const selection = { invitationRevoke: { __args: { id }, node: invitationNode } } satisfies MutationGenqlSelection
-      const result = await graphql(owner.signal).mutation(selection)
+
+      const result = await new SettingsMembersInvitationRevokeStore()
+        .mutate({ invitationRevokeId: id }, { fetch: graphqlClient.fetch(owner.signal) })
+        .then(requireData)
       if (!owner.signal.aborted && this.lifecycle === owner) {
         this.store.setState((state) => ({
           invitationsLoaded: true,

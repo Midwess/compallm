@@ -1,13 +1,25 @@
-import { createStore } from 'zustand/vanilla'
+import {
+  AuthInvitationControllerInvitationContextStore,
+  AuthInvitationControllerEmailSignupRequestStore,
+  AuthInvitationControllerEmailSigninRequestStore,
+  AuthInvitationControllerEmailSignupConfirmStore,
+  AuthInvitationControllerEmailSigninConfirmStore,
+} from '@compallm/contract/houdini'
+import { createStore } from '@compallm/storybook/state'
 import { emailRequestSchema, otpRequestSchema } from '@compallm/contract/auth'
-import type { QueryGenqlSelection, MutationGenqlSelection, InvitationContext } from '@compallm/contract/graphql'
-import { graphql } from '../graphql-client'
-import { authController } from '../auth/controller'
-import { urlController } from '../url/controller'
+type InvitationContext =
+  import('@compallm/contract/houdini').AuthInvitationControllerInvitationContext$result['invitationContext']['node']
+import { ApiError, graphqlClient, requireData } from '../graphql-client'
+import { rejectedConfirmation, type AuthController } from './controller'
+import type { UrlController } from '../url/controller'
 import { apiErrorMessage } from '../notifications/toast'
 
 type Context = Pick<InvitationContext, 'organizationName' | 'email' | 'expiresAt' | 'signup'>
 export class InvitationController {
+  constructor(
+    private readonly auth: AuthController,
+    private readonly url: UrlController,
+  ) {}
   readonly store = createStore<{
     context: Context | null
     loading: boolean
@@ -17,12 +29,24 @@ export class InvitationController {
   }>(() => ({ context: null, loading: true, step: 'continue', error: null, busy: false }))
   private request?: AbortController
   private confirmed = false
+  private uncertain = false
+  private seeded = false
+  seed(result: import('@compallm/contract/houdini').AuthInvitationControllerInvitationContext$result | null) {
+    this.store.setState({
+      context: result?.invitationContext.node ?? null,
+      loading: false,
+      error: result ? null : 'Invitation is expired, revoked, consumed, or unavailable.',
+      step: new URLSearchParams(this.url.store.getState().search).get('step') === 'code' ? 'code' : 'continue',
+    })
+    this.seeded = true
+  }
   start = () => {
-    authController.forgetCurrentUser()
+    this.auth.forgetCurrentUser()
     this.request?.abort()
     const request = new AbortController()
     this.request = request
-    void this.load(request)
+    if (this.seeded) this.seeded = false
+    else void this.load(request)
     return () => request.abort()
   }
   reload = () => {
@@ -33,19 +57,19 @@ export class InvitationController {
   }
   private async load(request: AbortController) {
     try {
-      if (new URLSearchParams(urlController.store.getState().search).has('unavailable'))
+      if (new URLSearchParams(this.url.store.getState().search).has('unavailable'))
         throw { info: { message: 'Invitation is expired, revoked, consumed, or unavailable.' } }
-      const selection = {
-        invitationContext: { node: { organizationName: true, email: true, expiresAt: true, signup: true } },
-      } satisfies QueryGenqlSelection
-      const result = await graphql(request.signal).query(selection)
+
+      const result = await new AuthInvitationControllerInvitationContextStore()
+        .fetch({ fetch: graphqlClient.fetch(request.signal), policy: 'NoCache', blocking: true })
+        .then(requireData)
       if (!request.signal.aborted)
         this.store.setState({
           context: result.invitationContext.node,
           loading: false,
           step: this.confirmed
             ? 'confirmed'
-            : new URLSearchParams(urlController.store.getState().search).get('step') === 'code'
+            : new URLSearchParams(this.url.store.getState().search).get('step') === 'code'
               ? 'code'
               : 'continue',
         })
@@ -64,18 +88,19 @@ export class InvitationController {
         delivery: 'COOKIE',
         invitation: true,
       })
-      const client = graphql(request.signal)
       if (context.signup)
-        await client.mutation({
-          emailSignupRequest: { __args: { input }, node: { lifetime: { expiresInSeconds: true } } },
-        } satisfies MutationGenqlSelection)
+        await new AuthInvitationControllerEmailSignupRequestStore()
+          .mutate({ emailSignupRequestInput: input }, { fetch: graphqlClient.fetch(request.signal) })
+          .then(requireData)
       else
-        await client.mutation({
-          emailSigninRequest: { __args: { input }, node: { lifetime: { expiresInSeconds: true } } },
-        } satisfies MutationGenqlSelection)
+        await new AuthInvitationControllerEmailSigninRequestStore()
+          .mutate({ emailSigninRequestInput: input }, { fetch: graphqlClient.fetch(request.signal) })
+          .then(requireData)
       if (!request.signal.aborted) {
+        this.confirmed = false
+        this.uncertain = false
         this.store.setState({ step: 'code' })
-        urlController.navigate('/invitation?step=code', { replace: true })
+        this.url.navigate('/invitation?step=code', { replace: true })
       }
       return true
     } catch (error) {
@@ -91,24 +116,41 @@ export class InvitationController {
     if (!request || !context || this.store.getState().busy) return false
     this.store.setState({ busy: true, error: null })
     try {
-      if (!this.confirmed) {
+      if (!this.confirmed && !this.uncertain) {
         const input = otpRequestSchema(context.signup ? 'signup' : 'signin').parse({ code, delivery: 'COOKIE' })
-        const client = graphql(request.signal)
-        if (context.signup)
-          await client.mutation({
-            emailSignupConfirm: { __args: { input }, node: { accessLifetime: { expiresInSeconds: true } } },
-          } satisfies MutationGenqlSelection)
-        else
-          await client.mutation({
-            emailSigninConfirm: { __args: { input }, node: { accessLifetime: { expiresInSeconds: true } } },
-          } satisfies MutationGenqlSelection)
+        this.uncertain = true
+        try {
+          if (context.signup)
+            await new AuthInvitationControllerEmailSignupConfirmStore()
+              .mutate({ emailSignupConfirmInput: input }, { fetch: graphqlClient.fetch(request.signal) })
+              .then(requireData)
+          else
+            await new AuthInvitationControllerEmailSigninConfirmStore()
+              .mutate({ emailSigninConfirmInput: input }, { fetch: graphqlClient.fetch(request.signal) })
+              .then(requireData)
+        } catch (error) {
+          if (rejectedConfirmation(error)) this.uncertain = false
+          throw error
+        }
         this.confirmed = true
+        this.uncertain = false
         this.store.setState({ step: 'confirmed' })
       }
-      const user = await authController.refreshCurrentUser(request.signal, false)
+      const user = await this.auth.refreshCurrentUser(request.signal, true, {
+        email: context.email,
+        organizationName: context.organizationName,
+      })
+      if (!user && !request.signal.aborted)
+        throw new ApiError(
+          'Invitation acceptance could not be confirmed. Please retry the session check.',
+          503,
+          'SESSION_UNAVAILABLE',
+        )
       if (user && !request.signal.aborted) {
-        authController.securityOfferSession = user.id
-        urlController.navigate('/security', { replace: true })
+        this.confirmed = true
+        this.uncertain = false
+        this.auth.securityOfferSession = user.id
+        this.url.navigate('/security', { replace: true })
       }
       return true
     } catch (error) {

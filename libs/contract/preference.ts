@@ -1,5 +1,7 @@
 // Generated from Rust. Do not edit; run cargo run -p compallm-api -- generate.
-import type { PreferenceDestination, UserPreferences } from './graphql.ts'
+import type { PreferenceDestination$options as PreferenceDestination } from './houdini/generated/graphql/enums'
+import type { PreferenceUserUserPreferences$result } from './houdini/generated/artifacts/PreferenceUserUserPreferences'
+type UserPreferences = PreferenceUserUserPreferences$result['userPreferences']['node']
 type PreferenceValues<T> = T extends readonly (infer U)[]
   ? readonly PreferenceValues<U>[]
   : T extends object

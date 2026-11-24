@@ -3,12 +3,8 @@ import {
   userPreferenceHomeDestinations,
   userPreferenceSidebarDestinations,
 } from '@compallm/contract/preference'
-import type {
-  FieldsSelection,
-  UserPreferences,
-  UserPreferencesGenqlSelection,
-  PreferenceDestination,
-} from '@compallm/contract/graphql'
+import type { UserPreferences } from '../../../api-types'
+import type { PreferenceDestination$options as PreferenceDestination } from '@compallm/contract/houdini'
 import {
   UserPreferencesPatchInput,
   type UserPreferencesPatchInputFormOutput,
@@ -38,9 +34,9 @@ export const preferenceSelection = {
   messageComposition: { convertEmoticons: true, sendShortcut: true },
   codeAppearance: { theme: true, font: { family: true, size: true } },
   sidebar: { badgeStyle: true, entries: { item: true, visibility: true }, layout: { category: true, items: true } },
-} satisfies UserPreferencesGenqlSelection
+}
 
-export type UserPreferenceValues = FieldsSelection<UserPreferences, typeof preferenceSelection>
+export type UserPreferenceValues = UserPreferences
 const paths = {
   home: 'navigation.home',
   displayNames: 'memberDisplay.nameFormat',

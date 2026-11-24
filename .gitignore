@@ -4,30 +4,23 @@
 /target
 
 # JavaScript
-/portal-svelte/node_modules
-/portal-svelte/.svelte-kit
-/portal-svelte/dist
-/libs/storybook-svelte/node_modules
-/libs/storybook-svelte/.svelte-kit
-/libs/storybook-svelte/dist
-/libs/storybook-svelte/storybook-static
-/libs/graphql-svelte/node_modules
-/libs/graphql-svelte/.houdini/cache
-/node_modules
 /portal/node_modules
+/portal/.svelte-kit
+/portal/dist
+/portal/.pnpm-store
+/portal/test-results
+/portal/playwright-report
 /libs/storybook/node_modules
+/libs/storybook/.svelte-kit
+/libs/storybook/dist
+/libs/storybook/storybook-static
+/libs/storybook/.pnpm-store
+/libs/storybook/*.tgz
+/node_modules
 /libs/contract/node_modules
 /libs/contract/dist
 /libs/contract/.pnpm-store
-/libs/storybook/dist
-/libs/storybook/*.tgz
-/libs/storybook/.pnpm-store
-/libs/storybook/storybook-static
-/libs/storybook/test-results
-/libs/storybook/playwright-report
 /.pnpm-store
-/portal/.pnpm-store
-/portal/dist
 /dist
 *.local
 *.log
@@ -54,10 +47,7 @@
 artifacts
 .codex
 
-/portal/test-results
-/portal/playwright-report
-
-/libs/graphql-svelte/.houdini/db.sqlite*
-
-!/libs/graphql-svelte/.houdini/artifacts/
-!/libs/graphql-svelte/.houdini/artifacts/**
+/libs/contract/houdini/generated/db.sqlite*
+!/libs/contract/houdini/generated/artifacts/
+!/libs/contract/houdini/generated/artifacts/**
+/portal/build

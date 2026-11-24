@@ -8,3 +8,5 @@ pub mod listener;
 pub mod middleware;
 
 pub mod invitation;
+
+pub mod frontend;

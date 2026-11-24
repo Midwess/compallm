@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { ProviderHeader as GraphqlHeader } from './graphql.ts'
+import type { ProviderHeader as GraphqlHeader } from './houdini/generated/graphql/inputs'
 import {
   ProviderCreateInput,
   ProviderCreateInputInput,

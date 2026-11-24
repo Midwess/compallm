@@ -1,4 +1,4 @@
-import { createStore } from 'zustand/vanilla'
+import { createStore } from '@compallm/storybook/state'
 import type { AppController as Contract, AppState, AppLoadingTask } from '@compallm/storybook'
 import { apiErrorMessage } from '../notifications/toast'
 

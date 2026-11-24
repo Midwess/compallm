@@ -1,4 +1,4 @@
-use super::{Provider, input::ProviderCreateFromTemplateInput};
+use super::{Provider, input::ProviderCreateFromCatalogInput};
 use crate::{
     graphql::{base_type::Payload, error::Error},
     http::authorization::AuthorizationContext,
@@ -11,7 +11,7 @@ use compallm_postgres::catalog::repository::{CatalogRepository, CatalogScope};
 use validify::{Validate, Validify};
 
 pub async fn create(
-    mut input: ProviderCreateFromTemplateInput,
+    mut input: ProviderCreateFromCatalogInput,
     authority: &AuthorizationContext,
     catalog: &CatalogRepository,
     service: &CreationService<'_>,
@@ -26,10 +26,10 @@ pub async fn create(
             .map_err(compallm_core::authorization::error::AuthorizationError::from)?;
     }
     let template = catalog
-        .provider(&input.provider_template_id)
+        .provider(&input.provider_catalog_id)
         .await
         .map_err(|_| Error::internal())?
-        .ok_or_else(|| Error::message("This provider template is unavailable."))?;
+        .ok_or_else(|| Error::message("This catalog provider is unavailable."))?;
     let mut connection = template.connection.clone();
     if !matches!(connection.authentication, Some(Authentication::ApiKey(_))) {
         connection.authentication = template
@@ -58,7 +58,7 @@ pub async fn create(
     let mut models = Vec::with_capacity(input.models.len());
     for selected in input.models {
         let template = catalog
-            .model(&input.provider_template_id, &selected.id, Some(scope))
+            .model(&input.provider_catalog_id, &selected.id, Some(scope))
             .await
             .map_err(|_| Error::internal())?
             .ok_or_else(|| {
@@ -118,7 +118,7 @@ pub async fn create(
         name: input.name,
         description: template.description,
         logo_url,
-        template_id: Some(input.provider_template_id),
+        template_id: Some(input.provider_catalog_id),
         connection,
         headers: input
             .headers

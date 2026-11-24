@@ -7,7 +7,7 @@ import { ProviderModelConfiguration } from '../libs/contract/dist/validation.js'
 const root = new URL('../', import.meta.url)
 const snapshot = await readFile(new URL('libs/postgres/src/migration/m20261117_000047_provider_catalog/after.rs', root), 'utf8')
 const catalog = JSON.parse(snapshot.slice(snapshot.indexOf('r###"') + 5, snapshot.lastIndexOf('"###')))
-const manifest = JSON.parse(await readFile(new URL('portal/public/assets/providers/manifest.json', root), 'utf8'))
+const manifest = JSON.parse(await readFile(new URL('portal/static/assets/providers/manifest.json', root), 'utf8'))
 const providers = new Map(catalog.provider_templates.map(provider => [provider.id, provider]))
 let modelInfoRecipes = 0
 for (const record of [...catalog.provider_templates, ...catalog.provider_model_templates]) {
@@ -49,7 +49,7 @@ for (const provider of providers.values()) {
   assert.match(provider.logo_path, /^\/assets\/providers\/[a-z0-9-]+\.(svg|png|webp)$/)
   const entry = manifest.find(entry => entry.provider === provider.id)
   assert.equal(entry?.path, provider.logo_path)
-  const data = await readFile(new URL(`portal/public${provider.logo_path}`, root))
+  const data = await readFile(new URL(`portal/static${provider.logo_path}`, root))
   assert.equal(createHash('sha256').update(data).digest('hex'), entry.sha256)
   if (provider.logo_path.endsWith('.svg')) {
     const svg = data.toString('utf8')

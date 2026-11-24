@@ -1,0 +1,187 @@
+[
+  {
+    "name": "bedrock-claude-ids",
+    "pattern": "^(?:[a-z-]+\\.)?anthropic\\.claude-",
+    "description": "A Bedrock-syntax Claude id, for every version: anthropic.claude- at the start of the name, optionally behind a single dotted geo segment (us./eu./au./jp./apac./global./us-gov.). Anchored to the start because routing rules see the raw request string and provider inference feeds the proxy's provider/* wildcard access checks: an id under an unrecognized namespace such as bedrockz/anthropic.claude-... must stay unroutable rather than resolve to bedrock and slip through a bedrock/* key. Routes to bedrock before the bare-id Anthropic rule is consulted.",
+    "model_info": {
+      "litellm_provider": "bedrock"
+    }
+  },
+  {
+    "name": "anthropic-claude-ids",
+    "pattern": "^claude-[a-z]+-\\d+(?:[-.]\\d+)?(?:-\\d{8})?$",
+    "description": "A bare Claude family-major id with an optional minor and an optional 8-digit date suffix, anchored to the whole name, so claude-newfamily-5 routes like claude-newfamily-5-1 does. Routes an unmapped Claude id that carries no provider namespace to the Anthropic API.",
+    "model_info": {
+      "litellm_provider": "anthropic"
+    }
+  },
+  {
+    "name": "typesafe-jev-ids",
+    "pattern": "^jev-(?:latest|preview|1\\.13\\.0|1\\.14\\.0)$",
+    "description": "A bare Jev id that has a typesafe/ price entry (jev-latest, jev-preview, jev-1.13.0, jev-1.14.0), the name the /typesafe pass-through forwards to TypeSafe. Listed by name, matched case-insensitively like every rule here, so foo/jev-latest or a model group named like a Jev id TypeSafe does not serve, such as jev-1.0 or jev-internal-router, never resolves to typesafe. A new Jev version goes here together with its price entry. Provider inference feeds the proxy's provider/* wildcard access checks, so this rule is what lets typesafe/* on a key, team or project allowlist cover a jev-latest request.",
+    "model_info": {
+      "litellm_provider": "typesafe"
+    }
+  },
+  {
+    "name": "claude-family-baseline",
+    "pattern": "claude-[a-z]+-\\d+(?:[-.]\\d+)?(?:-\\d{8})?",
+    "fill_missing_for_providers": [
+      "anthropic",
+      "azure_ai",
+      "bedrock",
+      "bedrock_converse",
+      "vertex_ai-anthropic_models"
+    ],
+    "description": "Any Claude family-major id with an optional minor and an optional 8-digit date suffix, under any provider namespace (bare, bedrock-dotted, vertex, databricks, ...), so bare majors like claude-newfamily-5 get the same baseline as claude-newfamily-5-1. Carries the model-family facts every Claude shares; it carries no pricing, so cost stays on the standard unpriced behavior rather than a guessed number. On mapped Claude entries from Anthropic, Azure Foundry, Bedrock and Vertex it only fills the keys an entry leaves out, so the entry's own values always win.",
+    "model_info": {
+      "mode": "chat",
+      "max_input_tokens": 200000,
+      "max_output_tokens": 64000,
+      "supports_function_calling": true,
+      "supports_parallel_function_calling": true,
+      "supports_vision": true,
+      "supports_tool_choice": true,
+      "supports_assistant_prefill": true,
+      "supports_prompt_caching": true,
+      "supports_response_schema": true,
+      "supports_reasoning": true,
+      "supports_pdf_input": true,
+      "supports_system_messages": true
+    }
+  },
+  {
+    "name": "claude-adaptive-thinking",
+    "pattern": "claude-[a-z]+-(?:4[-._](?:[6-9]|[1-9]\\d)(?!\\d)|[5-9](?!\\d)(?:[-._]\\d{1,2}(?!\\d))?)",
+    "fill_missing_for_providers": [
+      "anthropic",
+      "azure_ai",
+      "bedrock",
+      "bedrock_converse",
+      "vertex_ai-anthropic_models"
+    ],
+    "description": "Claude at version 4.6 or higher, in any id shape that contains claude-<family>-: minors 4.6 through 4.99, any later major-minor, and bare 5+ majors so a new family shaped like claude-fable-5 matches. Requiring the claude- prefix keeps non-Claude names such as team-sonnet-5-1 out. The minor is capped at two digits so an 8-digit date suffix such as claude-opus-4-20250514 is never read as a >= 4.6 minor. Two-digit majors are deliberately not matched so ids like claude-opus-41 (4.1) are not read as major 41. Turns on adaptive thinking for new versions and new families with no code change.",
+    "model_info": {
+      "supports_adaptive_thinking": true
+    }
+  },
+  {
+    "name": "claude-legacy-thinking",
+    "pattern": "claude-[a-z]+-4[-._]6(?!\\d)",
+    "fill_missing_for_providers": [
+      "anthropic",
+      "azure_ai",
+      "bedrock",
+      "bedrock_converse",
+      "vertex_ai-anthropic_models"
+    ],
+    "description": "Claude at version 4.6 exactly, in any id shape that contains claude-<family>-4-6 (dotted and underscored minors included, dated releases such as claude-sonnet-4-6-20260219 too). The 4.6 family is adaptive-thinking yet still accepts legacy thinking.type=enabled with budget_tokens, so the caller's hard budget cap is forwarded verbatim instead of being rewritten to an uncapped output_config.effort. The lookahead keeps two-digit minors such as 4-60 from matching. 4.7+ and 5+ majors reject the legacy shape and stay on the adaptive translation.",
+    "model_info": {
+      "supports_legacy_thinking": true
+    }
+  },
+  {
+    "name": "claude-always-on-thinking",
+    "pattern": "claude-(?:fable|mythos)-",
+    "description": "Any Claude Fable or Mythos id, under any provider namespace and any version. These families always think and reject thinking.type=disabled with a 400; the Anthropic transformations omit the param instead, so the model falls back to its default adaptive thinking.",
+    "model_info": {
+      "thinking_always_on": true
+    }
+  },
+  {
+    "name": "claude-thinking-on-by-default",
+    "pattern": "claude-[a-z]+-[5-9](?!\\d)",
+    "description": "Claude at major 5 or higher, in any id shape that contains claude-<family>-<major>. Anthropic's thinking docs list every Claude 5+ model as thinking by default (on or always on) when the request sends no thinking param, and every 4.x as off. Two-digit majors are deliberately not matched so ids like claude-opus-41 (4.1) are not read as major 41. The response_format json tool is then left unforced, since a forced tool call skips the model's thinking.",
+    "model_info": {
+      "thinking_on_by_default": true
+    }
+  },
+  {
+    "name": "claude-mid-conversation-system",
+    "pattern": "claude-[a-z]+-(?:4[-._](?:[89]|[1-9]\\d)(?!\\d)|[5-9](?!\\d)(?:[-._]\\d{1,2}(?!\\d))?)",
+    "fill_missing_for_providers": [
+      "anthropic",
+      "azure_ai",
+      "bedrock",
+      "bedrock_converse",
+      "vertex_ai-anthropic_models"
+    ],
+    "description": "Claude at version 4.8 or higher, in any id shape that contains claude-<family>-: minors 4.8 through 4.99, any later major-minor, and bare 5+ majors so a new family like claude-fable-5 matches. Two-digit majors are deliberately not matched so ids like claude-opus-41 (4.1) are not read as major 41. Anthropic introduced mid-conversation system messages with Opus 4.8 and every newer Claude keeps them; 4.7 and below reject the system role inside messages.",
+    "model_info": {
+      "supports_mid_conversation_system": true
+    }
+  },
+  {
+    "name": "claude-tool-search",
+    "pattern": "claude-[a-z]+-(?:4[-._](?:[5-9]|[1-9]\\d)(?!\\d)|[5-9](?!\\d)(?:[-._]\\d{1,2}(?!\\d))?)",
+    "fill_missing_for_providers": [
+      "anthropic",
+      "azure_ai",
+      "bedrock",
+      "bedrock_converse",
+      "vertex_ai-anthropic_models"
+    ],
+    "description": "Claude at version 4.5 or higher, in any id shape that contains claude-<family>-: minors 4.5 through 4.99, any later major-minor, and bare 5+ majors so a new family like claude-fable-5 matches. Two-digit majors are deliberately not matched so ids like claude-opus-41 (4.1) are not read as major 41. Anthropic's tool search docs list every Claude 4.5 and newer model as supported and Opus 4.1 and earlier as unsupported, so the flag follows the version instead of a per-model list. azure_ai is included because Microsoft Foundry runs tool search for Claude on both Anthropic-hosted and Azure-hosted deployments.",
+    "model_info": {
+      "supports_tool_search": true
+    }
+  },
+  {
+    "name": "claude-per-turn-control",
+    "pattern": "claude-[a-z]+-(?:4[-._](?:[5-9]|[1-9]\\d)(?!\\d)|[5-9](?!\\d)(?:[-._]\\d{1,2}(?!\\d))?)",
+    "fill_missing_for_providers": [
+      "bedrock",
+      "bedrock_converse"
+    ],
+    "description": "Claude at version 4.5 or higher, with the same id shapes and version boundaries as claude-tool-search. On 2026-11-05 Bedrock InvokeModel answered 200 with the per-turn-control-2026-07-01 beta on every Claude 4.5 and newer model a QA account reached across 13 regions, and 400 invalid beta flag on Claude 3 Haiku in ca-central-1. The jp., au. and in. profiles answered 200 too, AWS lists no apac. profile for Claude 4.5 or newer, and GovCloud was not tested. Claude 3.5, 3.7, Sonnet 4, Opus 4 and Opus 4.1 were unreachable, so they keep the beta dropped as before. The flag means Bedrock accepts the beta name on the model, as supports_tool_search does for the tool search beta, and Bedrock Invoke forwards the beta only where it is set. It does not promise per-turn output_config works, since on 2026-11-05 Opus 4.8, Opus 5, Sonnet 5 and Fable 5 rejected it with or without the beta. A deployment turns the forward off with model_info supports_per_turn_control false.",
+    "model_info": {
+      "supports_per_turn_control": true
+    }
+  },
+  {
+    "name": "wandb-reasoning-baseline",
+    "pattern": "^wandb/",
+    "description": "Any Weights & Biases Inference model id, anchored to the wandb/ namespace so only that provider's ids match. W&B's serverless catalog is reasoning-first and grows faster than this registry names it, so an id the map has not described yet is treated as reasoning-capable and keeps the caller's reasoning_effort instead of dropping it or raising UnsupportedParamsError. Rules lose to exact entries, so a mapped non-reasoning model such as wandb/meta-llama/Llama-3.1-8B-Instruct is unaffected. Carries no mode and no pricing, so cost stays on the standard unpriced behavior and the deployment does not read as catalog-mapped to the router's reasoning-effort resolver.",
+    "model_info": {
+      "supports_reasoning": true
+    }
+  },
+  {
+    "name": "minimax-reasoning-baseline",
+    "pattern": "^minimax/",
+    "description": "Any MiniMax model id under the minimax/ namespace, anchored so only that provider's ids match. MiniMax ships reasoning models faster than this registry names them, so an id the map has not described yet is treated as reasoning-capable and keeps the caller's reasoning_effort and thinking instead of dropping them. Rules lose to exact entries, so mapped speech, video and image models are unaffected. Carries no mode and no pricing, so cost stays on the standard unpriced behavior.",
+    "model_info": {
+      "supports_reasoning": true
+    }
+  },
+  {
+    "name": "openai-reasoning-family-baseline",
+    "pattern": "^(?!.*search-api)(?:[a-z0-9_.-]+/)*(?:ft:)?(?:o[1-9]\\d*(?![a-z0-9])|gpt-[5-9](?:\\.\\d+)?(?![0-9.])|(?:gpt-\\d+(?:\\.\\d+)?(?:-[a-z0-9]+)*-)?(?:codex|deep-research|chat-latest)(?![a-z0-9]))",
+    "fill_missing_for_providers": [
+      "azure",
+      "azure_ai",
+      "openai"
+    ],
+    "description": "OpenAI reasoning families by id shape, under any provider namespace and with an optional ft: prefix: the o-series (o1, o3-pro, o4-mini), gpt-5 through gpt-9 majors including dotted minors and suffixed variants (gpt-5.5-cyber, gpt-6-astra), and the codex, deep-research and chat-latest lines when standalone or on a gpt base. gpt-5-search-api is excluded because it is a search-only surface. Every model here is a reasoning model, and the Responses API drops the caller's reasoning param for any mapped OpenAI model whose info lacks supports_reasoning, so an id the registry has not named yet keeps its reasoning settings instead of silently losing them. Rules lose to exact entries. Carries no mode and no pricing, so cost stays on the standard unpriced behavior.",
+    "model_info": {
+      "supports_reasoning": true
+    }
+  },
+  {
+    "name": "gemini-chat-baseline",
+    "pattern": "gemini-(?!.*(?:-tts|-image|-live|-audio|-embedding|-computer-use|-robotics|-transcribe|-translate))(?:2[.-][5-9]|[3-9](?:[.-]\\d{1,2})?)-(?:pro|flash)(?:-lite)?(?![a-z])",
+    "description": "Any Gemini text-chat id at 2.5 or higher under any namespace, including bare ids, gemini/, vertex_ai/, openrouter/google/, deepinfra/google/, vercel_ai_gateway/google/, oci/google., and databricks-gemini-<major>-<minor>: gemini-<major>[.minor]-(pro|flash)[-lite] with any trailing preview, date or variant tag. The capability flags were verified against each of those providers' own catalogs and docs. The lookahead excludes the tts, image, live, audio, embedding, computer-use, robotics, transcribe and translate lines, which are different modes with different capabilities. Provider-specific deviations, such as Perplexity's Agent API serving these as mode responses, are carried by their exact map entries, which always win over this rule. Carries no token limits or pricing, so those stay on the standard unmapped behavior rather than a guessed number. Source check 2026-09-15: all 45 first-party 2.5+ text-chat entries in this map carry every field below, and the OpenRouter (openrouter.ai/api/v1/models), Vercel AI Gateway (ai-gateway.vercel.sh/v1/models), DeepInfra (api.deepinfra.com/models/list), OCI and Databricks model docs list reasoning, tools and image input for the same models.",
+    "model_info": {
+      "mode": "chat",
+      "supports_reasoning": true,
+      "supports_function_calling": true,
+      "supports_tool_choice": true,
+      "supports_system_messages": true,
+      "supports_vision": true,
+      "supports_response_schema": true,
+      "supports_pdf_input": true,
+      "supports_prompt_caching": true,
+      "supports_web_search": true
+    }
+  }
+]

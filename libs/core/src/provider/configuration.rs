@@ -10,7 +10,7 @@ pub type BodyDefaults = BTreeMap<String, serde_json::Value>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct ModelTemplateReference {
+pub struct ModelCatalogReference {
     pub provider_id: String,
     pub model_id: String,
 }
@@ -257,6 +257,7 @@ pub struct RateConditions {
 #[serde(tag = "type", content = "configuration", rename_all = "snake_case")]
 pub enum CachePricing {
     SeparateRate(CacheTokenRate),
+    EstimatedRate(CacheTokenRate),
     StandardInputRate,
     Included,
     Unsupported,

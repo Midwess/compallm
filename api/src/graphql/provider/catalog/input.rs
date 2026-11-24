@@ -1,19 +1,19 @@
 #[derive(Default, schemars::JsonSchema, juniper::GraphQLInputObject, compallm_query::IntoQuery)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ProviderTemplateFilterInput {
+pub struct ProviderCatalogFilterInput {
     pub id: Option<compallm_query::filter::StringFilter>,
     pub name: Option<compallm_query::filter::StringFilter>,
-    pub or: Option<Vec<ProviderTemplateMatchInput>>,
+    pub or: Option<Vec<ProviderCatalogMatchInput>>,
 }
 #[derive(schemars::JsonSchema, juniper::GraphQLInputObject)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ProviderTemplateOrderInput {
+pub struct ProviderCatalogOrderInput {
     pub name: Option<compallm_query::OrderByDirection>,
     pub id: Option<compallm_query::OrderByDirection>,
 }
-impl TryFrom<ProviderTemplateOrderInput> for compallm_query::OrderBy {
+impl TryFrom<ProviderCatalogOrderInput> for compallm_query::OrderBy {
     type Error = compallm_query::order::OrderByError;
-    fn try_from(value: ProviderTemplateOrderInput) -> Result<Self, Self::Error> {
+    fn try_from(value: ProviderCatalogOrderInput) -> Result<Self, Self::Error> {
         let mut fields = [("name", value.name), ("id", value.id)]
             .into_iter()
             .filter_map(|(field, direction)| {
@@ -32,22 +32,22 @@ impl TryFrom<ProviderTemplateOrderInput> for compallm_query::OrderBy {
 
 #[derive(Default, schemars::JsonSchema, juniper::GraphQLInputObject, compallm_query::IntoQuery)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ModelTemplateFilterInput {
+pub struct ModelCatalogFilterInput {
     pub id: Option<compallm_query::filter::StringFilter>,
     pub name: Option<compallm_query::filter::StringFilter>,
     pub display_name: Option<compallm_query::filter::StringFilter>,
-    pub or: Option<Vec<ModelTemplateMatchInput>>,
+    pub or: Option<Vec<ModelCatalogMatchInput>>,
 }
 
 #[derive(schemars::JsonSchema, juniper::GraphQLInputObject, compallm_query::IntoQuery)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ProviderTemplateMatchInput {
+pub struct ProviderCatalogMatchInput {
     pub id: Option<compallm_query::filter::StringFilter>,
     pub name: Option<compallm_query::filter::StringFilter>,
 }
 #[derive(schemars::JsonSchema, juniper::GraphQLInputObject, compallm_query::IntoQuery)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ModelTemplateMatchInput {
+pub struct ModelCatalogMatchInput {
     pub id: Option<compallm_query::filter::StringFilter>,
     pub name: Option<compallm_query::filter::StringFilter>,
     pub display_name: Option<compallm_query::filter::StringFilter>,
@@ -63,7 +63,7 @@ pub struct ModelTemplateMatchInput {
 )]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[validate(validate_template_limits)]
-pub struct ModelTemplateLimitsInput {
+pub struct ModelCatalogLimitsInput {
     #[validate(custom(function=editable_tokens,message="Enter between 100 and 10,000,000 tokens."))]
     pub context: Option<super::super::scalar::ContextTokens>,
     #[validate(custom(function=editable_tokens,message="Enter between 100 and 10,000,000 tokens."))]
@@ -72,7 +72,7 @@ pub struct ModelTemplateLimitsInput {
     pub output: Option<super::super::scalar::ContextTokens>,
 }
 fn validate_template_limits(
-    value: &ModelTemplateLimitsInput,
+    value: &ModelCatalogLimitsInput,
 ) -> Result<(), validify::ValidationErrors> {
     let mut errors = validify::ValidationErrors::new();
     if let Some(context) = value.context.as_ref().map(|v| v.get()) {
@@ -116,7 +116,7 @@ fn validate_template_limits_contract() -> serde_json::Value {
 )]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[validate(validate_template_price)]
-pub struct ModelTemplatePriceInput {
+pub struct ModelCatalogPriceInput {
     pub enabled: bool,
     #[validate(custom(function=super::super::input::model_price, message="Enter a price between $0 and $10,000 per 1M tokens."))]
     pub value: Option<String>,
@@ -130,7 +130,7 @@ pub struct ModelTemplatePriceInput {
     compallm_validation_derive::ExportValidation,
 )]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ModelTemplateCustomizeInput {
+pub struct ModelCatalogCustomizeInput {
     #[modify(trim)]
     #[validate(length(min=1,max=512,message="Model identifier must contain 1 to 512 characters."),custom(function=compallm_utils::input::upstream_model_id,message="Use the exact upstream model identifier without spaces or control characters."))]
     pub name: Option<String>,
@@ -138,13 +138,13 @@ pub struct ModelTemplateCustomizeInput {
     #[validate(custom(function=compallm_utils::input::endpoint_path,message="Enter a valid endpoint path beginning with /."),length(max=40,message="Path must be 40 characters or fewer."))]
     pub path: Option<String>,
     #[validify]
-    pub limits: Option<ModelTemplateLimitsInput>,
+    pub limits: Option<ModelCatalogLimitsInput>,
     #[validify]
-    pub input_price: Option<ModelTemplatePriceInput>,
+    pub input_price: Option<ModelCatalogPriceInput>,
     #[validify]
-    pub output_price: Option<ModelTemplatePriceInput>,
+    pub output_price: Option<ModelCatalogPriceInput>,
     #[validify]
-    pub cached_price: Option<ModelTemplatePriceInput>,
+    pub cached_price: Option<ModelCatalogPriceInput>,
     #[validate(custom(function=template_capabilities,message="Text models require Text; forced tool choice also requires tool calling."))]
     pub capabilities: Option<Vec<super::super::input::ProviderModelCapability>>,
     #[validify]
@@ -171,7 +171,7 @@ fn editable_tokens_contract() -> serde_json::Value {
 }
 
 fn validate_template_price(
-    value: &ModelTemplatePriceInput,
+    value: &ModelCatalogPriceInput,
 ) -> Result<(), validify::ValidationErrors> {
     if value.enabled && value.value.is_none() {
         let mut errors = validify::ValidationErrors::new();
@@ -198,15 +198,15 @@ fn validate_template_price_contract() -> serde_json::Value {
 )]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[validate(validate_effective_limits)]
-pub struct ModelTemplateEffectiveLimitsInput {
+pub struct ModelCatalogEffectiveLimitsInput {
     pub context: Option<super::super::scalar::ContextTokens>,
     pub input: Option<super::super::scalar::ContextTokens>,
     pub output: Option<super::super::scalar::ContextTokens>,
 }
 fn validate_effective_limits(
-    v: &ModelTemplateEffectiveLimitsInput,
+    v: &ModelCatalogEffectiveLimitsInput,
 ) -> Result<(), validify::ValidationErrors> {
-    validate_template_limits(&ModelTemplateLimitsInput {
+    validate_template_limits(&ModelCatalogLimitsInput {
         context: v.context.clone(),
         input: v.input.clone(),
         output: v.output.clone(),
@@ -241,12 +241,12 @@ fn template_capabilities_contract() -> serde_json::Value {
 )]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[validate(validate_template_create)]
-pub struct ModelTemplateCreateInput {
+pub struct ModelCatalogCreateInput {
     #[validify]
-    pub configuration: ModelTemplateCustomizeInput,
+    pub configuration: ModelCatalogCustomizeInput,
 }
 fn validate_template_create(
-    value: &ModelTemplateCreateInput,
+    value: &ModelCatalogCreateInput,
 ) -> Result<(), validify::ValidationErrors> {
     let v = &value.configuration;
     let mut errors = validify::ValidationErrors::new();
@@ -258,20 +258,6 @@ fn validate_template_create(
         ),
         ("protocol", v.protocol.is_some(), "Choose a text operation."),
         ("path", v.path.is_some(), "Enter an endpoint path."),
-        (
-            "inputPrice",
-            v.input_price
-                .as_ref()
-                .is_some_and(|v| v.enabled && v.value.is_some()),
-            "Set an input price for the new model.",
-        ),
-        (
-            "outputPrice",
-            v.output_price
-                .as_ref()
-                .is_some_and(|v| v.enabled && v.value.is_some()),
-            "Set an output price for the new model.",
-        ),
     ] {
         if !valid {
             let mut error =

@@ -1,10 +1,10 @@
-use compallm_core::{model::ModelTemplate, provider::*};
+use compallm_core::{model::ModelCatalog, provider::*};
 use serde_json::json;
 
 #[test]
 fn capability_lists_derive_from_fields_without_treating_unknown_as_unsupported() {
-    let mut model:ModelTemplate=serde_json::from_value(json!({
-        "id":"model","providerTemplateId":"provider","researchId":"research","name":"model",
+    let mut model:ModelCatalog=serde_json::from_value(json!({
+        "id":"model","providerCatalogId":"provider","researchId":"research","name":"model",
         "displayName":null,"description":null,"serviceKind":"llm","connections":{},"headers":{},"bodyDefaults":{},
         "text":{"input":{"status":"unknown"},"output":{"status":"unknown"}},"vision":{"status":"unknown"},"pdf":{"status":"unknown"},
         "audio":{"input":{"status":"unknown"},"output":{"status":"unknown"}},"video":{"status":"unknown"},
@@ -41,7 +41,7 @@ fn capability_lists_derive_from_fields_without_treating_unknown_as_unsupported()
     let encoded = serde_json::to_value(&model).unwrap();
     assert_eq!(
         model,
-        serde_json::from_value::<ModelTemplate>(encoded).unwrap()
+        serde_json::from_value::<ModelCatalog>(encoded).unwrap()
     );
 }
 

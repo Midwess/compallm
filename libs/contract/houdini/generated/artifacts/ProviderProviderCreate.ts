@@ -1,9 +1,9 @@
-import type { ProviderCreateFromTemplateInput } from "$houdini/graphql/inputs";
+import type { ProviderCreateFromCatalogInput } from "$houdini/graphql/inputs";
 const artifact = {
     "name": "ProviderProviderCreate",
     "kind": "HoudiniMutation",
-    "hash": "be7481b115fd124ba4bbb59fad93967376c1a038c5087a39f32270e41704cbcd",
-    "raw": `mutation ProviderProviderCreate($providerCreateInput: ProviderCreateFromTemplateInput!) {
+    "hash": "a2c7c34e761bd023648cf700b5538c22e373bd90030b973add43d480b99578cc",
+    "raw": `mutation ProviderProviderCreate($providerCreateInput: ProviderCreateFromCatalogInput!) {
     providerCreate(input: $providerCreateInput) {
         node {
             id
@@ -78,27 +78,27 @@ const artifact = {
 
     "input": {
         "fields": {
-            "providerCreateInput": "ProviderCreateFromTemplateInput",
+            "providerCreateInput": "ProviderCreateFromCatalogInput",
         },
 
         "types": {
-            "ProviderCreateFromTemplateInput": {
+            "ProviderCatalogModelInput": {
+                "id": "String",
+                "protocol": "TextModelProtocol",
+            },
+            "ProviderCreateFromCatalogInput": {
                 "apiKey": "String",
                 "baseUrl": "String",
                 "headers": "ProviderHeader",
                 "logoUploadId": "String",
                 "logoUrl": "String",
-                "models": "ProviderTemplateModelInput",
+                "models": "ProviderCatalogModelInput",
                 "name": "String",
-                "providerTemplateId": "String",
+                "providerCatalogId": "String",
             },
             "ProviderHeader": {
                 "key": "String",
                 "value": "String",
-            },
-            "ProviderTemplateModelInput": {
-                "id": "String",
-                "protocol": "TextModelProtocol",
             },
         },
 
@@ -133,7 +133,7 @@ export type ProviderProviderCreate$result = {
 };
 
 export type ProviderProviderCreate$input = {
-	providerCreateInput: ProviderCreateFromTemplateInput;
+	providerCreateInput: ProviderCreateFromCatalogInput;
 };
 
 export type ProviderProviderCreate$optimistic = {
@@ -172,4 +172,4 @@ export type ProviderProviderCreate$unmasked = {
 
 export type ProviderProviderCreate$artifact = typeof artifact
 
-"HoudiniHash=be7481b115fd124ba4bbb59fad93967376c1a038c5087a39f32270e41704cbcd"
+"HoudiniHash=a2c7c34e761bd023648cf700b5538c22e373bd90030b973add43d480b99578cc"

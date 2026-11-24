@@ -7,7 +7,7 @@ import type {
   SettingsMembersInvitations$result,
   PasskeyPasskeys$result,
   AuthInvitationControllerInvitationContext$result,
-  ProviderCatalogEffectiveProviderTemplate$result,
+  ProviderCatalogEffectiveProviderCatalog$result,
 } from '@compallm/contract/houdini'
 
 export type Mutable<T> = T extends readonly (infer Item)[]
@@ -26,5 +26,5 @@ export type Invitation = Mutable<SettingsMembersInvitations$result['invitations'
 export type PasskeySummary = Mutable<PasskeyPasskeys$result['passkeys']['edges'][number]['node']>
 export type InvitationContext = Mutable<AuthInvitationControllerInvitationContext$result['invitationContext']['node']>
 export type ProviderCatalog = Mutable<
-  NonNullable<ProviderCatalogEffectiveProviderTemplate$result['effectiveProviderTemplate']>['node']
+  NonNullable<ProviderCatalogEffectiveProviderCatalog$result['effectiveProviderCatalog']>['node']
 >

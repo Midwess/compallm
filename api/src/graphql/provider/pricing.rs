@@ -113,6 +113,7 @@ pub struct CapabilityCachePrice {
 #[derive(GraphQLEnum)]
 pub enum CapabilityCacheMode {
     SeparateRate,
+    EstimatedRate,
     StandardInputRate,
     Included,
     Unsupported,
@@ -122,6 +123,9 @@ impl From<&domain::CachePricing> for CapabilityCachePrice {
         let (mode, rate) = match v {
             domain::CachePricing::SeparateRate(v) => {
                 (CapabilityCacheMode::SeparateRate, Some(&v.rate))
+            }
+            domain::CachePricing::EstimatedRate(v) => {
+                (CapabilityCacheMode::EstimatedRate, Some(&v.rate))
             }
             domain::CachePricing::StandardInputRate => {
                 (CapabilityCacheMode::StandardInputRate, None)
@@ -441,7 +445,9 @@ impl From<&domain::TextCapabilities> for TokenDefaults {
         }
         let input = scalar(value.input.pricing());
         let cached = rate(value.input.pricing()).and_then(|v| match &v.cache {
-            Some(domain::CachePricing::SeparateRate(v)) => amount(&v.rate),
+            Some(
+                domain::CachePricing::SeparateRate(v) | domain::CachePricing::EstimatedRate(v),
+            ) => amount(&v.rate),
             Some(domain::CachePricing::StandardInputRate) => input.clone(),
             Some(domain::CachePricing::Included) => Some("0".into()),
             _ => None,

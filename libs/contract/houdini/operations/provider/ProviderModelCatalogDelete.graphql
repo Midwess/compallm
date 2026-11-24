@@ -1,0 +1,5 @@
+mutation ProviderModelCatalogDelete($modelCatalogDeleteProviderCatalogId: ID!, $modelCatalogDeleteId: ID!) {
+  modelCatalogDelete(providerCatalogId: $modelCatalogDeleteProviderCatalogId, id: $modelCatalogDeleteId) {
+    node
+  }
+}

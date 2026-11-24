@@ -81,6 +81,8 @@ mod m20261117_000045_drop_session_location;
 mod m20261117_000046_session_lifetime;
 mod m20261117_000047_provider_catalog;
 
+mod m20261124_000055_catalog_relational;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -142,6 +144,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261121_000052_capability_pricing::Migration),
             Box::new(m20261122_000053_personal_model_templates::Migration),
             Box::new(m20261122_000054_catalog_search::Migration),
+            Box::new(m20261124_000055_catalog_relational::Migration),
             // inject-above (do not remove this comment)
         ]
     }

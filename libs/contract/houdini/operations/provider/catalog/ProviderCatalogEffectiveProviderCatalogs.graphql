@@ -1,0 +1,19 @@
+query ProviderCatalogEffectiveProviderCatalogs(
+  $effectiveProviderCatalogsAfter: String
+  $effectiveProviderCatalogsSearch: String
+) {
+  effectiveProviderCatalogs(first: 20, after: $effectiveProviderCatalogsAfter, search: $effectiveProviderCatalogsSearch) {
+    edges {
+      node {
+        id
+        name
+        baseUrl
+        logoUrl
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

@@ -38,14 +38,14 @@ import type { PermissionMeStore } from '$houdini/plugins/houdini-svelte/stores/P
 import type { PortalAuthorityStore } from '$houdini/plugins/houdini-svelte/stores/PortalAuthority'
 import type { PreferenceUserUserPreferencesStore } from '$houdini/plugins/houdini-svelte/stores/PreferenceUserUserPreferences'
 import type { PreferenceUserUserPreferencesUpdateStore } from '$houdini/plugins/houdini-svelte/stores/PreferenceUserUserPreferencesUpdate'
-import type { ProviderCatalogEffectiveModelTemplateStore } from '$houdini/plugins/houdini-svelte/stores/ProviderCatalogEffectiveModelTemplate'
-import type { ProviderCatalogEffectiveProviderTemplateStore } from '$houdini/plugins/houdini-svelte/stores/ProviderCatalogEffectiveProviderTemplate'
-import type { ProviderCatalogEffectiveProviderTemplatesStore } from '$houdini/plugins/houdini-svelte/stores/ProviderCatalogEffectiveProviderTemplates'
-import type { ProviderCatalogModelTemplateStore } from '$houdini/plugins/houdini-svelte/stores/ProviderCatalogModelTemplate'
-import type { ProviderModelTemplateCreateStore } from '$houdini/plugins/houdini-svelte/stores/ProviderModelTemplateCreate'
-import type { ProviderModelTemplateCustomizeStore } from '$houdini/plugins/houdini-svelte/stores/ProviderModelTemplateCustomize'
-import type { ProviderModelTemplateDeleteStore } from '$houdini/plugins/houdini-svelte/stores/ProviderModelTemplateDelete'
-import type { ProviderModelTemplateResetStore } from '$houdini/plugins/houdini-svelte/stores/ProviderModelTemplateReset'
+import type { ProviderCatalogEffectiveModelCatalogStore } from '$houdini/plugins/houdini-svelte/stores/ProviderCatalogEffectiveModelCatalog'
+import type { ProviderCatalogEffectiveProviderCatalogStore } from '$houdini/plugins/houdini-svelte/stores/ProviderCatalogEffectiveProviderCatalog'
+import type { ProviderCatalogEffectiveProviderCatalogsStore } from '$houdini/plugins/houdini-svelte/stores/ProviderCatalogEffectiveProviderCatalogs'
+import type { ProviderCatalogModelCatalogStore } from '$houdini/plugins/houdini-svelte/stores/ProviderCatalogModelCatalog'
+import type { ProviderModelCatalogCreateStore } from '$houdini/plugins/houdini-svelte/stores/ProviderModelCatalogCreate'
+import type { ProviderModelCatalogCustomizeStore } from '$houdini/plugins/houdini-svelte/stores/ProviderModelCatalogCustomize'
+import type { ProviderModelCatalogDeleteStore } from '$houdini/plugins/houdini-svelte/stores/ProviderModelCatalogDelete'
+import type { ProviderModelCatalogResetStore } from '$houdini/plugins/houdini-svelte/stores/ProviderModelCatalogReset'
 import type { ProviderProviderStore } from '$houdini/plugins/houdini-svelte/stores/ProviderProvider'
 import type { ProviderProviderCreateStore } from '$houdini/plugins/houdini-svelte/stores/ProviderProviderCreate'
 import type { ProviderProviderLogoUploadStore } from '$houdini/plugins/houdini-svelte/stores/ProviderProviderLogoUpload'
@@ -726,11 +726,11 @@ export function graphql(str: `mutation PreferenceUserUserPreferencesUpdate(
   }
 }
 `): PreferenceUserUserPreferencesUpdateStore;
-export function graphql(str: `query ProviderCatalogEffectiveModelTemplate($effectiveModelTemplateProviderTemplateId: ID!, $effectiveModelTemplateId: ID!) {
-  effectiveModelTemplate(providerTemplateId: $effectiveModelTemplateProviderTemplateId, id: $effectiveModelTemplateId) {
+export function graphql(str: `query ProviderCatalogEffectiveModelCatalog($effectiveModelCatalogProviderCatalogId: ID!, $effectiveModelCatalogId: ID!) {
+  effectiveModelCatalog(providerCatalogId: $effectiveModelCatalogProviderCatalogId, id: $effectiveModelCatalogId) {
     node {
       id
-      providerTemplateId
+      providerCatalogId
       origin
       customFields
       name
@@ -822,9 +822,9 @@ export function graphql(str: `query ProviderCatalogEffectiveModelTemplate($effec
     }
   }
 }
-`): ProviderCatalogEffectiveModelTemplateStore;
-export function graphql(str: `query ProviderCatalogEffectiveProviderTemplate($effectiveProviderTemplateId: ID!) {
-  effectiveProviderTemplate(id: $effectiveProviderTemplateId) {
+`): ProviderCatalogEffectiveModelCatalogStore;
+export function graphql(str: `query ProviderCatalogEffectiveProviderCatalog($effectiveProviderCatalogId: ID!) {
+  effectiveProviderCatalog(id: $effectiveProviderCatalogId) {
     node {
       id
       name
@@ -939,12 +939,12 @@ export function graphql(str: `query ProviderCatalogEffectiveProviderTemplate($ef
     }
   }
 }
-`): ProviderCatalogEffectiveProviderTemplateStore;
-export function graphql(str: `query ProviderCatalogEffectiveProviderTemplates(
-  $effectiveProviderTemplatesAfter: String
-  $effectiveProviderTemplatesSearch: String
+`): ProviderCatalogEffectiveProviderCatalogStore;
+export function graphql(str: `query ProviderCatalogEffectiveProviderCatalogs(
+  $effectiveProviderCatalogsAfter: String
+  $effectiveProviderCatalogsSearch: String
 ) {
-  effectiveProviderTemplates(first: 20, after: $effectiveProviderTemplatesAfter, search: $effectiveProviderTemplatesSearch) {
+  effectiveProviderCatalogs(first: 20, after: $effectiveProviderCatalogsAfter, search: $effectiveProviderCatalogsSearch) {
     edges {
       node {
         id
@@ -959,12 +959,12 @@ export function graphql(str: `query ProviderCatalogEffectiveProviderTemplates(
     }
   }
 }
-`): ProviderCatalogEffectiveProviderTemplatesStore;
-export function graphql(str: `query ProviderCatalogModelTemplate($modelTemplateProviderTemplateId: ID!, $modelTemplateId: ID!) {
-  modelTemplate(providerTemplateId: $modelTemplateProviderTemplateId, id: $modelTemplateId) {
+`): ProviderCatalogEffectiveProviderCatalogsStore;
+export function graphql(str: `query ProviderCatalogModelCatalog($modelCatalogProviderCatalogId: ID!, $modelCatalogId: ID!) {
+  modelCatalog(providerCatalogId: $modelCatalogProviderCatalogId, id: $modelCatalogId) {
     node {
       id
-      providerTemplateId
+      providerCatalogId
       origin
       customFields
       name
@@ -1056,15 +1056,15 @@ export function graphql(str: `query ProviderCatalogModelTemplate($modelTemplateP
     }
   }
 }
-`): ProviderCatalogModelTemplateStore;
-export function graphql(str: `mutation ProviderModelTemplateCreate(
-  $modelTemplateCreateProviderTemplateId: ID!
-  $modelTemplateCreateInput: ModelTemplateCreateInput!
+`): ProviderCatalogModelCatalogStore;
+export function graphql(str: `mutation ProviderModelCatalogCreate(
+  $modelCatalogCreateProviderCatalogId: ID!
+  $modelCatalogCreateInput: ModelCatalogCreateInput!
 ) {
-  modelTemplateCreate(providerTemplateId: $modelTemplateCreateProviderTemplateId, input: $modelTemplateCreateInput) {
+  modelCatalogCreate(providerCatalogId: $modelCatalogCreateProviderCatalogId, input: $modelCatalogCreateInput) {
     node {
       id
-      providerTemplateId
+      providerCatalogId
       origin
       customFields
       name
@@ -1156,20 +1156,20 @@ export function graphql(str: `mutation ProviderModelTemplateCreate(
     }
   }
 }
-`): ProviderModelTemplateCreateStore;
-export function graphql(str: `mutation ProviderModelTemplateCustomize(
-  $modelTemplateCustomizeProviderTemplateId: ID!
-  $modelTemplateCustomizeId: ID!
-  $modelTemplateCustomizeInput: ModelTemplateCustomizeInput!
+`): ProviderModelCatalogCreateStore;
+export function graphql(str: `mutation ProviderModelCatalogCustomize(
+  $modelCatalogCustomizeProviderCatalogId: ID!
+  $modelCatalogCustomizeId: ID!
+  $modelCatalogCustomizeInput: ModelCatalogCustomizeInput!
 ) {
-  modelTemplateCustomize(
-    providerTemplateId: $modelTemplateCustomizeProviderTemplateId
-    id: $modelTemplateCustomizeId
-    input: $modelTemplateCustomizeInput
+  modelCatalogCustomize(
+    providerCatalogId: $modelCatalogCustomizeProviderCatalogId
+    id: $modelCatalogCustomizeId
+    input: $modelCatalogCustomizeInput
   ) {
     node {
       id
-      providerTemplateId
+      providerCatalogId
       origin
       customFields
       name
@@ -1261,18 +1261,18 @@ export function graphql(str: `mutation ProviderModelTemplateCustomize(
     }
   }
 }
-`): ProviderModelTemplateCustomizeStore;
-export function graphql(str: `mutation ProviderModelTemplateDelete($modelTemplateDeleteProviderTemplateId: ID!, $modelTemplateDeleteId: ID!) {
-  modelTemplateDelete(providerTemplateId: $modelTemplateDeleteProviderTemplateId, id: $modelTemplateDeleteId) {
+`): ProviderModelCatalogCustomizeStore;
+export function graphql(str: `mutation ProviderModelCatalogDelete($modelCatalogDeleteProviderCatalogId: ID!, $modelCatalogDeleteId: ID!) {
+  modelCatalogDelete(providerCatalogId: $modelCatalogDeleteProviderCatalogId, id: $modelCatalogDeleteId) {
     node
   }
 }
-`): ProviderModelTemplateDeleteStore;
-export function graphql(str: `mutation ProviderModelTemplateReset($modelTemplateResetProviderTemplateId: ID!, $modelTemplateResetId: ID!) {
-  modelTemplateReset(providerTemplateId: $modelTemplateResetProviderTemplateId, id: $modelTemplateResetId) {
+`): ProviderModelCatalogDeleteStore;
+export function graphql(str: `mutation ProviderModelCatalogReset($modelCatalogResetProviderCatalogId: ID!, $modelCatalogResetId: ID!) {
+  modelCatalogReset(providerCatalogId: $modelCatalogResetProviderCatalogId, id: $modelCatalogResetId) {
     node {
       id
-      providerTemplateId
+      providerCatalogId
       origin
       customFields
       name
@@ -1364,7 +1364,7 @@ export function graphql(str: `mutation ProviderModelTemplateReset($modelTemplate
     }
   }
 }
-`): ProviderModelTemplateResetStore;
+`): ProviderModelCatalogResetStore;
 export function graphql(str: `query ProviderProvider($providerId: ID!) {
   provider(id: $providerId) {
     node {
@@ -1405,7 +1405,7 @@ export function graphql(str: `query ProviderProvider($providerId: ID!) {
   }
 }
 `): ProviderProviderStore;
-export function graphql(str: `mutation ProviderProviderCreate($providerCreateInput: ProviderCreateFromTemplateInput!) {
+export function graphql(str: `mutation ProviderProviderCreate($providerCreateInput: ProviderCreateFromCatalogInput!) {
   providerCreate(input: $providerCreateInput) {
     node {
       id

@@ -280,7 +280,7 @@ function render(schema) {
   if (schema['x-compallm-object-rule'] === 'templateLimits')
     result += `.superRefine((value, ctx) => { if (value == null) return; for (const field of ['input', 'output'] as const) { if (value.context != null && value[field] != null && value[field]! > value.context) ctx.addIssue({code: 'custom',path: [field],message: ${JSON.stringify(schema['x-compallm-messages'] ?? {})}[field] ?? 'Check the token limits.'}) } })`
   else if (schema['x-compallm-object-rule'] === 'templateCreate')
-    result += `.superRefine((value,ctx)=>{ for(const field of ['name','protocol','path','inputPrice','outputPrice'] as const) {const configured=value.configuration[field];const valid=field==='inputPrice'?value.configuration.inputPrice?.enabled && value.configuration.inputPrice.value!=null:field==='outputPrice'?value.configuration.outputPrice?.enabled && value.configuration.outputPrice.value!=null:configured!=null;if(!valid)ctx.addIssue({code:'custom',path:['configuration',field],message:${JSON.stringify(schema['x-compallm-messages'])}[field]})} })`
+    result += `.superRefine((value,ctx)=>{ for(const field of ['name','protocol','path'] as const) {const configured=value.configuration[field];const valid=configured!=null;if(!valid)ctx.addIssue({code:'custom',path:['configuration',field],message:${JSON.stringify(schema['x-compallm-messages'])}[field]})} })`
   else if (schema['x-compallm-object-rule'] === 'templatePrice')
     result += `.refine(value=>value==null || templatePriceObject(value), {path: ['value'],message: ${JSON.stringify(schema['x-compallm-messages']?.['x-compallm-object-rule'])}})`
   else if (schema['x-compallm-object-rule'])

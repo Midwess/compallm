@@ -75,22 +75,22 @@ import ProviderProvider, {
   type ProviderProvider$result,
   type ProviderProvider$input,
 } from '@compallm/contract/houdini/artifacts/ProviderProvider.ts'
-import ProviderCatalogEffectiveProviderTemplates, {
-  type ProviderCatalogEffectiveProviderTemplates$result,
-  type ProviderCatalogEffectiveProviderTemplates$input,
-} from '@compallm/contract/houdini/artifacts/ProviderCatalogEffectiveProviderTemplates.ts'
-import ProviderCatalogEffectiveProviderTemplate, {
-  type ProviderCatalogEffectiveProviderTemplate$result,
-  type ProviderCatalogEffectiveProviderTemplate$input,
-} from '@compallm/contract/houdini/artifacts/ProviderCatalogEffectiveProviderTemplate.ts'
-import ProviderCatalogEffectiveModelTemplate, {
-  type ProviderCatalogEffectiveModelTemplate$result,
-  type ProviderCatalogEffectiveModelTemplate$input,
-} from '@compallm/contract/houdini/artifacts/ProviderCatalogEffectiveModelTemplate.ts'
-import ProviderCatalogModelTemplate, {
-  type ProviderCatalogModelTemplate$result,
-  type ProviderCatalogModelTemplate$input,
-} from '@compallm/contract/houdini/artifacts/ProviderCatalogModelTemplate.ts'
+import ProviderCatalogEffectiveProviderCatalogs, {
+  type ProviderCatalogEffectiveProviderCatalogs$result,
+  type ProviderCatalogEffectiveProviderCatalogs$input,
+} from '@compallm/contract/houdini/artifacts/ProviderCatalogEffectiveProviderCatalogs.ts'
+import ProviderCatalogEffectiveProviderCatalog, {
+  type ProviderCatalogEffectiveProviderCatalog$result,
+  type ProviderCatalogEffectiveProviderCatalog$input,
+} from '@compallm/contract/houdini/artifacts/ProviderCatalogEffectiveProviderCatalog.ts'
+import ProviderCatalogEffectiveModelCatalog, {
+  type ProviderCatalogEffectiveModelCatalog$result,
+  type ProviderCatalogEffectiveModelCatalog$input,
+} from '@compallm/contract/houdini/artifacts/ProviderCatalogEffectiveModelCatalog.ts'
+import ProviderCatalogModelCatalog, {
+  type ProviderCatalogModelCatalog$result,
+  type ProviderCatalogModelCatalog$input,
+} from '@compallm/contract/houdini/artifacts/ProviderCatalogModelCatalog.ts'
 
 const operations = {
   AuthSession2,
@@ -111,10 +111,10 @@ const operations = {
   AuthInvitationControllerInvitationContext,
   OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile,
   ProviderProvider,
-  ProviderCatalogEffectiveProviderTemplates,
-  ProviderCatalogEffectiveProviderTemplate,
-  ProviderCatalogEffectiveModelTemplate,
-  ProviderCatalogModelTemplate,
+  ProviderCatalogEffectiveProviderCatalogs,
+  ProviderCatalogEffectiveProviderCatalog,
+  ProviderCatalogEffectiveModelCatalog,
+  ProviderCatalogModelCatalog,
 }
 type Results = {
   AuthSession2: AuthSession2$result
@@ -135,10 +135,10 @@ type Results = {
   AuthInvitationControllerInvitationContext: AuthInvitationControllerInvitationContext$result
   OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile: OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$result
   ProviderProvider: ProviderProvider$result
-  ProviderCatalogEffectiveProviderTemplates: ProviderCatalogEffectiveProviderTemplates$result
-  ProviderCatalogEffectiveProviderTemplate: ProviderCatalogEffectiveProviderTemplate$result
-  ProviderCatalogEffectiveModelTemplate: ProviderCatalogEffectiveModelTemplate$result
-  ProviderCatalogModelTemplate: ProviderCatalogModelTemplate$result
+  ProviderCatalogEffectiveProviderCatalogs: ProviderCatalogEffectiveProviderCatalogs$result
+  ProviderCatalogEffectiveProviderCatalog: ProviderCatalogEffectiveProviderCatalog$result
+  ProviderCatalogEffectiveModelCatalog: ProviderCatalogEffectiveModelCatalog$result
+  ProviderCatalogModelCatalog: ProviderCatalogModelCatalog$result
 }
 type Inputs = {
   AuthSession2: AuthSession2$input
@@ -159,10 +159,10 @@ type Inputs = {
   AuthInvitationControllerInvitationContext: AuthInvitationControllerInvitationContext$input
   OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile: OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$input
   ProviderProvider: ProviderProvider$input
-  ProviderCatalogEffectiveProviderTemplates: ProviderCatalogEffectiveProviderTemplates$input
-  ProviderCatalogEffectiveProviderTemplate: ProviderCatalogEffectiveProviderTemplate$input
-  ProviderCatalogEffectiveModelTemplate: ProviderCatalogEffectiveModelTemplate$input
-  ProviderCatalogModelTemplate: ProviderCatalogModelTemplate$input
+  ProviderCatalogEffectiveProviderCatalogs: ProviderCatalogEffectiveProviderCatalogs$input
+  ProviderCatalogEffectiveProviderCatalog: ProviderCatalogEffectiveProviderCatalog$input
+  ProviderCatalogEffectiveModelCatalog: ProviderCatalogEffectiveModelCatalog$input
+  ProviderCatalogModelCatalog: ProviderCatalogModelCatalog$input
 }
 
 export class PortalRequest {

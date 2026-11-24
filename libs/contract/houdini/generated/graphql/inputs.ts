@@ -108,50 +108,50 @@ export type MessageCompositionPatchInput = {
     sendShortcut?: PreferenceKeyCombination$options | null | undefined;
 };
 
-export type ModelTemplateCreateInput = {
-    configuration: ModelTemplateCustomizeInput;
+export type ModelCatalogCreateInput = {
+    configuration: ModelCatalogCustomizeInput;
 };
 
-export type ModelTemplateCustomizeInput = {
+export type ModelCatalogCustomizeInput = {
     bodyDefaults?: (ProviderBodyDefault)[] | null | undefined;
-    cachedPrice?: ModelTemplatePriceInput | null | undefined;
+    cachedPrice?: ModelCatalogPriceInput | null | undefined;
     capabilities?: (ProviderModelCapability$options)[] | null | undefined;
     effortMapping?: ProviderEffortMapping | null | undefined;
     headers?: (ProviderHeader)[] | null | undefined;
-    inputPrice?: ModelTemplatePriceInput | null | undefined;
-    limits?: ModelTemplateLimitsInput | null | undefined;
+    inputPrice?: ModelCatalogPriceInput | null | undefined;
+    limits?: ModelCatalogLimitsInput | null | undefined;
     name?: string | null | undefined;
-    outputPrice?: ModelTemplatePriceInput | null | undefined;
+    outputPrice?: ModelCatalogPriceInput | null | undefined;
     path?: string | null | undefined;
     protocol?: TextModelProtocol$options | null | undefined;
 };
 
-export type ModelTemplateEffectiveLimitsInput = {
+export type ModelCatalogEffectiveLimitsInput = {
     context?: number | null | undefined;
     input?: number | null | undefined;
     output?: number | null | undefined;
 };
 
-export type ModelTemplateFilterInput = {
+export type ModelCatalogFilterInput = {
     displayName?: StringFilter | null | undefined;
     id?: StringFilter | null | undefined;
     name?: StringFilter | null | undefined;
-    or?: (ModelTemplateMatchInput)[] | null | undefined;
+    or?: (ModelCatalogMatchInput)[] | null | undefined;
 };
 
-export type ModelTemplateLimitsInput = {
+export type ModelCatalogLimitsInput = {
     context?: number | null | undefined;
     input?: number | null | undefined;
     output?: number | null | undefined;
 };
 
-export type ModelTemplateMatchInput = {
+export type ModelCatalogMatchInput = {
     displayName?: StringFilter | null | undefined;
     id?: StringFilter | null | undefined;
     name?: StringFilter | null | undefined;
 };
 
-export type ModelTemplatePriceInput = {
+export type ModelCatalogPriceInput = {
     enabled: boolean;
     value?: string | null | undefined;
 };
@@ -221,20 +221,41 @@ export type ProviderBodyDefault = {
     value: string;
 };
 
+export type ProviderCatalogFilterInput = {
+    id?: StringFilter | null | undefined;
+    name?: StringFilter | null | undefined;
+    or?: (ProviderCatalogMatchInput)[] | null | undefined;
+};
+
+export type ProviderCatalogMatchInput = {
+    id?: StringFilter | null | undefined;
+    name?: StringFilter | null | undefined;
+};
+
+export type ProviderCatalogModelInput = {
+    id: string;
+    protocol: TextModelProtocol$options;
+};
+
+export type ProviderCatalogOrderInput = {
+    id?: OrderByDirection$options | null | undefined;
+    name?: OrderByDirection$options | null | undefined;
+};
+
 export type ProviderCatalogRef = {
     model: string;
     provider: string;
 };
 
-export type ProviderCreateFromTemplateInput = {
+export type ProviderCreateFromCatalogInput = {
     apiKey: string;
     baseUrl: string;
     headers: (ProviderHeader)[];
     logoUploadId?: string | null | undefined;
     logoUrl?: string | null | undefined;
-    models: (ProviderTemplateModelInput)[];
+    models: (ProviderCatalogModelInput)[];
     name: string;
-    providerTemplateId: string;
+    providerCatalogId: string;
 };
 
 export type ProviderCreateInput = {
@@ -304,27 +325,6 @@ export type ProviderReplaceInput = {
     headers: (ProviderHeaderUpdate)[];
     models: (ProviderModelWrite)[];
     name: string;
-};
-
-export type ProviderTemplateFilterInput = {
-    id?: StringFilter | null | undefined;
-    name?: StringFilter | null | undefined;
-    or?: (ProviderTemplateMatchInput)[] | null | undefined;
-};
-
-export type ProviderTemplateMatchInput = {
-    id?: StringFilter | null | undefined;
-    name?: StringFilter | null | undefined;
-};
-
-export type ProviderTemplateModelInput = {
-    id: string;
-    protocol: TextModelProtocol$options;
-};
-
-export type ProviderTemplateOrderInput = {
-    id?: OrderByDirection$options | null | undefined;
-    name?: OrderByDirection$options | null | undefined;
 };
 
 export type ProvidersCreateInput = {

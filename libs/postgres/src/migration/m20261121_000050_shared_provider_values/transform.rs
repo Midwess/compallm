@@ -84,6 +84,9 @@ fn cache(mode: &str, amount: &Value, currency: &Value, quantity: &Value) -> Valu
         "standard_input_rate" => json!({"type":"standard_input_rate"}),
         "included" => json!({"type":"included"}),
         "unsupported" => json!({"type":"unsupported"}),
+        "unknown" if !amount.is_null() => {
+            json!({"type":"estimated_rate","configuration":{"rate":rate(amount,currency,quantity)}})
+        }
         _ => Value::Null,
     }
 }

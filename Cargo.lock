@@ -1757,6 +1757,7 @@ dependencies = [
  "compallm-query",
  "compallm-utils",
  "elsa",
+ "fancy-regex",
  "heck 0.5.0",
  "loco-rs",
  "midwess-hero",
@@ -2860,6 +2861,17 @@ checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
  "event-listener",
  "pin-project-lite",
+]
+
+[[package]]
+name = "fancy-regex"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "998b056554fbe42e03ae0e152895cd1a7e1002aec800fdc6635d20270260c46f"
+dependencies = [
+ "bit-set",
+ "regex-automata",
+ "regex-syntax 0.8.11",
 ]
 
 [[package]]

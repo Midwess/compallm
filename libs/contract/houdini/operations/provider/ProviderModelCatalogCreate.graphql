@@ -1,0 +1,99 @@
+mutation ProviderModelCatalogCreate(
+  $modelCatalogCreateProviderCatalogId: ID!
+  $modelCatalogCreateInput: ModelCatalogCreateInput!
+) {
+  modelCatalogCreate(providerCatalogId: $modelCatalogCreateProviderCatalogId, input: $modelCatalogCreateInput) {
+    node {
+      id
+      providerCatalogId
+      origin
+      customFields
+      name
+      capabilities
+      maxContextTokens
+      inputPrice
+      outputPrice
+      cachedPrice
+      pricingMode
+      cacheBilling
+      connections {
+        protocol
+        configuration {
+          baseUrl
+          path
+          timeoutMs
+          query {
+            key
+            value
+          }
+          authentication {
+            method
+            configuration {
+              placement {
+                location
+                name
+                prefix
+              }
+              flow
+              authorizationUrl
+              tokenUrl
+              deviceAuthorizationUrl
+              scopes
+              requiredInputs {
+                name
+                kind
+                required
+                allowedValues
+              }
+              adapter
+              parameters {
+                key
+                value
+              }
+            }
+          }
+          endpoint {
+            mode
+            configuration {
+              urlTemplate
+              requiredInputs {
+                name
+                kind
+                required
+                allowedValues
+              }
+            }
+          }
+        }
+      }
+      headers {
+        key
+        value
+      }
+      bodyDefaults {
+        key
+        value
+      }
+      text {
+        input {
+          configuration {
+            maxTokens
+          }
+        }
+        output {
+          configuration {
+            maxTokens
+            thinking {
+              configuration {
+                effortMapping {
+                  level
+                  value
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

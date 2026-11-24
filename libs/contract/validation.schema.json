@@ -4,25 +4,25 @@
   "type": "object",
   "properties": {
     "provider_create_from_template": {
-      "$ref": "#/$defs/ProviderCreateFromTemplateInput"
+      "$ref": "#/$defs/ProviderCreateFromCatalogInput"
     },
     "effective_model_limits": {
-      "$ref": "#/$defs/ModelTemplateEffectiveLimitsInput"
+      "$ref": "#/$defs/ModelCatalogEffectiveLimitsInput"
     },
-    "model_template_create": {
-      "$ref": "#/$defs/ModelTemplateCreateInput"
+    "model_catalog_create": {
+      "$ref": "#/$defs/ModelCatalogCreateInput"
     },
-    "model_template_customize": {
-      "$ref": "#/$defs/ModelTemplateCustomizeInput"
+    "model_catalog_customize": {
+      "$ref": "#/$defs/ModelCatalogCustomizeInput"
     },
-    "model_template_filter": {
-      "$ref": "#/$defs/ModelTemplateFilterInput"
+    "model_catalog_filter": {
+      "$ref": "#/$defs/ModelCatalogFilterInput"
     },
-    "provider_template_filter": {
-      "$ref": "#/$defs/ProviderTemplateFilterInput"
+    "provider_catalog_filter": {
+      "$ref": "#/$defs/ProviderCatalogFilterInput"
     },
-    "provider_template_order": {
-      "$ref": "#/$defs/ProviderTemplateOrderInput"
+    "provider_catalog_order": {
+      "$ref": "#/$defs/ProviderCatalogOrderInput"
     },
     "passkey_registration": {
       "$ref": "#/$defs/PasskeyRegistrationInput"
@@ -112,11 +112,11 @@
   "required": [
     "provider_create_from_template",
     "effective_model_limits",
-    "model_template_create",
-    "model_template_customize",
-    "model_template_filter",
-    "provider_template_filter",
-    "provider_template_order",
+    "model_catalog_create",
+    "model_catalog_customize",
+    "model_catalog_filter",
+    "provider_catalog_filter",
+    "provider_catalog_order",
     "passkey_registration",
     "passkey_finish",
     "analytic_user_profile_put",
@@ -147,7 +147,7 @@
     "provider_patch"
   ],
   "$defs": {
-    "ProviderCreateFromTemplateInput": {
+    "ProviderCreateFromCatalogInput": {
       "type": "object",
       "properties": {
         "name": {
@@ -162,7 +162,7 @@
           },
           "x-compallm-format": "nonblank"
         },
-        "providerTemplateId": {
+        "providerCatalogId": {
           "type": "string"
         },
         "baseUrl": {
@@ -198,7 +198,7 @@
         "models": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/ProviderTemplateModelInput"
+            "$ref": "#/$defs/ProviderCatalogModelInput"
           },
           "minItems": 1,
           "maxItems": 1000,
@@ -223,7 +223,7 @@
       "additionalProperties": false,
       "required": [
         "name",
-        "providerTemplateId",
+        "providerCatalogId",
         "baseUrl",
         "apiKey",
         "headers",
@@ -263,7 +263,7 @@
         "x-compallm-object-rule": "Enter a valid Authorization header value."
       }
     },
-    "ProviderTemplateModelInput": {
+    "ProviderCatalogModelInput": {
       "type": "object",
       "properties": {
         "id": {
@@ -289,7 +289,7 @@
         "ANTHROPIC_MESSAGES"
       ]
     },
-    "ModelTemplateEffectiveLimitsInput": {
+    "ModelCatalogEffectiveLimitsInput": {
       "type": "object",
       "properties": {
         "context": {
@@ -338,11 +338,11 @@
       "minimum": 1,
       "maximum": 4294967295
     },
-    "ModelTemplateCreateInput": {
+    "ModelCatalogCreateInput": {
       "type": "object",
       "properties": {
         "configuration": {
-          "$ref": "#/$defs/ModelTemplateCustomizeInput"
+          "$ref": "#/$defs/ModelCatalogCustomizeInput"
         }
       },
       "additionalProperties": false,
@@ -359,7 +359,7 @@
         "outputPrice": "Set an output price for the new model."
       }
     },
-    "ModelTemplateCustomizeInput": {
+    "ModelCatalogCustomizeInput": {
       "type": "object",
       "properties": {
         "name": {
@@ -402,7 +402,7 @@
         "limits": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ModelTemplateLimitsInput"
+              "$ref": "#/$defs/ModelCatalogLimitsInput"
             },
             {
               "type": "null"
@@ -412,7 +412,7 @@
         "inputPrice": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ModelTemplatePriceInput"
+              "$ref": "#/$defs/ModelCatalogPriceInput"
             },
             {
               "type": "null"
@@ -422,7 +422,7 @@
         "outputPrice": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ModelTemplatePriceInput"
+              "$ref": "#/$defs/ModelCatalogPriceInput"
             },
             {
               "type": "null"
@@ -432,7 +432,7 @@
         "cachedPrice": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ModelTemplatePriceInput"
+              "$ref": "#/$defs/ModelCatalogPriceInput"
             },
             {
               "type": "null"
@@ -492,7 +492,7 @@
       "additionalProperties": false,
       "x-compallm-input": true
     },
-    "ModelTemplateLimitsInput": {
+    "ModelCatalogLimitsInput": {
       "type": "object",
       "properties": {
         "context": {
@@ -552,7 +552,7 @@
         "output": "Output limit cannot exceed the context window."
       }
     },
-    "ModelTemplatePriceInput": {
+    "ModelCatalogPriceInput": {
       "type": "object",
       "properties": {
         "enabled": {
@@ -727,7 +727,7 @@
         "x-compallm-object-rule": "Use the JSON value type required by the selected body field."
       }
     },
-    "ModelTemplateFilterInput": {
+    "ModelCatalogFilterInput": {
       "type": "object",
       "properties": {
         "id": {
@@ -766,7 +766,7 @@
             "null"
           ],
           "items": {
-            "$ref": "#/$defs/ModelTemplateMatchInput"
+            "$ref": "#/$defs/ModelCatalogMatchInput"
           }
         }
       },
@@ -870,7 +870,7 @@
         "NOT_NULL"
       ]
     },
-    "ModelTemplateMatchInput": {
+    "ModelCatalogMatchInput": {
       "type": "object",
       "properties": {
         "id": {
@@ -906,7 +906,7 @@
       },
       "additionalProperties": false
     },
-    "ProviderTemplateFilterInput": {
+    "ProviderCatalogFilterInput": {
       "type": "object",
       "properties": {
         "id": {
@@ -935,13 +935,13 @@
             "null"
           ],
           "items": {
-            "$ref": "#/$defs/ProviderTemplateMatchInput"
+            "$ref": "#/$defs/ProviderCatalogMatchInput"
           }
         }
       },
       "additionalProperties": false
     },
-    "ProviderTemplateMatchInput": {
+    "ProviderCatalogMatchInput": {
       "type": "object",
       "properties": {
         "id": {
@@ -967,7 +967,7 @@
       },
       "additionalProperties": false
     },
-    "ProviderTemplateOrderInput": {
+    "ProviderCatalogOrderInput": {
       "type": "object",
       "properties": {
         "name": {

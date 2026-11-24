@@ -11,7 +11,7 @@ use crate::authorization::{
 
 use super::ProviderApiKey;
 use super::configuration::{
-    BodyDefaults, Connection, Headers, ModelLimits, ModelTemplateReference, Protocol,
+    BodyDefaults, Connection, Headers, ModelCatalogReference, ModelLimits, Protocol,
     RouteSelection, ServiceKind,
 };
 
@@ -37,7 +37,7 @@ pub struct ProviderModel {
     pub name: String,
     pub display_name: Option<String>,
     pub description: Option<String>,
-    pub template: Option<ModelTemplateReference>,
+    pub template: Option<ModelCatalogReference>,
     pub enabled: bool,
     pub service_kind: ServiceKind,
     pub protocol: Protocol,

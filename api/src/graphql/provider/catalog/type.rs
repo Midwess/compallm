@@ -7,30 +7,30 @@ use super::super::{
 };
 use crate::graphql::{base_type::Collection, error::Error};
 use compallm_core::persistent::db_context;
-use compallm_core::{model::ModelTemplate as DomainModelTemplate, provider as domain};
+use compallm_core::{model::ModelCatalog as DomainModelCatalog, provider as domain};
 use compallm_postgres::catalog::repository::CatalogRepository;
 use juniper::{ID, graphql_object};
 
 #[derive(Clone, Debug)]
-pub struct ProviderTemplate(
-    pub domain::ProviderTemplate,
+pub struct ProviderCatalog(
+    pub domain::ProviderCatalog,
     pub Option<compallm_postgres::catalog::repository::CatalogScope>,
 );
-impl From<domain::ProviderTemplate> for ProviderTemplate {
-    fn from(value: domain::ProviderTemplate) -> Self {
+impl From<domain::ProviderCatalog> for ProviderCatalog {
+    fn from(value: domain::ProviderCatalog) -> Self {
         Self(value, None)
     }
 }
 #[derive(Clone, Debug)]
-pub struct ModelTemplate(pub DomainModelTemplate);
-impl From<DomainModelTemplate> for ModelTemplate {
-    fn from(value: DomainModelTemplate) -> Self {
+pub struct ModelCatalog(pub DomainModelCatalog);
+impl From<DomainModelCatalog> for ModelCatalog {
+    fn from(value: DomainModelCatalog) -> Self {
         Self(value)
     }
 }
 
 #[graphql_object(context=crate::graphql::context::GraphqlContext, scalar=juniper::DefaultScalarValue)]
-impl ProviderTemplate {
+impl ProviderCatalog {
     fn id(&self) -> ID {
         ID::new(&self.0.id)
     }
@@ -80,9 +80,9 @@ impl ProviderTemplate {
     async fn models(
         &self,
         #[graphql(context)] repository: &CatalogRepository,
-        filter: Option<super::input::ModelTemplateFilterInput>,
-    ) -> Result<Collection<ModelTemplate>, Error> {
-        let nodes: Vec<ModelTemplate> = if let Some(scope) = self.1 {
+        filter: Option<super::input::ModelCatalogFilterInput>,
+    ) -> Result<Collection<ModelCatalog>, Error> {
+        let nodes: Vec<ModelCatalog> = if let Some(scope) = self.1 {
             repository
                 .models(
                     &self.0.id,
@@ -100,30 +100,30 @@ impl ProviderTemplate {
         Collection::complete(
             nodes,
             &format!("template-models:{}", self.0.id),
-            |m: &ModelTemplate| vec![Some(m.0.name.clone()), Some(m.0.id.clone())],
+            |m: &ModelCatalog| vec![Some(m.0.name.clone()), Some(m.0.id.clone())],
         )
         .map_err(|_| Error::internal())
     }
 }
 #[graphql_object(context=crate::graphql::context::GraphqlContext, scalar=juniper::DefaultScalarValue)]
-impl ModelTemplate {
+impl ModelCatalog {
     fn custom_fields(&self) -> Vec<&str> {
         self.0.custom_fields.iter().map(String::as_str).collect()
     }
-    fn origin(&self) -> ModelTemplateOrigin {
+    fn origin(&self) -> ModelCatalogOrigin {
         if self.0.research_id.is_some() {
-            ModelTemplateOrigin::Global
+            ModelCatalogOrigin::Global
         } else if self.0.id.starts_with("custom:") {
-            ModelTemplateOrigin::Custom
+            ModelCatalogOrigin::Custom
         } else {
-            ModelTemplateOrigin::Override
+            ModelCatalogOrigin::Override
         }
     }
     fn id(&self) -> ID {
         ID::new(&self.0.id)
     }
-    fn provider_template_id(&self) -> ID {
-        ID::new(&self.0.provider_template_id)
+    fn provider_catalog_id(&self) -> ID {
+        ID::new(&self.0.provider_catalog_id)
     }
     fn upstream_model_id(&self) -> &str {
         &self.0.name
@@ -330,7 +330,7 @@ impl ModelTemplate {
                 Some(domain::CachePricing::StandardInputRate) => CacheBilling::StandardInputRate,
                 Some(domain::CachePricing::Included) => CacheBilling::Included,
                 Some(domain::CachePricing::Unsupported) => CacheBilling::Unsupported,
-                None => CacheBilling::Unknown,
+                Some(domain::CachePricing::EstimatedRate(_)) | None => CacheBilling::Unknown,
             },
             _ => CacheBilling::Unknown,
         }
@@ -344,8 +344,8 @@ impl ModelTemplate {
 async fn public_models(
     repository: &CatalogRepository,
     id: &str,
-    filter: Option<super::input::ModelTemplateFilterInput>,
-) -> Result<Vec<ModelTemplate>, Error> {
+    filter: Option<super::input::ModelCatalogFilterInput>,
+) -> Result<Vec<ModelCatalog>, Error> {
     Ok(repository
         .models(id, Box::new(filter.unwrap_or_default()), None)
         .await
@@ -355,7 +355,7 @@ async fn public_models(
         .collect())
 }
 #[derive(Clone, Copy, juniper::GraphQLEnum)]
-pub enum ModelTemplateOrigin {
+pub enum ModelCatalogOrigin {
     Global,
     Override,
     Custom,

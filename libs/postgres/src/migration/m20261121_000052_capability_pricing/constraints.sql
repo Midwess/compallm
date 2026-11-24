@@ -14,6 +14,7 @@ BEGIN
  IF cache IS NULL OR cache='null'::jsonb THEN RETURN true; END IF;
  RETURN CASE cache->>'type'
  WHEN 'separate_rate' THEN catalog_object_keys_valid(cache,ARRAY['type','configuration']) AND capability_rate_valid(cache->'configuration'->'rate')
+ WHEN 'estimated_rate' THEN catalog_object_keys_valid(cache,ARRAY['type','configuration']) AND catalog_object_keys_valid(cache->'configuration',ARRAY['rate']) AND capability_rate_valid(cache->'configuration'->'rate')
  WHEN 'standard_input_rate' THEN cache='{"type":"standard_input_rate"}'::jsonb
  WHEN 'included' THEN cache='{"type":"included"}'::jsonb
  WHEN 'unsupported' THEN cache='{"type":"unsupported"}'::jsonb ELSE false END;

@@ -261,7 +261,7 @@
 //!
 //! ## Logos and public assets
 //!
-//! Download authentic artwork for every catalog provider to portal/public/assets/providers/.
+//! Download authentic artwork for every catalog provider to portal/static/assets/providers/.
 //! Prefer self-contained SVG; use suitable PNG/WebP when necessary. Brand aliases may share files.
 //! Start with available opensource(9) assets, then official media kits/sites and established collections
 //! such as LobeHub. Review the artwork and inspect SVGs for

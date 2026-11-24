@@ -1,5 +1,0 @@
-mutation ProviderModelTemplateDelete($modelTemplateDeleteProviderTemplateId: ID!, $modelTemplateDeleteId: ID!) {
-  modelTemplateDelete(providerTemplateId: $modelTemplateDeleteProviderTemplateId, id: $modelTemplateDeleteId) {
-    node
-  }
-}

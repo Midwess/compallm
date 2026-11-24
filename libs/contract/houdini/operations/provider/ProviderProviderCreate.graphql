@@ -1,4 +1,4 @@
-mutation ProviderProviderCreate($providerCreateInput: ProviderCreateFromTemplateInput!) {
+mutation ProviderProviderCreate($providerCreateInput: ProviderCreateFromCatalogInput!) {
   providerCreate(input: $providerCreateInput) {
     node {
       id

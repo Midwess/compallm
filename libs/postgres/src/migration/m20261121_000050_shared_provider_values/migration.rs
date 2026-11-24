@@ -230,9 +230,36 @@ fn ensure_fields(row: &Value, expected: &Value) -> Result<(), DbErr> {
         .as_object()
         .unwrap()
         .iter()
-        .any(|(field, value)| row[field] != *value)
+        .any(|(field, value)| !rollback_matches(&row[field], value))
     {
         return Err(rollback_error());
     }
     Ok(())
+}
+
+fn rollback_matches(actual: &Value, expected: &Value) -> bool {
+    if actual == expected {
+        return true;
+    }
+    if actual.is_null() && expected["type"] == "estimated_rate" {
+        return true;
+    }
+    match (actual, expected) {
+        (Value::Object(actual), Value::Object(expected)) => {
+            actual.len() == expected.len()
+                && expected.iter().all(|(key, value)| {
+                    actual
+                        .get(key)
+                        .is_some_and(|actual| rollback_matches(actual, value))
+                })
+        }
+        (Value::Array(actual), Value::Array(expected)) => {
+            actual.len() == expected.len()
+                && actual
+                    .iter()
+                    .zip(expected)
+                    .all(|(a, e)| rollback_matches(a, e))
+        }
+        _ => false,
+    }
 }

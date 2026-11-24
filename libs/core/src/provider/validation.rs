@@ -319,7 +319,7 @@ impl Validate for super::CapabilityPricing {
 impl Validate for super::CapabilityTokenRate {
     fn validate(&self) -> Result<(), ValidationErrors> {
         self.rate.validate()?;
-        if let Some(CachePricing::SeparateRate(v)) = &self.cache {
+        if let Some(CachePricing::SeparateRate(v) | CachePricing::EstimatedRate(v)) = &self.cache {
             v.rate.validate()?;
         }
         Ok(())

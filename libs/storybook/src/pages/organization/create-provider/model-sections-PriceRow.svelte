@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ModelTemplatePriceInputConstraints } from '@compallm/contract/validation'
+  import { ModelCatalogPriceInputConstraints } from '@compallm/contract/validation'
 
   import { TextField } from '../../../components/fields'
   import { Checkbox } from '../../../components/selection'
@@ -73,8 +73,8 @@ independent of the input price. Uncheck to use the template rate.
         name={`modelDraft.${name}`}
         aria-label={`${label} price`}
         inputmode="decimal"
-        min={ModelTemplatePriceInputConstraints.value.minimum}
-        max={ModelTemplatePriceInputConstraints.value.maximum}
+        min={ModelCatalogPriceInputConstraints.value.minimum}
+        max={ModelCatalogPriceInputConstraints.value.maximum}
         required
         placeholder="Enter rate"
         class="rounded-lg pl-6.5 text-right"

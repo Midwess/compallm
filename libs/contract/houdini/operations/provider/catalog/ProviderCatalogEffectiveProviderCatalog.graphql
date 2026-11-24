@@ -1,0 +1,116 @@
+query ProviderCatalogEffectiveProviderCatalog($effectiveProviderCatalogId: ID!) {
+  effectiveProviderCatalog(id: $effectiveProviderCatalogId) {
+    node {
+      id
+      name
+      baseUrl
+      logoUrl
+      description
+      connection {
+        baseUrl
+        path
+        timeoutMs
+        query {
+          key
+          value
+        }
+        authentication {
+          method
+          configuration {
+            placement {
+              location
+              name
+              prefix
+            }
+            flow
+            authorizationUrl
+            tokenUrl
+            deviceAuthorizationUrl
+            scopes
+            requiredInputs {
+              name
+              kind
+              required
+              allowedValues
+            }
+            adapter
+            parameters {
+              key
+              value
+            }
+          }
+        }
+        endpoint {
+          mode
+          configuration {
+            urlTemplate
+            requiredInputs {
+              name
+              kind
+              required
+              allowedValues
+            }
+          }
+        }
+      }
+      headers {
+        key
+        value
+      }
+      authentication {
+        method
+        configuration {
+          placement {
+            location
+            name
+            prefix
+          }
+          flow
+          authorizationUrl
+          tokenUrl
+          deviceAuthorizationUrl
+          scopes
+          requiredInputs {
+            name
+            kind
+            required
+            allowedValues
+          }
+          adapter
+          parameters {
+            key
+            value
+          }
+        }
+      }
+      models {
+        edges {
+          node {
+            id
+            name
+            displayName
+            description
+            serviceKind
+            capabilities
+            maxContextTokens
+            maxInputTokens
+            maxOutputTokens
+            inputPrice
+            outputPrice
+            cachedPrice
+            pricingMode
+            billingModel
+            cacheBilling
+            operations {
+              operation
+              path
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+        }
+      }
+    }
+  }
+}

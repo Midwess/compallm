@@ -633,11 +633,11 @@ impl From<ProviderModelCapability> for compallm_core::provider::Capability {
 
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ProviderCreateFromTemplateInput {
+pub struct ProviderCreateFromCatalogInput {
     #[modify(trim)]
     #[validate(length(min=1,max=120,message="Connection name must contain 1 to 120 characters."),custom(function=input::nonblank,message="Enter a connection name."))]
     pub name: String,
-    pub provider_template_id: String,
+    pub provider_catalog_id: String,
     #[validate(custom(function=input::base_url,message="Enter an HTTP or HTTPS server URL without credentials, query, or fragment."))]
     pub base_url: String,
     #[validate(length(min=1,max=512,message="Enter an API key of 1 to 512 characters."),custom(function=input::api_key,message="API keys cannot contain whitespace."))]
@@ -647,13 +647,13 @@ pub struct ProviderCreateFromTemplateInput {
     pub headers: Vec<ProviderHeader>,
     #[validify]
     #[validate(length(min = 1, max = 1000, message = "Enable between 1 and 1,000 models."))]
-    pub models: Vec<ProviderTemplateModelInput>,
+    pub models: Vec<ProviderCatalogModelInput>,
     pub logo_url: Option<String>,
     pub logo_upload_id: Option<String>,
 }
 #[derive(Serialize, Deserialize, GraphQLInputObject, Validify, ExportValidation)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ProviderTemplateModelInput {
+pub struct ProviderCatalogModelInput {
     pub id: String,
     pub protocol: TextModelProtocol,
 }

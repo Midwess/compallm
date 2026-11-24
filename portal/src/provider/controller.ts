@@ -1,10 +1,10 @@
 import { cloneFormValue } from '@compallm/storybook'
 import {
   ProviderProviderStore,
-  ProviderModelTemplateCustomizeStore,
-  ProviderModelTemplateCreateStore,
-  ProviderModelTemplateResetStore,
-  ProviderModelTemplateDeleteStore,
+  ProviderModelCatalogCustomizeStore,
+  ProviderModelCatalogCreateStore,
+  ProviderModelCatalogResetStore,
+  ProviderModelCatalogDeleteStore,
   ProviderProviderCreateStore,
   ProviderProviderLogoUploadStore,
 } from '@compallm/contract/houdini'
@@ -26,10 +26,10 @@ import { providerRow, modelRow, modelDraft } from './presentation'
 import { graphqlClient, requireData, ApiError } from '../graphql-client'
 import { notify } from '../notifications/toast'
 import {
-  ModelTemplateCustomizeInput,
-  ModelTemplateCreateInput,
-  ModelTemplateEffectiveLimitsInput,
-  ProviderCreateFromTemplateInput,
+  ModelCatalogCustomizeInput,
+  ModelCatalogCreateInput,
+  ModelCatalogEffectiveLimitsInput,
+  ProviderCreateFromCatalogInput,
   TextModelProtocol,
 } from '@compallm/contract/validation'
 
@@ -665,8 +665,8 @@ export class CreateProviderController implements Controller {
     const baseline = this.confirmedModels.get(draft.id)
     const patch = templateCustomization(draft, baseline)
     const result = baseline
-      ? ModelTemplateCustomizeInput.safeParse(patch)
-      : ModelTemplateCreateInput.safeParse({ configuration: patch })
+      ? ModelCatalogCustomizeInput.safeParse(patch)
+      : ModelCatalogCreateInput.safeParse({ configuration: patch })
     const issues: { path: PropertyKey[]; message: string }[] = result.success
       ? []
       : result.error.issues.map((issue) => ({
@@ -681,7 +681,7 @@ export class CreateProviderController implements Controller {
     }
     if (patch.limits) {
       // Inherited values retain their catalog range; only overrides use editable bounds.
-      const check = ModelTemplateEffectiveLimitsInput.safeParse(effective)
+      const check = ModelCatalogEffectiveLimitsInput.safeParse(effective)
       if (!check.success)
         for (const issue of check.error.issues) {
           const field = String(issue.path[0]) as 'context' | 'input' | 'output'
@@ -712,29 +712,29 @@ export class CreateProviderController implements Controller {
       owner = this.owner
     if (!provider || !owner || this.model !== draft.id) return false
     const baseline = this.confirmedModels.get(draft.id)
-    const input = ModelTemplateCustomizeInput.parse(templateCustomization(draft, baseline))
+    const input = ModelCatalogCustomizeInput.parse(templateCustomization(draft, baseline))
     if (!Object.keys(input).length) return draft
     const reference = baseline?.catalogRef?.model
     const write = (async () => {
       const response = reference
-        ? await new ProviderModelTemplateCustomizeStore()
+        ? await new ProviderModelCatalogCustomizeStore()
             .mutate(
               {
-                modelTemplateCustomizeProviderTemplateId: provider,
-                modelTemplateCustomizeId: reference,
-                modelTemplateCustomizeInput: input,
+                modelCatalogCustomizeProviderCatalogId: provider,
+                modelCatalogCustomizeId: reference,
+                modelCatalogCustomizeInput: input,
               },
               { fetch: graphqlClient.fetch(owner.signal) },
             )
             .then(requireData)
-            .then((v) => v.modelTemplateCustomize.node)
-        : await new ProviderModelTemplateCreateStore()
+            .then((v) => v.modelCatalogCustomize.node)
+        : await new ProviderModelCatalogCreateStore()
             .mutate(
-              { modelTemplateCreateProviderTemplateId: provider, modelTemplateCreateInput: { configuration: input } },
+              { modelCatalogCreateProviderCatalogId: provider, modelCatalogCreateInput: { configuration: input } },
               { fetch: graphqlClient.fetch(owner.signal) },
             )
             .then(requireData)
-            .then((v) => v.modelTemplateCreate.node)
+            .then((v) => v.modelCatalogCreate.node)
       const saved = { ...draft, ...modelDraft(response), id: draft.id, defaults: draft.defaults ?? baseline?.defaults }
       for (const key of [
         'contextLimitEnabled',
@@ -790,13 +790,13 @@ export class CreateProviderController implements Controller {
       if (owner.signal.aborted || this.owner !== owner) return
       const reference = this.confirmedModels.get(draft.id)?.catalogRef?.model ?? draft.id
       const value = (
-        await new ProviderModelTemplateResetStore()
+        await new ProviderModelCatalogResetStore()
           .mutate(
-            { modelTemplateResetProviderTemplateId: provider, modelTemplateResetId: reference },
+            { modelCatalogResetProviderCatalogId: provider, modelCatalogResetId: reference },
             { fetch: graphqlClient.fetch(owner.signal) },
           )
           .then(requireData)
-      ).modelTemplateReset.node
+      ).modelCatalogReset.node
       if (owner.signal.aborted || this.owner !== owner || this.model !== draft.id) return
       const next = { ...modelDraft(value), id: draft.id }
       this.confirmedModels.set(draft.id, cloneFormValue(next))
@@ -817,9 +817,9 @@ export class CreateProviderController implements Controller {
       if (owner.signal.aborted || this.owner !== owner) return
       const reference = this.confirmedModels.get(draft.id)?.catalogRef?.model
       if (reference)
-        await new ProviderModelTemplateDeleteStore()
+        await new ProviderModelCatalogDeleteStore()
           .mutate(
-            { modelTemplateDeleteProviderTemplateId: provider, modelTemplateDeleteId: reference },
+            { modelCatalogDeleteProviderCatalogId: provider, modelCatalogDeleteId: reference },
             { fetch: graphqlClient.fetch(owner.signal) },
           )
           .then(requireData)
@@ -841,9 +841,9 @@ export class CreateProviderController implements Controller {
       notify.error(new ApiError('Wait for the logo upload to finish or choose the provider logo.', 400, 'BAD_USER_INPUT'))
       return false
     }
-    const input = ProviderCreateFromTemplateInput.parse({
+    const input = ProviderCreateFromCatalogInput.parse({
       name: state.name,
-      providerTemplateId: this.provider,
+      providerCatalogId: this.provider,
       baseUrl: state.baseUrl,
       apiKey: state.apiKey,
       headers: state.headers.map(({ key, value }) => ({ key, value })),

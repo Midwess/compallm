@@ -10,23 +10,23 @@ export async function providerLoad(event: RequestEvent, savedId?: string) {
   const [list, provider, model, global, saved] = await Promise.all([
     !savedId && destination.step === 'choose'
       ? api
-          .query('ProviderCatalogEffectiveProviderTemplates', {
-            effectiveProviderTemplatesSearch: destination.query || undefined,
+          .query('ProviderCatalogEffectiveProviderCatalogs', {
+            effectiveProviderCatalogsSearch: destination.query || undefined,
           })
-          .then((r) => r.effectiveProviderTemplates)
+          .then((r) => r.effectiveProviderCatalogs)
       : undefined,
     !savedId && destination.provider
       ? api
-          .query('ProviderCatalogEffectiveProviderTemplate', { effectiveProviderTemplateId: destination.provider })
-          .then((r) => r.effectiveProviderTemplate?.node ?? null)
+          .query('ProviderCatalogEffectiveProviderCatalog', { effectiveProviderCatalogId: destination.provider })
+          .then((r) => r.effectiveProviderCatalog?.node ?? null)
       : undefined,
     !savedId && destination.provider && destination.model && !destination.model.startsWith('draft:')
       ? api
-          .query('ProviderCatalogEffectiveModelTemplate', {
-            effectiveModelTemplateProviderTemplateId: destination.provider,
-            effectiveModelTemplateId: destination.model,
+          .query('ProviderCatalogEffectiveModelCatalog', {
+            effectiveModelCatalogProviderCatalogId: destination.provider,
+            effectiveModelCatalogId: destination.model,
           })
-          .then((r) => r.effectiveModelTemplate?.node ?? null)
+          .then((r) => r.effectiveModelCatalog?.node ?? null)
       : undefined,
     !savedId &&
     destination.provider &&
@@ -34,11 +34,11 @@ export async function providerLoad(event: RequestEvent, savedId?: string) {
     !destination.model.startsWith('custom:') &&
     !destination.model.startsWith('draft:')
       ? api
-          .query('ProviderCatalogModelTemplate', {
-            modelTemplateProviderTemplateId: destination.provider,
-            modelTemplateId: destination.model,
+          .query('ProviderCatalogModelCatalog', {
+            modelCatalogProviderCatalogId: destination.provider,
+            modelCatalogId: destination.model,
           })
-          .then((r) => r.modelTemplate?.node ?? null)
+          .then((r) => r.modelCatalog?.node ?? null)
       : undefined,
     savedId ? api.query('ProviderProvider', { providerId: savedId }) : undefined,
   ])

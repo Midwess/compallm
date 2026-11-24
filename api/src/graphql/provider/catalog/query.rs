@@ -1,4 +1,4 @@
-use super::{ModelTemplate, ProviderTemplate, input::*};
+use super::{ModelCatalog, ProviderCatalog, input::*};
 use crate::graphql::{
     base_type::{Collection, Payload},
     error::Error,
@@ -10,12 +10,12 @@ use juniper::ID;
 #[db_context::root]
 pub async fn list(
     search: Option<String>,
-    filter: Option<ProviderTemplateFilterInput>,
+    filter: Option<ProviderCatalogFilterInput>,
     pagination: compallm_query::Pagination,
-    order_by: Option<Vec<ProviderTemplateOrderInput>>,
+    order_by: Option<Vec<ProviderCatalogOrderInput>>,
     repository: &CatalogRepository,
-) -> Result<Collection<ProviderTemplate>, Error> {
-    if compallm_core::provider::template::CatalogSearch::try_from(
+) -> Result<Collection<ProviderCatalog>, Error> {
+    if compallm_core::provider::catalog::CatalogSearch::try_from(
         search.as_deref().unwrap_or_default(),
     )
     .is_err()
@@ -54,24 +54,24 @@ pub async fn list(
 pub async fn get(
     id: ID,
     repository: &CatalogRepository,
-) -> Result<Option<Payload<ProviderTemplate>>, Error> {
+) -> Result<Option<Payload<ProviderCatalog>>, Error> {
     Ok(repository
         .provider(&id)
         .await
         .map_err(|_| Error::internal())?
-        .map(|node| Payload::from(ProviderTemplate::from(node))))
+        .map(|node| Payload::from(ProviderCatalog::from(node))))
 }
 #[db_context::root]
 pub async fn model(
-    provider_template_id: ID,
+    provider_catalog_id: ID,
     id: ID,
     repository: &CatalogRepository,
-) -> Result<Option<Payload<ModelTemplate>>, Error> {
+) -> Result<Option<Payload<ModelCatalog>>, Error> {
     Ok(repository
-        .model(&provider_template_id, &id, None)
+        .model(&provider_catalog_id, &id, None)
         .await
         .map_err(|_| Error::internal())?
-        .map(|node| Payload::from(ModelTemplate::from(node))))
+        .map(|node| Payload::from(ModelCatalog::from(node))))
 }
 
 use crate::http::authorization::AuthorizationContext;
@@ -87,26 +87,26 @@ pub async fn effective_get(
     id: ID,
     authority: &AuthorizationContext,
     repository: &CatalogRepository,
-) -> Result<Option<Payload<ProviderTemplate>>, Error> {
+) -> Result<Option<Payload<ProviderCatalog>>, Error> {
     let scope = owner(authority).await?;
     Ok(repository
         .provider(&id)
         .await
         .map_err(|_| Error::internal())?
-        .map(|v| ProviderTemplate(v, Some(scope)).into()))
+        .map(|v| ProviderCatalog(v, Some(scope)).into()))
 }
 pub async fn effective_model(
     provider: ID,
     id: ID,
     authority: &AuthorizationContext,
     repository: &CatalogRepository,
-) -> Result<Option<Payload<ModelTemplate>>, Error> {
+) -> Result<Option<Payload<ModelCatalog>>, Error> {
     let scope = owner(authority).await?;
     Ok(repository
         .model(&provider, &id, Some(scope))
         .await
         .map_err(|_| Error::internal())?
-        .map(|v| ModelTemplate(v).into()))
+        .map(|v| ModelCatalog(v).into()))
 }
 pub async fn effective_list(
     search: Option<String>,
@@ -114,9 +114,9 @@ pub async fn effective_list(
     after: Option<String>,
     authority: &AuthorizationContext,
     repository: &CatalogRepository,
-) -> Result<Collection<ProviderTemplate>, Error> {
+) -> Result<Collection<ProviderCatalog>, Error> {
     let scope = owner(authority).await?;
-    if compallm_core::provider::template::CatalogSearch::try_from(
+    if compallm_core::provider::catalog::CatalogSearch::try_from(
         search.as_deref().unwrap_or_default(),
     )
     .is_err()
@@ -125,7 +125,7 @@ pub async fn effective_list(
     }
     let result = repository
         .list(
-            Box::new(ProviderTemplateFilterInput::default()),
+            Box::new(ProviderCatalogFilterInput::default()),
             compallm_query::Pagination {
                 first: Some(first.unwrap_or(20)),
                 after: after.map(compallm_query::Cursor),
@@ -147,7 +147,7 @@ pub async fn effective_list(
             compallm_postgres::query::QueryCompileError::Database(_) => Error::internal(),
             _ => Error::invalid_input(),
         })?;
-    let mut output: Collection<ProviderTemplate> = result.into();
+    let mut output: Collection<ProviderCatalog> = result.into();
     for edge in &mut output.edges {
         edge.node.1 = Some(scope);
     }

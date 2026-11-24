@@ -528,7 +528,7 @@ export const TextModelProtocol = z
   .describe('Text operation determining the upstream request and response format.')
 export type TextModelProtocolFormInput = z.input<typeof TextModelProtocol>
 export type TextModelProtocolFormOutput = z.output<typeof TextModelProtocol>
-export const ModelTemplateLimitsInputConstraints = {
+export const ModelCatalogLimitsInputConstraints = {
   context: {
     minimum: 100,
     maximum: 10000000,
@@ -554,12 +554,12 @@ export const ModelTemplateLimitsInputConstraints = {
     },
   },
 } as const
-export const ModelTemplateLimitsInputInput = {
+export const ModelCatalogLimitsInputInput = {
   context: integerInput({ minimum: 100, maximum: 10000000 }),
   input: integerInput({ minimum: 100, maximum: 10000000 }),
   output: integerInput({ minimum: 100, maximum: 10000000 }),
 }
-export const ModelTemplateLimitsInput = z
+export const ModelCatalogLimitsInput = z
   .object({
     context: ContextTokens.min(100, { message: 'Enter between 100 and 10,000,000 tokens.' })
       .max(10000000, { message: 'Enter between 100 and 10,000,000 tokens.' })
@@ -590,9 +590,9 @@ export const ModelTemplateLimitsInput = z
         })
     }
   })
-export type ModelTemplateLimitsInputFormInput = z.input<typeof ModelTemplateLimitsInput>
-export type ModelTemplateLimitsInputFormOutput = z.output<typeof ModelTemplateLimitsInput>
-export const ModelTemplatePriceInputConstraints = {
+export type ModelCatalogLimitsInputFormInput = z.input<typeof ModelCatalogLimitsInput>
+export type ModelCatalogLimitsInputFormOutput = z.output<typeof ModelCatalogLimitsInput>
+export const ModelCatalogPriceInputConstraints = {
   value: {
     pattern: '^0*(?:[0-9]{1,10}(?:\\.[0-9]{1,18})?|[0-9]{11}(?:\\.[0-9]{1,17})?|[0-9]{12}(?:\\.[0-9]{1,16})?)$',
     minimum: 0,
@@ -608,8 +608,8 @@ export const ModelTemplatePriceInputConstraints = {
     format: 'modelPrice',
   },
 } as const
-export const ModelTemplatePriceInputInput = { value: stringInput(ModelTemplatePriceInputConstraints['value']) }
-export const ModelTemplatePriceInput = z
+export const ModelCatalogPriceInputInput = { value: stringInput(ModelCatalogPriceInputConstraints['value']) }
+export const ModelCatalogPriceInput = z
   .object({
     enabled: z.boolean(),
     value: inputString({
@@ -631,8 +631,8 @@ export const ModelTemplatePriceInput = z
   })
   .strict()
   .refine((value) => value == null || templatePriceObject(value), { path: ['value'], message: 'Enter a custom price.' })
-export type ModelTemplatePriceInputFormInput = z.input<typeof ModelTemplatePriceInput>
-export type ModelTemplatePriceInputFormOutput = z.output<typeof ModelTemplatePriceInput>
+export type ModelCatalogPriceInputFormInput = z.input<typeof ModelCatalogPriceInput>
+export type ModelCatalogPriceInputFormOutput = z.output<typeof ModelCatalogPriceInput>
 /** Capabilities declared by a catalog or configured model; not an authorization grant. */
 export const ProviderModelCapability = z
   .enum([
@@ -862,7 +862,7 @@ export const ProviderBodyDefault = z
   })
 export type ProviderBodyDefaultFormInput = z.input<typeof ProviderBodyDefault>
 export type ProviderBodyDefaultFormOutput = z.output<typeof ProviderBodyDefault>
-export const ModelTemplateCustomizeInputConstraints = {
+export const ModelCatalogCustomizeInputConstraints = {
   name: {
     minLength: 1,
     maxLength: 512,
@@ -897,11 +897,11 @@ export const ModelTemplateCustomizeInputConstraints = {
   headers: { messages: { 'x-compallm-array-rule': 'Header names must be unique, ignoring case.' } },
   bodyDefaults: { messages: { 'x-compallm-array-rule': 'Body field names must be unique.' } },
 } as const
-export const ModelTemplateCustomizeInputInput = {
-  name: stringInput(ModelTemplateCustomizeInputConstraints['name']),
-  path: stringInput(ModelTemplateCustomizeInputConstraints['path']),
+export const ModelCatalogCustomizeInputInput = {
+  name: stringInput(ModelCatalogCustomizeInputConstraints['name']),
+  path: stringInput(ModelCatalogCustomizeInputConstraints['path']),
 }
-export const ModelTemplateCustomizeInput = z
+export const ModelCatalogCustomizeInput = z
   .object({
     name: inputString({
       minLength: 1,
@@ -927,10 +927,10 @@ export const ModelTemplateCustomizeInput = z
     })
       .nullable()
       .optional(),
-    limits: ModelTemplateLimitsInput.nullable().optional(),
-    inputPrice: ModelTemplatePriceInput.nullable().optional(),
-    outputPrice: ModelTemplatePriceInput.nullable().optional(),
-    cachedPrice: ModelTemplatePriceInput.nullable().optional(),
+    limits: ModelCatalogLimitsInput.nullable().optional(),
+    inputPrice: ModelCatalogPriceInput.nullable().optional(),
+    outputPrice: ModelCatalogPriceInput.nullable().optional(),
+    cachedPrice: ModelCatalogPriceInput.nullable().optional(),
     capabilities: z
       .array(ProviderModelCapability)
       .nullable()
@@ -953,22 +953,17 @@ export const ModelTemplateCustomizeInput = z
       .optional(),
   })
   .strict()
-export type ModelTemplateCustomizeInputFormInput = z.input<typeof ModelTemplateCustomizeInput>
-export type ModelTemplateCustomizeInputFormOutput = z.output<typeof ModelTemplateCustomizeInput>
-export const ModelTemplateCreateInputConstraints = {} as const
-export const ModelTemplateCreateInputInput = {}
-export const ModelTemplateCreateInput = z
-  .object({ configuration: ModelTemplateCustomizeInput })
+export type ModelCatalogCustomizeInputFormInput = z.input<typeof ModelCatalogCustomizeInput>
+export type ModelCatalogCustomizeInputFormOutput = z.output<typeof ModelCatalogCustomizeInput>
+export const ModelCatalogCreateInputConstraints = {} as const
+export const ModelCatalogCreateInputInput = {}
+export const ModelCatalogCreateInput = z
+  .object({ configuration: ModelCatalogCustomizeInput })
   .strict()
   .superRefine((value, ctx) => {
-    for (const field of ['name', 'protocol', 'path', 'inputPrice', 'outputPrice'] as const) {
+    for (const field of ['name', 'protocol', 'path'] as const) {
       const configured = value.configuration[field]
-      const valid =
-        field === 'inputPrice'
-          ? value.configuration.inputPrice?.enabled && value.configuration.inputPrice.value != null
-          : field === 'outputPrice'
-            ? value.configuration.outputPrice?.enabled && value.configuration.outputPrice.value != null
-            : configured != null
+      const valid = configured != null
       if (!valid)
         ctx.addIssue({
           code: 'custom',
@@ -983,19 +978,19 @@ export const ModelTemplateCreateInput = z
         })
     }
   })
-export type ModelTemplateCreateInputFormInput = z.input<typeof ModelTemplateCreateInput>
-export type ModelTemplateCreateInputFormOutput = z.output<typeof ModelTemplateCreateInput>
-export const ModelTemplateEffectiveLimitsInputConstraints = {
+export type ModelCatalogCreateInputFormInput = z.input<typeof ModelCatalogCreateInput>
+export type ModelCatalogCreateInputFormOutput = z.output<typeof ModelCatalogCreateInput>
+export const ModelCatalogEffectiveLimitsInputConstraints = {
   context: { minimum: 1, maximum: 4294967295 },
   input: { minimum: 1, maximum: 4294967295 },
   output: { minimum: 1, maximum: 4294967295 },
 } as const
-export const ModelTemplateEffectiveLimitsInputInput = {
+export const ModelCatalogEffectiveLimitsInputInput = {
   context: integerInput({ minimum: 1, maximum: 4294967295 }),
   input: integerInput({ minimum: 1, maximum: 4294967295 }),
   output: integerInput({ minimum: 1, maximum: 4294967295 }),
 }
-export const ModelTemplateEffectiveLimitsInput = z
+export const ModelCatalogEffectiveLimitsInput = z
   .object({
     context: ContextTokens.nullable().optional(),
     input: ContextTokens.nullable().optional(),
@@ -1017,31 +1012,31 @@ export const ModelTemplateEffectiveLimitsInput = z
         })
     }
   })
-export type ModelTemplateEffectiveLimitsInputFormInput = z.input<typeof ModelTemplateEffectiveLimitsInput>
-export type ModelTemplateEffectiveLimitsInputFormOutput = z.output<typeof ModelTemplateEffectiveLimitsInput>
-export const ModelTemplateMatchInputConstraints = {} as const
-export const ModelTemplateMatchInputInput = {}
-export const ModelTemplateMatchInput = z
+export type ModelCatalogEffectiveLimitsInputFormInput = z.input<typeof ModelCatalogEffectiveLimitsInput>
+export type ModelCatalogEffectiveLimitsInputFormOutput = z.output<typeof ModelCatalogEffectiveLimitsInput>
+export const ModelCatalogMatchInputConstraints = {} as const
+export const ModelCatalogMatchInputInput = {}
+export const ModelCatalogMatchInput = z
   .object({
     id: StringFilter.nullable().optional(),
     name: StringFilter.nullable().optional(),
     displayName: StringFilter.nullable().optional(),
   })
   .strict()
-export type ModelTemplateMatchInputFormInput = z.input<typeof ModelTemplateMatchInput>
-export type ModelTemplateMatchInputFormOutput = z.output<typeof ModelTemplateMatchInput>
-export const ModelTemplateFilterInputConstraints = {} as const
-export const ModelTemplateFilterInputInput = {}
-export const ModelTemplateFilterInput = z
+export type ModelCatalogMatchInputFormInput = z.input<typeof ModelCatalogMatchInput>
+export type ModelCatalogMatchInputFormOutput = z.output<typeof ModelCatalogMatchInput>
+export const ModelCatalogFilterInputConstraints = {} as const
+export const ModelCatalogFilterInputInput = {}
+export const ModelCatalogFilterInput = z
   .object({
     id: StringFilter.nullable().optional(),
     name: StringFilter.nullable().optional(),
     displayName: StringFilter.nullable().optional(),
-    or: z.array(ModelTemplateMatchInput).nullable().optional(),
+    or: z.array(ModelCatalogMatchInput).nullable().optional(),
   })
   .strict()
-export type ModelTemplateFilterInputFormInput = z.input<typeof ModelTemplateFilterInput>
-export type ModelTemplateFilterInputFormOutput = z.output<typeof ModelTemplateFilterInput>
+export type ModelCatalogFilterInputFormInput = z.input<typeof ModelCatalogFilterInput>
+export type ModelCatalogFilterInputFormOutput = z.output<typeof ModelCatalogFilterInput>
 export const PreferenceDestination = z.enum([
   'CHAT',
   'MODELS',
@@ -1299,6 +1294,36 @@ export const ProfileUpdateInput = z
   .strict()
 export type ProfileUpdateInputFormInput = z.input<typeof ProfileUpdateInput>
 export type ProfileUpdateInputFormOutput = z.output<typeof ProfileUpdateInput>
+export const ProviderCatalogMatchInputConstraints = {} as const
+export const ProviderCatalogMatchInputInput = {}
+export const ProviderCatalogMatchInput = z
+  .object({ id: StringFilter.nullable().optional(), name: StringFilter.nullable().optional() })
+  .strict()
+export type ProviderCatalogMatchInputFormInput = z.input<typeof ProviderCatalogMatchInput>
+export type ProviderCatalogMatchInputFormOutput = z.output<typeof ProviderCatalogMatchInput>
+export const ProviderCatalogFilterInputConstraints = {} as const
+export const ProviderCatalogFilterInputInput = {}
+export const ProviderCatalogFilterInput = z
+  .object({
+    id: StringFilter.nullable().optional(),
+    name: StringFilter.nullable().optional(),
+    or: z.array(ProviderCatalogMatchInput).nullable().optional(),
+  })
+  .strict()
+export type ProviderCatalogFilterInputFormInput = z.input<typeof ProviderCatalogFilterInput>
+export type ProviderCatalogFilterInputFormOutput = z.output<typeof ProviderCatalogFilterInput>
+export const ProviderCatalogModelInputConstraints = {} as const
+export const ProviderCatalogModelInputInput = {}
+export const ProviderCatalogModelInput = z.object({ id: inputString({}), protocol: TextModelProtocol }).strict()
+export type ProviderCatalogModelInputFormInput = z.input<typeof ProviderCatalogModelInput>
+export type ProviderCatalogModelInputFormOutput = z.output<typeof ProviderCatalogModelInput>
+export const ProviderCatalogOrderInputConstraints = {} as const
+export const ProviderCatalogOrderInputInput = {}
+export const ProviderCatalogOrderInput = z
+  .object({ name: OrderByDirection.nullable().optional(), id: OrderByDirection.nullable().optional() })
+  .strict()
+export type ProviderCatalogOrderInputFormInput = z.input<typeof ProviderCatalogOrderInput>
+export type ProviderCatalogOrderInputFormOutput = z.output<typeof ProviderCatalogOrderInput>
 export const ProviderCatalogRefConstraints = {} as const
 export const ProviderCatalogRefInput = {}
 /** Opaque registry identity, independent of an edited upstream model name. */
@@ -1308,12 +1333,7 @@ export const ProviderCatalogRef = z
   .describe('Opaque registry identity, independent of an edited upstream model name.')
 export type ProviderCatalogRefFormInput = z.input<typeof ProviderCatalogRef>
 export type ProviderCatalogRefFormOutput = z.output<typeof ProviderCatalogRef>
-export const ProviderTemplateModelInputConstraints = {} as const
-export const ProviderTemplateModelInputInput = {}
-export const ProviderTemplateModelInput = z.object({ id: inputString({}), protocol: TextModelProtocol }).strict()
-export type ProviderTemplateModelInputFormInput = z.input<typeof ProviderTemplateModelInput>
-export type ProviderTemplateModelInputFormOutput = z.output<typeof ProviderTemplateModelInput>
-export const ProviderCreateFromTemplateInputConstraints = {
+export const ProviderCreateFromCatalogInputConstraints = {
   name: {
     minLength: 1,
     maxLength: 120,
@@ -1350,12 +1370,12 @@ export const ProviderCreateFromTemplateInputConstraints = {
     messages: { minItems: 'Enable between 1 and 1,000 models.', maxItems: 'Enable between 1 and 1,000 models.' },
   },
 } as const
-export const ProviderCreateFromTemplateInputInput = {
-  name: stringInput(ProviderCreateFromTemplateInputConstraints['name']),
-  baseUrl: stringInput(ProviderCreateFromTemplateInputConstraints['baseUrl']),
-  apiKey: stringInput(ProviderCreateFromTemplateInputConstraints['apiKey']),
+export const ProviderCreateFromCatalogInputInput = {
+  name: stringInput(ProviderCreateFromCatalogInputConstraints['name']),
+  baseUrl: stringInput(ProviderCreateFromCatalogInputConstraints['baseUrl']),
+  apiKey: stringInput(ProviderCreateFromCatalogInputConstraints['apiKey']),
 }
-export const ProviderCreateFromTemplateInput = z
+export const ProviderCreateFromCatalogInput = z
   .object({
     name: inputString({
       minLength: 1,
@@ -1368,7 +1388,7 @@ export const ProviderCreateFromTemplateInput = z
       format: 'nonblank',
       trim: true,
     }),
-    providerTemplateId: inputString({}),
+    providerCatalogId: inputString({}),
     baseUrl: inputString({
       maxLength: 512,
       messages: {
@@ -1393,15 +1413,15 @@ export const ProviderCreateFromTemplateInput = z
         message: 'Header names must be unique, ignoring case.',
       }),
     models: z
-      .array(ProviderTemplateModelInput)
+      .array(ProviderCatalogModelInput)
       .min(1, { message: 'Enable between 1 and 1,000 models.' })
       .max(1000, { message: 'Enable between 1 and 1,000 models.' }),
     logoUrl: inputString({}).nullable().optional(),
     logoUploadId: inputString({}).nullable().optional(),
   })
   .strict()
-export type ProviderCreateFromTemplateInputFormInput = z.input<typeof ProviderCreateFromTemplateInput>
-export type ProviderCreateFromTemplateInputFormOutput = z.output<typeof ProviderCreateFromTemplateInput>
+export type ProviderCreateFromCatalogInputFormInput = z.input<typeof ProviderCreateFromCatalogInput>
+export type ProviderCreateFromCatalogInputFormOutput = z.output<typeof ProviderCreateFromCatalogInput>
 export const ProviderModelConfigurationConstraints = {
   name: {
     minLength: 1,
@@ -1936,31 +1956,6 @@ export const ProviderReplaceInput = z
   .describe('Full non-secret replacement. Omitting apiKey preserves the saved credential.')
 export type ProviderReplaceInputFormInput = z.input<typeof ProviderReplaceInput>
 export type ProviderReplaceInputFormOutput = z.output<typeof ProviderReplaceInput>
-export const ProviderTemplateMatchInputConstraints = {} as const
-export const ProviderTemplateMatchInputInput = {}
-export const ProviderTemplateMatchInput = z
-  .object({ id: StringFilter.nullable().optional(), name: StringFilter.nullable().optional() })
-  .strict()
-export type ProviderTemplateMatchInputFormInput = z.input<typeof ProviderTemplateMatchInput>
-export type ProviderTemplateMatchInputFormOutput = z.output<typeof ProviderTemplateMatchInput>
-export const ProviderTemplateFilterInputConstraints = {} as const
-export const ProviderTemplateFilterInputInput = {}
-export const ProviderTemplateFilterInput = z
-  .object({
-    id: StringFilter.nullable().optional(),
-    name: StringFilter.nullable().optional(),
-    or: z.array(ProviderTemplateMatchInput).nullable().optional(),
-  })
-  .strict()
-export type ProviderTemplateFilterInputFormInput = z.input<typeof ProviderTemplateFilterInput>
-export type ProviderTemplateFilterInputFormOutput = z.output<typeof ProviderTemplateFilterInput>
-export const ProviderTemplateOrderInputConstraints = {} as const
-export const ProviderTemplateOrderInputInput = {}
-export const ProviderTemplateOrderInput = z
-  .object({ name: OrderByDirection.nullable().optional(), id: OrderByDirection.nullable().optional() })
-  .strict()
-export type ProviderTemplateOrderInputFormInput = z.input<typeof ProviderTemplateOrderInput>
-export type ProviderTemplateOrderInputFormOutput = z.output<typeof ProviderTemplateOrderInput>
 export const ProvidersCreateInputConstraints = {} as const
 export const ProvidersCreateInputInput = {}
 /** Atomic batch of new provider connections for the verified organization. */

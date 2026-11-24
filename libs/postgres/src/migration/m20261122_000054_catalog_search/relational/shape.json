@@ -1,0 +1,47 @@
+{
+  "features": {
+    "text_input": "text,input",
+    "text_output": "text,output",
+    "thinking": "text,output,configuration,thinking",
+    "vision": "vision",
+    "pdf": "pdf",
+    "audio_input": "audio,input",
+    "audio_output": "audio,output",
+    "video": "video",
+    "image_generation": "image_generation",
+    "tool_calling": "tools,calling",
+    "forced_tool_choice": "tools,forcedChoice",
+    "parallel_tool_calls": "tools,parallelCalls",
+    "structured_output": "structured_output",
+    "json_mode": "structured_output,configuration,jsonMode",
+    "json_schema": "structured_output,configuration,jsonSchema",
+    "search": "search"
+  },
+  "limits": {
+    "context_tokens": "limits,contextTokens",
+    "max_input_tokens": "text,input,configuration,maxTokens",
+    "max_output_tokens": "text,output,configuration,maxTokens",
+    "max_images": "vision,configuration,maxImages",
+    "max_pdf_files": "pdf,configuration,maxFiles",
+    "max_pdf_pages": "pdf,configuration,maxPages",
+    "max_audio_input_bytes": "audio,input,configuration,maxBytes",
+    "max_audio_input_duration_ms": "audio,input,configuration,maxDurationMs",
+    "max_audio_output_bytes": "audio,output,configuration,maxBytes",
+    "max_audio_output_duration_ms": "audio,output,configuration,maxDurationMs",
+    "max_video_duration_ms": "video,configuration,maxDurationMs",
+    "max_video_frames": "video,configuration,maxFrames",
+    "max_generated_images": "image_generation,configuration,maxImages",
+    "max_tools": "tools,calling,configuration,maxTools",
+    "max_search_results": "search,configuration,maxResults",
+    "thinking_budget_min": "text,output,configuration,thinking,configuration,budget,minTokens",
+    "thinking_budget_max": "text,output,configuration,thinking,configuration,budget,maxTokens",
+    "thinking_budget_default": "text,output,configuration,thinking,configuration,budget,defaultTokens"
+  },
+  "formats": {
+    "vision": "vision,configuration,formats",
+    "audio_input": "audio,input,configuration,formats",
+    "audio_output": "audio,output,configuration,formats",
+    "video": "video,configuration,formats",
+    "image_generation": "image_generation,configuration,formats"
+  }
+}

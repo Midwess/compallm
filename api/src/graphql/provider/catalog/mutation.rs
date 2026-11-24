@@ -1,20 +1,20 @@
-use super::{ModelTemplate, input::*};
+use super::{ModelCatalog, input::*};
 use crate::{
     graphql::{base_type::Payload, error::Error},
     http::authorization::AuthorizationContext,
 };
 use compallm_core::{
-    model::{ModelTemplate as Domain, TemplateCustomization},
+    model::{CatalogCustomization, ModelCatalog as Domain},
     provider::*,
 };
 use compallm_postgres::catalog::repository::{CatalogRepository, CatalogScope};
 use juniper::ID;
 use validify::Validify;
 
-impl TryFrom<ModelTemplateCustomizeInput> for TemplateCustomization {
+impl TryFrom<ModelCatalogCustomizeInput> for CatalogCustomization {
     type Error = Error;
-    fn try_from(v: ModelTemplateCustomizeInput) -> Result<Self, Error> {
-        let price=|v:Option<ModelTemplatePriceInput>|->Result<Option<Option<rust_decimal::Decimal>>,Error>{
+    fn try_from(v: ModelCatalogCustomizeInput) -> Result<Self, Error> {
+        let price=|v:Option<ModelCatalogPriceInput>|->Result<Option<Option<rust_decimal::Decimal>>,Error>{
    v.map(|v|if v.enabled {v.value.ok_or_else(||Error::message("Enter a custom price.")).and_then(|v|v.parse().map(Some).map_err(|_|Error::message("Enter a valid custom price.")))}else{Ok(None)}).transpose()
   };
         Ok(Self {
@@ -69,10 +69,10 @@ impl TryFrom<ModelTemplateCustomizeInput> for TemplateCustomization {
 pub async fn customize(
     provider: ID,
     id: ID,
-    mut input: ModelTemplateCustomizeInput,
+    mut input: ModelCatalogCustomizeInput,
     authority: &AuthorizationContext,
     repository: &CatalogRepository,
-) -> Result<Payload<ModelTemplate>, Error> {
+) -> Result<Payload<ModelCatalog>, Error> {
     input.validify()?;
     let changed = serde_json::to_value(&input)
         .map_err(|_| Error::invalid_input())?
@@ -113,21 +113,21 @@ pub async fn customize(
         .map_err(|_| Error::internal())?;
     let row = personal
         .or(global)
-        .ok_or_else(|| Error::message("This model template is unavailable."))?;
+        .ok_or_else(|| Error::message("This catalog model is unavailable."))?;
     let mut model = Domain::try_from(row).map_err(|_| Error::internal())?;
-    TemplateCustomization::try_from(input)?.apply(&mut model, default.as_ref())?;
+    CatalogCustomization::try_from(input)?.apply(&mut model, default.as_ref())?;
     let result = repository
         .save_personal(model, scope, base, &changed)
         .await
         .map_err(|_| Error::internal())?;
-    Ok(ModelTemplate(result).into())
+    Ok(ModelCatalog(result).into())
 }
 pub async fn create(
     provider: ID,
-    mut input: ModelTemplateCreateInput,
+    mut input: ModelCatalogCreateInput,
     authority: &AuthorizationContext,
     repository: &CatalogRepository,
-) -> Result<Payload<ModelTemplate>, Error> {
+) -> Result<Payload<ModelCatalog>, Error> {
     input.validify()?;
     let input = input.configuration;
     let changed = serde_json::to_value(&input)
@@ -157,7 +157,7 @@ pub async fn create(
         .provider(&provider)
         .await
         .map_err(|_| Error::internal())?
-        .ok_or_else(|| Error::message("This provider template is unavailable."))?;
+        .ok_or_else(|| Error::message("This catalog provider is unavailable."))?;
     let protocol = input
         .protocol
         .ok_or_else(|| Error::message("Choose a text operation."))?;
@@ -173,7 +173,7 @@ pub async fn create(
         id: format!("custom:{}", uuid::Uuid::new_v4()),
         custom_fields: Default::default(),
         research_id: None,
-        provider_template_id: provider.to_string(),
+        provider_catalog_id: provider.to_string(),
         name: String::new(),
         display_name: None,
         description: None,
@@ -197,7 +197,7 @@ pub async fn create(
         billing: None,
         route_selection: None,
     };
-    TemplateCustomization::try_from(input)?.apply(&mut model, None)?;
+    CatalogCustomization::try_from(input)?.apply(&mut model, None)?;
     if model.name.is_empty()
         || model
             .connections
@@ -220,7 +220,7 @@ pub async fn create(
             "Choose an API-key provider for this text model.",
         ));
     }
-    Ok(ModelTemplate(
+    Ok(ModelCatalog(
         repository
             .save_personal(model, scope, None, &changed)
             .await
@@ -233,7 +233,7 @@ pub async fn reset(
     id: ID,
     authority: &AuthorizationContext,
     repository: &CatalogRepository,
-) -> Result<Payload<ModelTemplate>, Error> {
+) -> Result<Payload<ModelCatalog>, Error> {
     let permission = authority.member_permission().await?;
     let scope = CatalogScope {
         organization_id: permission.organization_id(),
@@ -248,7 +248,7 @@ pub async fn reset(
         .delete_personal(&provider, &id, scope, false)
         .await
         .map_err(|_| Error::internal())?;
-    Ok(ModelTemplate(Domain::try_from(global).map_err(|_| Error::internal())?).into())
+    Ok(ModelCatalog(Domain::try_from(global).map_err(|_| Error::internal())?).into())
 }
 pub async fn delete(
     provider: ID,

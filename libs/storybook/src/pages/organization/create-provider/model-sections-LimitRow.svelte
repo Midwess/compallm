@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ModelTemplateLimitsInputConstraints } from '@compallm/contract/validation'
+  import { ModelCatalogLimitsInputConstraints } from '@compallm/contract/validation'
 
   import { TextField } from '../../../components/fields'
   import { Checkbox } from '../../../components/selection'
@@ -28,8 +28,8 @@
   const id = $props.id()
   const field = fieldState<string>(() => `modelDraft.${valueKey}`)!
   const enabled = fieldState<boolean>(() => `modelDraft.${enabledKey}`)!
-  let minimum = $derived(ModelTemplateLimitsInputConstraints.context.minimum)
-  let maximum = $derived(ModelTemplateLimitsInputConstraints.context.maximum)
+  let minimum = $derived(ModelCatalogLimitsInputConstraints.context.minimum)
+  let maximum = $derived(ModelCatalogLimitsInputConstraints.context.maximum)
   let help = $derived(
     {
       context: `

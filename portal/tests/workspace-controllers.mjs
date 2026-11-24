@@ -482,8 +482,8 @@ test('provider creation publishes its confirmed resource and ignores completion 
     models: connection([]),
   }
   transport(t, (operation) => {
-    if (operation.operationName === 'ProviderCatalogEffectiveProviderTemplate')
-      return reply({ effectiveProviderTemplate: { node: provider } })
+    if (operation.operationName === 'ProviderCatalogEffectiveProviderCatalog')
+      return reply({ effectiveProviderCatalog: { node: provider } })
     if (operation.operationName === 'ProviderProviderCreate') {
       writes.push(operation)
       const response = reply({ providerCreate: { node: { id: '21', name: 'Research provider', logoUrl: null } } })
@@ -509,7 +509,7 @@ test('provider creation publishes its confirmed resource and ignores completion 
   const values = { name: 'Research provider', apiKey: 'synthetic', baseUrl: provider.baseUrl }
   assert.deepEqual(await controller.onCreateProvider(values), { apiKey: '' })
   assert.equal(created.length, 1)
-  assert.equal(writes[0].variables.providerCreateInput.providerTemplateId, 'openai')
+  assert.equal(writes[0].variables.providerCreateInput.providerCatalogId, 'openai')
   deferred = true
   const pending = controller.onCreateProvider(values)
   await until(() => !!release)

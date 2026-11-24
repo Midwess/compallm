@@ -19,6 +19,7 @@ path = "src/main.rs"
 required-features = ["cli"]
 
 [dependencies]
+fancy-regex = "0.16"
 sha2 = { workspace = true, features = ["std"] }
 compallm-query.workspace = true
 thiserror = { workspace = true, features = ["std"] }

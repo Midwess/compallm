@@ -130,7 +130,7 @@ async fn private_templates_layer_reset_and_preserve_independent_commits() -> any
     assert_eq!(value.name, "private-name");
     assert_eq!(value.headers["x-test"], "value");
     let mut limits = value.clone();
-    compallm_core::model::TemplateCustomization {
+    compallm_core::model::CatalogCustomization {
         limits: Some((Some(256000), Some(200000), Some(64000))),
         ..Default::default()
     }
@@ -155,7 +155,43 @@ async fn private_templates_layer_reset_and_preserve_independent_commits() -> any
         value.text.input.configuration().unwrap().max_tokens,
         Some(200000)
     );
-    let configured = compallm_core::provider::ProviderModel::try_from((&value, Protocol::Openai))?;
+    let mut priced = value.clone();
+    compallm_core::model::CatalogCustomization {
+        input_price: Some(Some("1.25".parse()?)),
+        cached_price: Some(Some("0.25".parse()?)),
+        ..Default::default()
+    }
+    .apply(&mut priced, Some(&original))?;
+    let priced = personal
+        .scope(async {
+            Ok::<_, anyhow::Error>(
+                catalog
+                    .save_personal(
+                        priced,
+                        scope,
+                        Some(base),
+                        &["input_price".into(), "cached_price".into()],
+                    )
+                    .await?,
+            )
+        })
+        .await?;
+    let encoded = serde_json::to_value(&priced)?;
+    assert_eq!(
+        encoded
+            .pointer("/text/input/pricing/configuration/fixed/token/rate/amount")
+            .unwrap(),
+        "1.25"
+    );
+    assert_eq!(
+        encoded
+            .pointer(
+                "/text/input/pricing/configuration/fixed/token/cache/configuration/rate/amount"
+            )
+            .unwrap(),
+        "0.25"
+    );
+    let configured = compallm_core::provider::ProviderModel::try_from((&priced, Protocol::Openai))?;
     personal
         .scope(async {
             Ok::<_, anyhow::Error>(
@@ -254,24 +290,24 @@ async fn provider_graphql_creates_only_selected_models_and_keeps_personal_defaul
     let router = graphql_support::browser_router(di);
     let execute = async |query: &str| graphql_support::execute(&router, &token, query).await;
     let global = execute(
-        r#"{modelTemplate(providerTemplateId:"openai",id:"gpt-4o"){node{name origin inputPrice}}}"#,
+        r#"{modelCatalog(providerCatalogId:"openai",id:"gpt-4o"){node{name origin inputPrice}}}"#,
     )
     .await?;
     assert!(global["errors"].is_null(), "{global}");
-    let changed=execute(r#"mutation{modelTemplateCustomize(providerTemplateId:"openai",id:"gpt-4o",input:{name:"private-upstream"}){node{name origin}}}"#).await?;
+    let changed=execute(r#"mutation{modelCatalogCustomize(providerCatalogId:"openai",id:"gpt-4o",input:{name:"private-upstream"}){node{name origin}}}"#).await?;
     assert_eq!(
-        changed["data"]["modelTemplateCustomize"]["node"]["origin"], "OVERRIDE",
+        changed["data"]["modelCatalogCustomize"]["node"]["origin"], "OVERRIDE",
         "{changed}"
     );
     let public =
-        execute(r#"{modelTemplate(providerTemplateId:"openai",id:"gpt-4o"){node{name}}}"#).await?;
+        execute(r#"{modelCatalog(providerCatalogId:"openai",id:"gpt-4o"){node{name}}}"#).await?;
     assert_eq!(
-        public["data"]["modelTemplate"]["node"]["name"],
-        global["data"]["modelTemplate"]["node"]["name"]
+        public["data"]["modelCatalog"]["node"]["name"],
+        global["data"]["modelCatalog"]["node"]["name"]
     );
-    let search=execute(r#"{effectiveProviderTemplates(search:"private-upstream",first:20){edges{node{id}} pageInfo{hasNextPage}}}"#).await?;
+    let search=execute(r#"{effectiveProviderCatalogs(search:"private-upstream",first:20){edges{node{id}} pageInfo{hasNextPage}}}"#).await?;
     assert_eq!(
-        search["data"]["effectiveProviderTemplates"]["edges"][0]["node"]["id"], "openai",
+        search["data"]["effectiveProviderCatalogs"]["edges"][0]["node"]["id"], "openai",
         "{search}"
     );
     for term in [
@@ -284,12 +320,12 @@ async fn provider_graphql_creates_only_selected_models_and_keeps_personal_defaul
         "_",
     ] {
         let searched = execute(&format!(
-            "{{effectiveProviderTemplates(search:{},first:100){{edges{{node{{id}}}}}}}}",
+            "{{effectiveProviderCatalogs(search:{},first:100){{edges{{node{{id}}}}}}}}",
             serde_json::to_string(term)?
         ))
         .await?;
         assert!(searched["errors"].is_null(), "{term}: {searched}");
-        let ids = searched["data"]["effectiveProviderTemplates"]["edges"]
+        let ids = searched["data"]["effectiveProviderCatalogs"]["edges"]
             .as_array()
             .unwrap()
             .iter()
@@ -305,30 +341,30 @@ async fn provider_graphql_creates_only_selected_models_and_keeps_personal_defaul
             );
         }
     }
-    let added=execute(r#"mutation{modelTemplateCreate(providerTemplateId:"openai",input:{configuration:{name:"custom-upstream-text",protocol:OPENAI_CHAT_COMPLETIONS,path:"/chat/completions",limits:{context:128000},inputPrice:{enabled:true,value:"0.1"},outputPrice:{enabled:true,value:"0.2"},capabilities:[TEXT]}}){node{id origin inputPrice}}}"#).await?;
+    let added=execute(r#"mutation{modelCatalogCreate(providerCatalogId:"openai",input:{configuration:{name:"custom-upstream-text",protocol:OPENAI_CHAT_COMPLETIONS,path:"/chat/completions",limits:{context:128000},inputPrice:{enabled:true,value:"0.1"},outputPrice:{enabled:true,value:"0.2"},capabilities:[TEXT]}}){node{id origin inputPrice}}}"#).await?;
     assert_eq!(
-        added["data"]["modelTemplateCreate"]["node"]["origin"], "CUSTOM",
+        added["data"]["modelCatalogCreate"]["node"]["origin"], "CUSTOM",
         "{added}"
     );
-    let custom_id = added["data"]["modelTemplateCreate"]["node"]["id"]
+    let custom_id = added["data"]["modelCatalogCreate"]["node"]["id"]
         .as_str()
         .unwrap();
     let deleted = execute(&format!(
-        "mutation{{modelTemplateDelete(providerTemplateId:\"openai\",id:\"{custom_id}\"){{node}}}}"
+        "mutation{{modelCatalogDelete(providerCatalogId:\"openai\",id:\"{custom_id}\"){{node}}}}"
     ))
     .await?;
     assert_eq!(
-        deleted["data"]["modelTemplateDelete"]["node"], true,
+        deleted["data"]["modelCatalogDelete"]["node"], true,
         "{deleted}"
     );
-    let create=execute(r#"mutation{providerCreate(input:{name:"Provider GraphQL integration",providerTemplateId:"openai",baseUrl:"https://api.openai.com/v1",apiKey:"test-only-provider-key",headers:[],models:[{id:"gpt-4o",protocol:OPENAI_CHAT_COMPLETIONS}]}){node{id name models{id name enabled}}}}"#.replace("Provider GraphQL integration",&test_name).as_str()).await?;
+    let create=execute(r#"mutation{providerCreate(input:{name:"Provider GraphQL integration",providerCatalogId:"openai",baseUrl:"https://api.openai.com/v1",apiKey:"test-only-provider-key",headers:[],models:[{id:"gpt-4o",protocol:OPENAI_CHAT_COMPLETIONS}]}){node{id name models{id name enabled}}}}"#.replace("Provider GraphQL integration",&test_name).as_str()).await?;
     assert!(create["errors"].is_null(), "{create}");
     let provider = &create["data"]["providerCreate"]["node"];
     assert_eq!(provider["models"].as_array().unwrap().len(), 1);
     assert_eq!(provider["models"][0]["name"], "private-upstream");
     assert!(
         execute(
-            r#"mutation{modelTemplateReset(providerTemplateId:"openai",id:"gpt-4o"){node{origin}}}"#
+            r#"mutation{modelCatalogReset(providerCatalogId:"openai",id:"gpt-4o"){node{origin}}}"#
         )
         .await?["errors"]
             .is_null()
@@ -355,25 +391,18 @@ async fn provider_graphql_creates_only_selected_models_and_keeps_personal_defaul
 
 #[tokio::test]
 #[ignore = "requires PERSONAL_CATALOG_TEST_URL with all migrations applied to an isolated database"]
-async fn catalog_search_migration_preserves_catalog_and_readiness_through_rollback()
+async fn relational_catalog_migration_preserves_catalog_and_readiness_through_rollback()
 -> anyhow::Result<()> {
     use sea_orm::{QueryOrder, TransactionTrait};
     use sea_orm_migration::{MigratorTrait, SchemaManager};
     let db = Database::connect(std::env::var("PERSONAL_CATALOG_TEST_URL")?).await?;
     let tx = db.begin().await?;
-    type Models = <compallm_postgres::ProviderModelTemplateSchema as ModelTrait>::Entity;
+    type Models = <compallm_postgres::CatalogModelRecordSchema as ModelTrait>::Entity;
     type MC = <Models as EntityTrait>::Column;
-    type Ready = <compallm_postgres::ProviderCatalogReadinessSchema as ModelTrait>::Entity;
-    type RC = <Ready as EntityTrait>::Column;
     let before = Models::find().order_by_asc(MC::RowId).all(&tx).await?;
-    let ready = Ready::find()
-        .order_by_asc(RC::ProviderTemplateId)
-        .order_by_asc(RC::Id)
-        .all(&tx)
-        .await?;
     let migration = compallm_postgres::Migrator::migrations()
         .into_iter()
-        .find(|m| m.name().ends_with("catalog_search"))
+        .find(|m| m.name().ends_with("catalog_relational"))
         .unwrap();
     migration.down(&SchemaManager::new(&tx)).await?;
     migration.up(&SchemaManager::new(&tx)).await?;
@@ -381,14 +410,77 @@ async fn catalog_search_migration_preserves_catalog_and_readiness_through_rollba
         Models::find().order_by_asc(MC::RowId).all(&tx).await?,
         before
     );
-    assert_eq!(
-        Ready::find()
-            .order_by_asc(RC::ProviderTemplateId)
-            .order_by_asc(RC::Id)
-            .all(&tx)
-            .await?,
-        ready
-    );
     tx.rollback().await?;
     Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires PERSONAL_CATALOG_TEST_URL with all migrations applied to an isolated database"]
+async fn provider_chooser_only_lists_providers_with_configurable_models() -> anyhow::Result<()> {
+    let pool = Arc::new(Database::connect(std::env::var("PERSONAL_CATALOG_TEST_URL")?).await?);
+    let root = DbContext::new(Arc::new(PostgresConnection::new(pool)));
+    root.scope(async {
+        let catalog = CatalogRepository;
+        for search in [
+            None,
+            Some("openai"),
+            Some("together"),
+            Some("opus"),
+            Some("alicode"),
+        ] {
+            let providers = catalog
+                .list(
+                    Box::new(compallm_query::Query::default()),
+                    compallm_query::Pagination {
+                        first: Some(100),
+                        ..Default::default()
+                    },
+                    vec![],
+                    "chooser-test",
+                    search,
+                    None,
+                )
+                .await?;
+            if search.is_none() || search == Some("openai") || search == Some("opus") {
+                assert!(!providers.edges.is_empty());
+            }
+            assert!(providers.edges.len() <= 100);
+            for edge in providers.edges {
+                let models = catalog
+                    .models(
+                        &edge.node.id,
+                        Box::new(compallm_query::Query::default()),
+                        None,
+                    )
+                    .await?;
+                assert!(!models.is_empty(), "empty provider {}", edge.node.id);
+            }
+        }
+        let configured = catalog
+            .models("alicode", Box::new(compallm_query::Query::default()), None)
+            .await?;
+        assert!(!configured.is_empty());
+        for model in configured {
+            assert!(catalog.model("alicode", &model.id, None).await?.is_some());
+        }
+        assert!(
+            catalog
+                .models("bedrock", Box::new(compallm_query::Query::default()), None)
+                .await?
+                .iter()
+                .all(|m| m.service_kind == Some(compallm_core::provider::ServiceKind::Llm))
+        );
+        assert!(
+            catalog
+                .models(
+                    "ollama-local",
+                    Box::new(compallm_query::Query::default()),
+                    None
+                )
+                .await?
+                .is_empty()
+        );
+        Ok::<_, anyhow::Error>(())
+    })
+    .await
 }

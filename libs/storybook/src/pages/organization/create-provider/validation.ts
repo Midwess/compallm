@@ -1,5 +1,5 @@
 import type { ProviderModelConfiguration as ModelConfiguration } from '@compallm/contract/houdini'
-import { ProviderCreateFromTemplateInput, ProviderModelConfiguration, ProviderCreateInput } from '@compallm/contract/validation'
+import { ProviderCreateFromCatalogInput, ProviderModelConfiguration, ProviderCreateInput } from '@compallm/contract/validation'
 import { ProviderFields, ProviderModelFields, ProviderInputRules } from '@compallm/contract/provider'
 import { headersAreValid, acceptsHeaderInput } from '@compallm/contract/provider'
 import { modelPath, modelDraftFingerprint, effectiveContextTokens, effectiveModelPrice } from './model-options'
@@ -119,9 +119,9 @@ export function parseProvider(state: CreateProviderState): {
   issues?: { path: PropertyKey[]; message: string }[]
 } {
   if (state.creationEnabled) {
-    const result = ProviderCreateFromTemplateInput.safeParse({
+    const result = ProviderCreateFromCatalogInput.safeParse({
       name: state.name,
-      providerTemplateId: state.selectedProviderId,
+      providerCatalogId: state.selectedProviderId,
       baseUrl: state.baseUrl,
       apiKey: state.apiKey,
       headers: state.headers.map(({ key, value }) => ({ key, value })),

@@ -93,7 +93,7 @@ export function modelDraft(value: ModelDetail, global?: ModelDetail | null): Mod
   const draft: ModelDraft = {
     id: value.id,
     origin: value.origin,
-    catalogRef: { provider: value.providerTemplateId, model: value.id },
+    catalogRef: { provider: value.providerCatalogId, model: value.id },
     name: value.name,
     protocol,
     path: path ?? '',

@@ -39,6 +39,7 @@ export const CacheBilling = {
 export type CacheBilling$options = ValuesOf<typeof CacheBilling>
 
 export const CapabilityCacheMode = {
+    "ESTIMATED_RATE": "ESTIMATED_RATE",
     "INCLUDED": "INCLUDED",
     "SEPARATE_RATE": "SEPARATE_RATE",
     "STANDARD_INPUT_RATE": "STANDARD_INPUT_RATE",
@@ -152,6 +153,14 @@ export const ModelBillingKind = {
 
 export type ModelBillingKind$options = ValuesOf<typeof ModelBillingKind>
 
+export const ModelCatalogOrigin = {
+    "CUSTOM": "CUSTOM",
+    "GLOBAL": "GLOBAL",
+    "OVERRIDE": "OVERRIDE"
+} as const;
+
+export type ModelCatalogOrigin$options = ValuesOf<typeof ModelCatalogOrigin>
+
 export const ModelServiceKind = {
     "AUDIO": "AUDIO",
     "EMBEDDING": "EMBEDDING",
@@ -164,14 +173,6 @@ export const ModelServiceKind = {
 } as const;
 
 export type ModelServiceKind$options = ValuesOf<typeof ModelServiceKind>
-
-export const ModelTemplateOrigin = {
-    "CUSTOM": "CUSTOM",
-    "GLOBAL": "GLOBAL",
-    "OVERRIDE": "OVERRIDE"
-} as const;
-
-export type ModelTemplateOrigin$options = ValuesOf<typeof ModelTemplateOrigin>
 
 export const OAuthFlow = {
     "AUTHORIZATION_CODE": "AUTHORIZATION_CODE",

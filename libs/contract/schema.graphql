@@ -35,6 +35,7 @@ enum CacheBilling {
 
 enum CapabilityCacheMode {
   SEPARATE_RATE
+  ESTIMATED_RATE
   STANDARD_INPUT_RATE
   INCLUDED
   UNSUPPORTED
@@ -117,6 +118,12 @@ enum ModelBillingKind {
   CREDIT
 }
 
+enum ModelCatalogOrigin {
+  GLOBAL
+  OVERRIDE
+  CUSTOM
+}
+
 enum ModelServiceKind {
   TEXT
   EMBEDDING
@@ -126,12 +133,6 @@ enum ModelServiceKind {
   RERANK
   TTS
   STT
-}
-
-enum ModelTemplateOrigin {
-  GLOBAL
-  OVERRIDE
-  CUSTOM
 }
 
 enum OAuthFlow {
@@ -482,50 +483,50 @@ input MessageCompositionPatchInput {
   sendShortcut: PreferenceKeyCombination
 }
 
-input ModelTemplateCreateInput {
-  configuration: ModelTemplateCustomizeInput!
+input ModelCatalogCreateInput {
+  configuration: ModelCatalogCustomizeInput!
 }
 
-input ModelTemplateCustomizeInput {
+input ModelCatalogCustomizeInput {
   name: String
   protocol: TextModelProtocol
   path: String
-  limits: ModelTemplateLimitsInput
-  inputPrice: ModelTemplatePriceInput
-  outputPrice: ModelTemplatePriceInput
-  cachedPrice: ModelTemplatePriceInput
+  limits: ModelCatalogLimitsInput
+  inputPrice: ModelCatalogPriceInput
+  outputPrice: ModelCatalogPriceInput
+  cachedPrice: ModelCatalogPriceInput
   capabilities: [ProviderModelCapability!]
   effortMapping: ProviderEffortMapping
   headers: [ProviderHeader!]
   bodyDefaults: [ProviderBodyDefault!]
 }
 
-input ModelTemplateEffectiveLimitsInput {
+input ModelCatalogEffectiveLimitsInput {
   context: ContextTokens
   input: ContextTokens
   output: ContextTokens
 }
 
-input ModelTemplateFilterInput {
+input ModelCatalogFilterInput {
   id: StringFilter
   name: StringFilter
   displayName: StringFilter
-  or: [ModelTemplateMatchInput!]
+  or: [ModelCatalogMatchInput!]
 }
 
-input ModelTemplateLimitsInput {
+input ModelCatalogLimitsInput {
   context: ContextTokens
   input: ContextTokens
   output: ContextTokens
 }
 
-input ModelTemplateMatchInput {
+input ModelCatalogMatchInput {
   id: StringFilter
   name: StringFilter
   displayName: StringFilter
 }
 
-input ModelTemplatePriceInput {
+input ModelCatalogPriceInput {
   enabled: Boolean!
   value: String
 }
@@ -595,19 +596,40 @@ input ProviderBodyDefault {
   value: String!
 }
 
+input ProviderCatalogFilterInput {
+  id: StringFilter
+  name: StringFilter
+  or: [ProviderCatalogMatchInput!]
+}
+
+input ProviderCatalogMatchInput {
+  id: StringFilter
+  name: StringFilter
+}
+
+input ProviderCatalogModelInput {
+  id: String!
+  protocol: TextModelProtocol!
+}
+
+input ProviderCatalogOrderInput {
+  name: OrderByDirection
+  id: OrderByDirection
+}
+
 "Opaque registry identity, independent of an edited upstream model name."
 input ProviderCatalogRef {
   provider: String!
   model: String!
 }
 
-input ProviderCreateFromTemplateInput {
+input ProviderCreateFromCatalogInput {
   name: String!
-  providerTemplateId: String!
+  providerCatalogId: String!
   baseUrl: String!
   apiKey: String!
   headers: [ProviderHeader!]!
-  models: [ProviderTemplateModelInput!]!
+  models: [ProviderCatalogModelInput!]!
   logoUrl: String
   logoUploadId: String
 }
@@ -692,27 +714,6 @@ input ProviderReplaceInput {
   apiKey: String
   headers: [ProviderHeaderUpdate!]!
   models: [ProviderModelWrite!]!
-}
-
-input ProviderTemplateFilterInput {
-  id: StringFilter
-  name: StringFilter
-  or: [ProviderTemplateMatchInput!]
-}
-
-input ProviderTemplateMatchInput {
-  id: StringFilter
-  name: StringFilter
-}
-
-input ProviderTemplateModelInput {
-  id: String!
-  protocol: TextModelProtocol!
-}
-
-input ProviderTemplateOrderInput {
-  name: OrderByDirection
-  id: OrderByDirection
 }
 
 "Atomic batch of new provider connections for the verified organization."
@@ -1154,21 +1155,11 @@ type ModelBilling {
   description: String
 }
 
-type ModelConnection {
-  protocol: UpstreamProtocol!
-  configuration: ConnectionConfiguration!
-}
-
-type ModelOperation {
-  operation: TextModelProtocol!
-  path: String!
-}
-
-type ModelTemplate {
+type ModelCatalog {
   customFields: [String!]!
-  origin: ModelTemplateOrigin!
+  origin: ModelCatalogOrigin!
   id: ID!
-  providerTemplateId: ID!
+  providerCatalogId: ID!
   upstreamModelId: String!
   name: String!
   connections: [ModelConnection!]!
@@ -1203,27 +1194,37 @@ type ModelTemplate {
   serviceKind: ModelServiceKind
 }
 
-type ModelTemplateConnection {
-  edges: [ModelTemplateEdge!]!
+type ModelCatalogConnection {
+  edges: [ModelCatalogEdge!]!
   pageInfo: PageInfo!
 }
 
-type ModelTemplateEdge {
+type ModelCatalogEdge {
   cursor: String!
-  node: ModelTemplate!
+  node: ModelCatalog!
 }
 
-type ModelTemplatePayload {
-  node: ModelTemplate!
+type ModelCatalogPayload {
+  node: ModelCatalog!
+}
+
+type ModelConnection {
+  protocol: UpstreamProtocol!
+  configuration: ConnectionConfiguration!
+}
+
+type ModelOperation {
+  operation: TextModelProtocol!
+  path: String!
 }
 
 type Mutation {
   providerLogoUpload(input: ImageUploadInput!): ProviderLogoUploadPayload!
-  providerCreate(input: ProviderCreateFromTemplateInput!): ProviderPayload!
-  modelTemplateCustomize(providerTemplateId: ID!, id: ID!, input: ModelTemplateCustomizeInput!): ModelTemplatePayload!
-  modelTemplateCreate(providerTemplateId: ID!, input: ModelTemplateCreateInput!): ModelTemplatePayload!
-  modelTemplateReset(providerTemplateId: ID!, id: ID!): ModelTemplatePayload!
-  modelTemplateDelete(providerTemplateId: ID!, id: ID!): BooleanPayload!
+  providerCreate(input: ProviderCreateFromCatalogInput!): ProviderPayload!
+  modelCatalogCustomize(providerCatalogId: ID!, id: ID!, input: ModelCatalogCustomizeInput!): ModelCatalogPayload!
+  modelCatalogCreate(providerCatalogId: ID!, input: ModelCatalogCreateInput!): ModelCatalogPayload!
+  modelCatalogReset(providerCatalogId: ID!, id: ID!): ModelCatalogPayload!
+  modelCatalogDelete(providerCatalogId: ID!, id: ID!): BooleanPayload!
   passkeyRegistrationStart: PasskeyCeremonyPayload!
   passkeyRegistrationFinish(input: PasskeyFinishInput!, name: PasskeyRegistrationInput!): PasskeySummaryPayload!
   passkeyUpdate(id: ID!, input: PasskeyRegistrationInput!): PasskeySummaryPayload!
@@ -1439,6 +1440,33 @@ type Provider {
   name: String!
 }
 
+type ProviderCatalog {
+  id: ID!
+  name: String!
+  description: String
+  logoUrl: String
+  connection: ConnectionConfiguration!
+  baseUrl: String
+  headers: [ConfigurationEntry!]!
+  endpoint: EndpointRequirements!
+  authentication: [AuthenticationConfiguration!]!
+  models(filter: ModelCatalogFilterInput): ModelCatalogConnection!
+}
+
+type ProviderCatalogConnection {
+  edges: [ProviderCatalogEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ProviderCatalogEdge {
+  cursor: String!
+  node: ProviderCatalog!
+}
+
+type ProviderCatalogPayload {
+  node: ProviderCatalog!
+}
+
 type ProviderConnection {
   edges: [ProviderEdge!]!
   pageInfo: PageInfo!
@@ -1483,45 +1511,18 @@ type ProviderPayload {
   node: Provider!
 }
 
-type ProviderTemplate {
-  id: ID!
-  name: String!
-  description: String
-  logoUrl: String
-  connection: ConnectionConfiguration!
-  baseUrl: String
-  headers: [ConfigurationEntry!]!
-  endpoint: EndpointRequirements!
-  authentication: [AuthenticationConfiguration!]!
-  models(filter: ModelTemplateFilterInput): ModelTemplateConnection!
-}
-
-type ProviderTemplateConnection {
-  edges: [ProviderTemplateEdge!]!
-  pageInfo: PageInfo!
-}
-
-type ProviderTemplateEdge {
-  cursor: String!
-  node: ProviderTemplate!
-}
-
-type ProviderTemplatePayload {
-  node: ProviderTemplate!
-}
-
 type Query {
   "Public global provider catalog; defaults to 20 providers and caps pages at 100."
-  providerTemplates(search: String, filter: ProviderTemplateFilterInput, orderBy: [ProviderTemplateOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): ProviderTemplateConnection!
+  providerCatalogs(search: String, filter: ProviderCatalogFilterInput, orderBy: [ProviderCatalogOrderInput!], first: Int, last: Int, before: String, after: String, offset: Int): ProviderCatalogConnection!
   "Public provider defaults with a complete, unpaginated collection of database-ready models."
-  providerTemplate(id: ID!): ProviderTemplatePayload
+  providerCatalog(id: ID!): ProviderCatalogPayload
   "Public configuration defaults for one database-ready model, identified within its provider."
-  modelTemplate(providerTemplateId: ID!, id: ID!): ModelTemplatePayload
+  modelCatalog(providerCatalogId: ID!, id: ID!): ModelCatalogPayload
   providers(first: Int, after: String): ProviderConnection!
   provider(id: ID!): ProviderPayload
-  effectiveProviderTemplates(search: String, first: Int, after: String): ProviderTemplateConnection!
-  effectiveProviderTemplate(id: ID!): ProviderTemplatePayload
-  effectiveModelTemplate(providerTemplateId: ID!, id: ID!): ModelTemplatePayload
+  effectiveProviderCatalogs(search: String, first: Int, after: String): ProviderCatalogConnection!
+  effectiveProviderCatalog(id: ID!): ProviderCatalogPayload
+  effectiveModelCatalog(providerCatalogId: ID!, id: ID!): ModelCatalogPayload
   passkeys: PasskeySummaryConnection!
   analyticUserProfile(key: String!): AnalyticUserProfilePayload
   onboardingContext: OnboardingContextPayload

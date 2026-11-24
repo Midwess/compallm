@@ -12,10 +12,10 @@ import type { PasskeyPasskeysAndSession$result, PasskeyPasskeysAndSession$input,
 import type { PermissionMe$result, PermissionMe$input, PermissionMe$artifact } from "../artifacts/PermissionMe";
 import type { PortalAuthority$result, PortalAuthority$input, PortalAuthority$artifact } from "../artifacts/PortalAuthority";
 import type { PreferenceUserUserPreferences$result, PreferenceUserUserPreferences$input, PreferenceUserUserPreferences$artifact } from "../artifacts/PreferenceUserUserPreferences";
-import type { ProviderCatalogEffectiveModelTemplate$result, ProviderCatalogEffectiveModelTemplate$input, ProviderCatalogEffectiveModelTemplate$artifact } from "../artifacts/ProviderCatalogEffectiveModelTemplate";
-import type { ProviderCatalogEffectiveProviderTemplate$result, ProviderCatalogEffectiveProviderTemplate$input, ProviderCatalogEffectiveProviderTemplate$artifact } from "../artifacts/ProviderCatalogEffectiveProviderTemplate";
-import type { ProviderCatalogEffectiveProviderTemplates$result, ProviderCatalogEffectiveProviderTemplates$input, ProviderCatalogEffectiveProviderTemplates$artifact } from "../artifacts/ProviderCatalogEffectiveProviderTemplates";
-import type { ProviderCatalogModelTemplate$result, ProviderCatalogModelTemplate$input, ProviderCatalogModelTemplate$artifact } from "../artifacts/ProviderCatalogModelTemplate";
+import type { ProviderCatalogEffectiveModelCatalog$result, ProviderCatalogEffectiveModelCatalog$input, ProviderCatalogEffectiveModelCatalog$artifact } from "../artifacts/ProviderCatalogEffectiveModelCatalog";
+import type { ProviderCatalogEffectiveProviderCatalog$result, ProviderCatalogEffectiveProviderCatalog$input, ProviderCatalogEffectiveProviderCatalog$artifact } from "../artifacts/ProviderCatalogEffectiveProviderCatalog";
+import type { ProviderCatalogEffectiveProviderCatalogs$result, ProviderCatalogEffectiveProviderCatalogs$input, ProviderCatalogEffectiveProviderCatalogs$artifact } from "../artifacts/ProviderCatalogEffectiveProviderCatalogs";
+import type { ProviderCatalogModelCatalog$result, ProviderCatalogModelCatalog$input, ProviderCatalogModelCatalog$artifact } from "../artifacts/ProviderCatalogModelCatalog";
 import type { ProviderProvider$result, ProviderProvider$input, ProviderProvider$artifact } from "../artifacts/ProviderProvider";
 import type { SettingsGroupGroupAndRolesAndMembers$result, SettingsGroupGroupAndRolesAndMembers$input, SettingsGroupGroupAndRolesAndMembers$artifact } from "../artifacts/SettingsGroupGroupAndRolesAndMembers";
 import type { SettingsGroupMembers$result, SettingsGroupMembers$input, SettingsGroupMembers$artifact } from "../artifacts/SettingsGroupMembers";
@@ -45,8 +45,8 @@ import type { FilterIs$options } from "$houdini/graphql/enums";
 import type { HomeDestination$options } from "$houdini/graphql/enums";
 import type { ImageMediaType$options } from "$houdini/graphql/enums";
 import type { ModelBillingKind$options } from "$houdini/graphql/enums";
+import type { ModelCatalogOrigin$options } from "$houdini/graphql/enums";
 import type { ModelServiceKind$options } from "$houdini/graphql/enums";
-import type { ModelTemplateOrigin$options } from "$houdini/graphql/enums";
 import type { OAuthFlow$options } from "$houdini/graphql/enums";
 import type { OnboardingDestination$options } from "$houdini/graphql/enums";
 import type { OnboardingFlow$options } from "$houdini/graphql/enums";
@@ -96,13 +96,13 @@ import type { MemberFilterInput } from "$houdini/graphql/inputs";
 import type { MemberMatchInput } from "$houdini/graphql/inputs";
 import type { MemberOrderInput } from "$houdini/graphql/inputs";
 import type { MessageCompositionPatchInput } from "$houdini/graphql/inputs";
-import type { ModelTemplateCreateInput } from "$houdini/graphql/inputs";
-import type { ModelTemplateCustomizeInput } from "$houdini/graphql/inputs";
-import type { ModelTemplateEffectiveLimitsInput } from "$houdini/graphql/inputs";
-import type { ModelTemplateFilterInput } from "$houdini/graphql/inputs";
-import type { ModelTemplateLimitsInput } from "$houdini/graphql/inputs";
-import type { ModelTemplateMatchInput } from "$houdini/graphql/inputs";
-import type { ModelTemplatePriceInput } from "$houdini/graphql/inputs";
+import type { ModelCatalogCreateInput } from "$houdini/graphql/inputs";
+import type { ModelCatalogCustomizeInput } from "$houdini/graphql/inputs";
+import type { ModelCatalogEffectiveLimitsInput } from "$houdini/graphql/inputs";
+import type { ModelCatalogFilterInput } from "$houdini/graphql/inputs";
+import type { ModelCatalogLimitsInput } from "$houdini/graphql/inputs";
+import type { ModelCatalogMatchInput } from "$houdini/graphql/inputs";
+import type { ModelCatalogPriceInput } from "$houdini/graphql/inputs";
 import type { NavigationPatchInput } from "$houdini/graphql/inputs";
 import type { OnboardingLinkInput } from "$houdini/graphql/inputs";
 import type { OrganizationOnboardingSettingsInput } from "$houdini/graphql/inputs";
@@ -113,8 +113,12 @@ import type { PasskeyFinishInput } from "$houdini/graphql/inputs";
 import type { PasskeyRegistrationInput } from "$houdini/graphql/inputs";
 import type { ProfileUpdateInput } from "$houdini/graphql/inputs";
 import type { ProviderBodyDefault } from "$houdini/graphql/inputs";
+import type { ProviderCatalogFilterInput } from "$houdini/graphql/inputs";
+import type { ProviderCatalogMatchInput } from "$houdini/graphql/inputs";
+import type { ProviderCatalogModelInput } from "$houdini/graphql/inputs";
+import type { ProviderCatalogOrderInput } from "$houdini/graphql/inputs";
 import type { ProviderCatalogRef } from "$houdini/graphql/inputs";
-import type { ProviderCreateFromTemplateInput } from "$houdini/graphql/inputs";
+import type { ProviderCreateFromCatalogInput } from "$houdini/graphql/inputs";
 import type { ProviderCreateInput } from "$houdini/graphql/inputs";
 import type { ProviderEffortMapping } from "$houdini/graphql/inputs";
 import type { ProviderHeader } from "$houdini/graphql/inputs";
@@ -123,10 +127,6 @@ import type { ProviderModelConfiguration } from "$houdini/graphql/inputs";
 import type { ProviderModelWrite } from "$houdini/graphql/inputs";
 import type { ProviderPatchInput } from "$houdini/graphql/inputs";
 import type { ProviderReplaceInput } from "$houdini/graphql/inputs";
-import type { ProviderTemplateFilterInput } from "$houdini/graphql/inputs";
-import type { ProviderTemplateMatchInput } from "$houdini/graphql/inputs";
-import type { ProviderTemplateModelInput } from "$houdini/graphql/inputs";
-import type { ProviderTemplateOrderInput } from "$houdini/graphql/inputs";
 import type { ProvidersCreateInput } from "$houdini/graphql/inputs";
 import type { ReportingScheduleInput } from "$houdini/graphql/inputs";
 import type { RoleCreateInput } from "$houdini/graphql/inputs";
@@ -156,21 +156,21 @@ export declare type CacheTypeDef = {
 							key: string;
 						};
 					};
-					effectiveModelTemplate: {
-						type: Record<CacheTypeDef, "ModelTemplatePayload"> | null;
+					effectiveModelCatalog: {
+						type: Record<CacheTypeDef, "ModelCatalogPayload"> | null;
 						args: {
 							id: string | number;
-							providerTemplateId: string | number;
+							providerCatalogId: string | number;
 						};
 					};
-					effectiveProviderTemplate: {
-						type: Record<CacheTypeDef, "ProviderTemplatePayload"> | null;
+					effectiveProviderCatalog: {
+						type: Record<CacheTypeDef, "ProviderCatalogPayload"> | null;
 						args: {
 							id: string | number;
 						};
 					};
-					effectiveProviderTemplates: {
-						type: Record<CacheTypeDef, "ProviderTemplateConnection">;
+					effectiveProviderCatalogs: {
+						type: Record<CacheTypeDef, "ProviderCatalogConnection">;
 						args: {
 							after?: string | null | undefined;
 							first?: number | null | undefined;
@@ -215,11 +215,11 @@ export declare type CacheTypeDef = {
 							orderBy?: (MemberOrderInput)[] | null | undefined;
 						};
 					};
-					modelTemplate: {
-						type: Record<CacheTypeDef, "ModelTemplatePayload"> | null;
+					modelCatalog: {
+						type: Record<CacheTypeDef, "ModelCatalogPayload"> | null;
 						args: {
 							id: string | number;
-							providerTemplateId: string | number;
+							providerCatalogId: string | number;
 						};
 					};
 					onboardingContext: {
@@ -254,22 +254,22 @@ export declare type CacheTypeDef = {
 							id: string | number;
 						};
 					};
-					providerTemplate: {
-						type: Record<CacheTypeDef, "ProviderTemplatePayload"> | null;
+					providerCatalog: {
+						type: Record<CacheTypeDef, "ProviderCatalogPayload"> | null;
 						args: {
 							id: string | number;
 						};
 					};
-					providerTemplates: {
-						type: Record<CacheTypeDef, "ProviderTemplateConnection">;
+					providerCatalogs: {
+						type: Record<CacheTypeDef, "ProviderCatalogConnection">;
 						args: {
 							after?: string | null | undefined;
 							before?: string | null | undefined;
-							filter?: ProviderTemplateFilterInput | null | undefined;
+							filter?: ProviderCatalogFilterInput | null | undefined;
 							first?: number | null | undefined;
 							last?: number | null | undefined;
 							offset?: number | null | undefined;
-							orderBy?: (ProviderTemplateOrderInput)[] | null | undefined;
+							orderBy?: (ProviderCatalogOrderInput)[] | null | undefined;
 							search?: string | null | undefined;
 						};
 					};
@@ -1567,43 +1567,7 @@ export declare type CacheTypeDef = {
 				};
 				fragments: [];
 			};
-			ModelConnection: {
-				idFields: never;
-				fields: {
-					__typename: {
-						type: string;
-						args: never;
-					};
-					configuration: {
-						type: Record<CacheTypeDef, "ConnectionConfiguration">;
-						args: never;
-					};
-					protocol: {
-						type: UpstreamProtocol$options;
-						args: never;
-					};
-				};
-				fragments: [];
-			};
-			ModelOperation: {
-				idFields: never;
-				fields: {
-					__typename: {
-						type: string;
-						args: never;
-					};
-					operation: {
-						type: TextModelProtocol$options;
-						args: never;
-					};
-					path: {
-						type: string;
-						args: never;
-					};
-				};
-				fragments: [];
-			};
-			ModelTemplate: {
+			ModelCatalog: {
 				idFields: {
 					id: any;
 				};
@@ -1697,7 +1661,7 @@ export declare type CacheTypeDef = {
 						args: never;
 					};
 					origin: {
-						type: ModelTemplateOrigin$options;
+						type: ModelCatalogOrigin$options;
 						args: never;
 					};
 					outputPrice: {
@@ -1712,7 +1676,7 @@ export declare type CacheTypeDef = {
 						type: PricingMode$options;
 						args: never;
 					};
-					providerTemplateId: {
+					providerCatalogId: {
 						type: string;
 						args: never;
 					};
@@ -1759,7 +1723,7 @@ export declare type CacheTypeDef = {
 				};
 				fragments: [];
 			};
-			ModelTemplateConnection: {
+			ModelCatalogConnection: {
 				idFields: never;
 				fields: {
 					__typename: {
@@ -1767,7 +1731,7 @@ export declare type CacheTypeDef = {
 						args: never;
 					};
 					edges: {
-						type: (Record<CacheTypeDef, "ModelTemplateEdge">)[];
+						type: (Record<CacheTypeDef, "ModelCatalogEdge">)[];
 						args: never;
 					};
 					pageInfo: {
@@ -1777,7 +1741,7 @@ export declare type CacheTypeDef = {
 				};
 				fragments: [];
 			};
-			ModelTemplateEdge: {
+			ModelCatalogEdge: {
 				idFields: never;
 				fields: {
 					__typename: {
@@ -1789,13 +1753,13 @@ export declare type CacheTypeDef = {
 						args: never;
 					};
 					node: {
-						type: Record<CacheTypeDef, "ModelTemplate">;
+						type: Record<CacheTypeDef, "ModelCatalog">;
 						args: never;
 					};
 				};
 				fragments: [];
 			};
-			ModelTemplatePayload: {
+			ModelCatalogPayload: {
 				idFields: never;
 				fields: {
 					__typename: {
@@ -1803,7 +1767,43 @@ export declare type CacheTypeDef = {
 						args: never;
 					};
 					node: {
-						type: Record<CacheTypeDef, "ModelTemplate">;
+						type: Record<CacheTypeDef, "ModelCatalog">;
+						args: never;
+					};
+				};
+				fragments: [];
+			};
+			ModelConnection: {
+				idFields: never;
+				fields: {
+					__typename: {
+						type: string;
+						args: never;
+					};
+					configuration: {
+						type: Record<CacheTypeDef, "ConnectionConfiguration">;
+						args: never;
+					};
+					protocol: {
+						type: UpstreamProtocol$options;
+						args: never;
+					};
+				};
+				fragments: [];
+			};
+			ModelOperation: {
+				idFields: never;
+				fields: {
+					__typename: {
+						type: string;
+						args: never;
+					};
+					operation: {
+						type: TextModelProtocol$options;
+						args: never;
+					};
+					path: {
+						type: string;
 						args: never;
 					};
 				};
@@ -1895,33 +1895,33 @@ export declare type CacheTypeDef = {
 							id: string | number;
 						};
 					};
-					modelTemplateCreate: {
-						type: Record<CacheTypeDef, "ModelTemplatePayload">;
+					modelCatalogCreate: {
+						type: Record<CacheTypeDef, "ModelCatalogPayload">;
 						args: {
-							input: ModelTemplateCreateInput;
-							providerTemplateId: string | number;
+							input: ModelCatalogCreateInput;
+							providerCatalogId: string | number;
 						};
 					};
-					modelTemplateCustomize: {
-						type: Record<CacheTypeDef, "ModelTemplatePayload">;
+					modelCatalogCustomize: {
+						type: Record<CacheTypeDef, "ModelCatalogPayload">;
 						args: {
 							id: string | number;
-							input: ModelTemplateCustomizeInput;
-							providerTemplateId: string | number;
+							input: ModelCatalogCustomizeInput;
+							providerCatalogId: string | number;
 						};
 					};
-					modelTemplateDelete: {
+					modelCatalogDelete: {
 						type: Record<CacheTypeDef, "BooleanPayload">;
 						args: {
 							id: string | number;
-							providerTemplateId: string | number;
+							providerCatalogId: string | number;
 						};
 					};
-					modelTemplateReset: {
-						type: Record<CacheTypeDef, "ModelTemplatePayload">;
+					modelCatalogReset: {
+						type: Record<CacheTypeDef, "ModelCatalogPayload">;
 						args: {
 							id: string | number;
-							providerTemplateId: string | number;
+							providerCatalogId: string | number;
 						};
 					};
 					onboardingAdvance: {
@@ -1991,7 +1991,7 @@ export declare type CacheTypeDef = {
 					providerCreate: {
 						type: Record<CacheTypeDef, "ProviderPayload">;
 						args: {
-							input: ProviderCreateFromTemplateInput;
+							input: ProviderCreateFromCatalogInput;
 						};
 					};
 					providerLogoUpload: {
@@ -2665,6 +2665,110 @@ export declare type CacheTypeDef = {
 				};
 				fragments: [];
 			};
+			ProviderCatalog: {
+				idFields: {
+					id: any;
+				};
+				fields: {
+					__typename: {
+						type: string;
+						args: never;
+					};
+					authentication: {
+						type: (Record<CacheTypeDef, "AuthenticationConfiguration">)[];
+						args: never;
+					};
+					baseUrl: {
+						type: string | null;
+						args: never;
+					};
+					connection: {
+						type: Record<CacheTypeDef, "ConnectionConfiguration">;
+						args: never;
+					};
+					description: {
+						type: string | null;
+						args: never;
+					};
+					endpoint: {
+						type: Record<CacheTypeDef, "EndpointRequirements">;
+						args: never;
+					};
+					headers: {
+						type: (Record<CacheTypeDef, "ConfigurationEntry">)[];
+						args: never;
+					};
+					id: {
+						type: string;
+						args: never;
+					};
+					logoUrl: {
+						type: string | null;
+						args: never;
+					};
+					models: {
+						type: Record<CacheTypeDef, "ModelCatalogConnection">;
+						args: {
+							filter?: ModelCatalogFilterInput | null | undefined;
+						};
+					};
+					name: {
+						type: string;
+						args: never;
+					};
+				};
+				fragments: [];
+			};
+			ProviderCatalogConnection: {
+				idFields: never;
+				fields: {
+					__typename: {
+						type: string;
+						args: never;
+					};
+					edges: {
+						type: (Record<CacheTypeDef, "ProviderCatalogEdge">)[];
+						args: never;
+					};
+					pageInfo: {
+						type: Record<CacheTypeDef, "PageInfo">;
+						args: never;
+					};
+				};
+				fragments: [];
+			};
+			ProviderCatalogEdge: {
+				idFields: never;
+				fields: {
+					__typename: {
+						type: string;
+						args: never;
+					};
+					cursor: {
+						type: string;
+						args: never;
+					};
+					node: {
+						type: Record<CacheTypeDef, "ProviderCatalog">;
+						args: never;
+					};
+				};
+				fragments: [];
+			};
+			ProviderCatalogPayload: {
+				idFields: never;
+				fields: {
+					__typename: {
+						type: string;
+						args: never;
+					};
+					node: {
+						type: Record<CacheTypeDef, "ProviderCatalog">;
+						args: never;
+					};
+				};
+				fragments: [];
+			};
 			ProviderConnection: {
 				idFields: never;
 				fields: {
@@ -2808,110 +2912,6 @@ export declare type CacheTypeDef = {
 					};
 					node: {
 						type: Record<CacheTypeDef, "Provider">;
-						args: never;
-					};
-				};
-				fragments: [];
-			};
-			ProviderTemplate: {
-				idFields: {
-					id: any;
-				};
-				fields: {
-					__typename: {
-						type: string;
-						args: never;
-					};
-					authentication: {
-						type: (Record<CacheTypeDef, "AuthenticationConfiguration">)[];
-						args: never;
-					};
-					baseUrl: {
-						type: string | null;
-						args: never;
-					};
-					connection: {
-						type: Record<CacheTypeDef, "ConnectionConfiguration">;
-						args: never;
-					};
-					description: {
-						type: string | null;
-						args: never;
-					};
-					endpoint: {
-						type: Record<CacheTypeDef, "EndpointRequirements">;
-						args: never;
-					};
-					headers: {
-						type: (Record<CacheTypeDef, "ConfigurationEntry">)[];
-						args: never;
-					};
-					id: {
-						type: string;
-						args: never;
-					};
-					logoUrl: {
-						type: string | null;
-						args: never;
-					};
-					models: {
-						type: Record<CacheTypeDef, "ModelTemplateConnection">;
-						args: {
-							filter?: ModelTemplateFilterInput | null | undefined;
-						};
-					};
-					name: {
-						type: string;
-						args: never;
-					};
-				};
-				fragments: [];
-			};
-			ProviderTemplateConnection: {
-				idFields: never;
-				fields: {
-					__typename: {
-						type: string;
-						args: never;
-					};
-					edges: {
-						type: (Record<CacheTypeDef, "ProviderTemplateEdge">)[];
-						args: never;
-					};
-					pageInfo: {
-						type: Record<CacheTypeDef, "PageInfo">;
-						args: never;
-					};
-				};
-				fragments: [];
-			};
-			ProviderTemplateEdge: {
-				idFields: never;
-				fields: {
-					__typename: {
-						type: string;
-						args: never;
-					};
-					cursor: {
-						type: string;
-						args: never;
-					};
-					node: {
-						type: Record<CacheTypeDef, "ProviderTemplate">;
-						args: never;
-					};
-				};
-				fragments: [];
-			};
-			ProviderTemplatePayload: {
-				idFields: never;
-				fields: {
-					__typename: {
-						type: string;
-						args: never;
-					};
-					node: {
-						type: Record<CacheTypeDef, "ProviderTemplate">;
 						args: never;
 					};
 				};
@@ -3896,7 +3896,7 @@ export declare type CacheTypeDef = {
 		};
 		lists: {
 		};
-		queries: [[AuthInvitationControllerInvitationContext$artifact, AuthInvitationControllerInvitationContext$result, AuthInvitationControllerInvitationContext$input], [AuthSession$artifact, AuthSession$result, AuthSession$input], [AuthSession2$artifact, AuthSession2$result, AuthSession2$input], [AuthUserProfile$artifact, AuthUserProfile$result, AuthUserProfile$input], [OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$artifact, OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$result, OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$input], [OrganizationProviders$artifact, OrganizationProviders$result, OrganizationProviders$input], [PasskeyPasskeys$artifact, PasskeyPasskeys$result, PasskeyPasskeys$input], [PasskeyPasskeys2$artifact, PasskeyPasskeys2$result, PasskeyPasskeys2$input], [PasskeyPasskeysAndSession$artifact, PasskeyPasskeysAndSession$result, PasskeyPasskeysAndSession$input], [PermissionMe$artifact, PermissionMe$result, PermissionMe$input], [PortalAuthority$artifact, PortalAuthority$result, PortalAuthority$input], [PreferenceUserUserPreferences$artifact, PreferenceUserUserPreferences$result, PreferenceUserUserPreferences$input], [ProviderCatalogEffectiveModelTemplate$artifact, ProviderCatalogEffectiveModelTemplate$result, ProviderCatalogEffectiveModelTemplate$input], [ProviderCatalogEffectiveProviderTemplate$artifact, ProviderCatalogEffectiveProviderTemplate$result, ProviderCatalogEffectiveProviderTemplate$input], [ProviderCatalogEffectiveProviderTemplates$artifact, ProviderCatalogEffectiveProviderTemplates$result, ProviderCatalogEffectiveProviderTemplates$input], [ProviderCatalogModelTemplate$artifact, ProviderCatalogModelTemplate$result, ProviderCatalogModelTemplate$input], [ProviderProvider$artifact, ProviderProvider$result, ProviderProvider$input], [SettingsGroupGroupAndRolesAndMembers$artifact, SettingsGroupGroupAndRolesAndMembers$result, SettingsGroupGroupAndRolesAndMembers$input], [SettingsGroupMembers$artifact, SettingsGroupMembers$result, SettingsGroupMembers$input], [SettingsMeAndOrganizationAndRolesAndGroups$artifact, SettingsMeAndOrganizationAndRolesAndGroups$result, SettingsMeAndOrganizationAndRolesAndGroups$input], [SettingsMembersInvitations$artifact, SettingsMembersInvitations$result, SettingsMembersInvitations$input], [SettingsMembersMeAndOrganizationAndMembers$artifact, SettingsMembersMeAndOrganizationAndMembers$result, SettingsMembersMeAndOrganizationAndMembers$input], [SettingsOnboardingOrganizationOnboardingSettings$artifact, SettingsOnboardingOrganizationOnboardingSettings$result, SettingsOnboardingOrganizationOnboardingSettings$input], [SettingsOrganizationOrganizationProfile$artifact, SettingsOrganizationOrganizationProfile$result, SettingsOrganizationOrganizationProfile$input], [SettingsProfileUserProfile$artifact, SettingsProfileUserProfile$result, SettingsProfileUserProfile$input], [SettingsRoleOrganizationPolicyActions$artifact, SettingsRoleOrganizationPolicyActions$result, SettingsRoleOrganizationPolicyActions$input], [SettingsRoleRole$artifact, SettingsRoleRole$result, SettingsRoleRole$input], [SettingsSessions$artifact, SettingsSessions$result, SettingsSessions$input]];
+		queries: [[AuthInvitationControllerInvitationContext$artifact, AuthInvitationControllerInvitationContext$result, AuthInvitationControllerInvitationContext$input], [AuthSession$artifact, AuthSession$result, AuthSession$input], [AuthSession2$artifact, AuthSession2$result, AuthSession2$input], [AuthUserProfile$artifact, AuthUserProfile$result, AuthUserProfile$input], [OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$artifact, OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$result, OnboardingOnboardingContextAndUserProfileAndAnalyticUserProfile$input], [OrganizationProviders$artifact, OrganizationProviders$result, OrganizationProviders$input], [PasskeyPasskeys$artifact, PasskeyPasskeys$result, PasskeyPasskeys$input], [PasskeyPasskeys2$artifact, PasskeyPasskeys2$result, PasskeyPasskeys2$input], [PasskeyPasskeysAndSession$artifact, PasskeyPasskeysAndSession$result, PasskeyPasskeysAndSession$input], [PermissionMe$artifact, PermissionMe$result, PermissionMe$input], [PortalAuthority$artifact, PortalAuthority$result, PortalAuthority$input], [PreferenceUserUserPreferences$artifact, PreferenceUserUserPreferences$result, PreferenceUserUserPreferences$input], [ProviderCatalogEffectiveModelCatalog$artifact, ProviderCatalogEffectiveModelCatalog$result, ProviderCatalogEffectiveModelCatalog$input], [ProviderCatalogEffectiveProviderCatalog$artifact, ProviderCatalogEffectiveProviderCatalog$result, ProviderCatalogEffectiveProviderCatalog$input], [ProviderCatalogEffectiveProviderCatalogs$artifact, ProviderCatalogEffectiveProviderCatalogs$result, ProviderCatalogEffectiveProviderCatalogs$input], [ProviderCatalogModelCatalog$artifact, ProviderCatalogModelCatalog$result, ProviderCatalogModelCatalog$input], [ProviderProvider$artifact, ProviderProvider$result, ProviderProvider$input], [SettingsGroupGroupAndRolesAndMembers$artifact, SettingsGroupGroupAndRolesAndMembers$result, SettingsGroupGroupAndRolesAndMembers$input], [SettingsGroupMembers$artifact, SettingsGroupMembers$result, SettingsGroupMembers$input], [SettingsMeAndOrganizationAndRolesAndGroups$artifact, SettingsMeAndOrganizationAndRolesAndGroups$result, SettingsMeAndOrganizationAndRolesAndGroups$input], [SettingsMembersInvitations$artifact, SettingsMembersInvitations$result, SettingsMembersInvitations$input], [SettingsMembersMeAndOrganizationAndMembers$artifact, SettingsMembersMeAndOrganizationAndMembers$result, SettingsMembersMeAndOrganizationAndMembers$input], [SettingsOnboardingOrganizationOnboardingSettings$artifact, SettingsOnboardingOrganizationOnboardingSettings$result, SettingsOnboardingOrganizationOnboardingSettings$input], [SettingsOrganizationOrganizationProfile$artifact, SettingsOrganizationOrganizationProfile$result, SettingsOrganizationOrganizationProfile$input], [SettingsProfileUserProfile$artifact, SettingsProfileUserProfile$result, SettingsProfileUserProfile$input], [SettingsRoleOrganizationPolicyActions$artifact, SettingsRoleOrganizationPolicyActions$result, SettingsRoleOrganizationPolicyActions$input], [SettingsRoleRole$artifact, SettingsRoleRole$result, SettingsRoleRole$input], [SettingsSessions$artifact, SettingsSessions$result, SettingsSessions$input]];
 		scalars: number | boolean | string | number | string;
 };
 

@@ -1,15 +1,15 @@
 //! Organization-owned logical models.
 
+pub mod catalog;
 pub mod entity;
-pub mod template;
 
+pub use catalog::ModelCatalog;
 pub use entity::Model;
-pub use template::ModelTemplate;
 
-#[path = "template-customization.rs"]
-mod template_customization;
-pub use template_customization::TemplateCustomization;
-pub(crate) fn invalid_template(message: &'static str) -> validify::ValidationErrors {
+#[path = "catalog-customization.rs"]
+mod catalog_customization;
+pub use catalog_customization::CatalogCustomization;
+pub(crate) fn invalid_catalog(message: &'static str) -> validify::ValidationErrors {
     let mut errors = validify::ValidationErrors::new();
     errors.add(
         validify::ValidationError::new_schema("model_configuration").with_message(message.into()),
@@ -17,7 +17,7 @@ pub(crate) fn invalid_template(message: &'static str) -> validify::ValidationErr
     errors
 }
 
-pub(crate) fn invalid_template_field(
+pub(crate) fn invalid_catalog_field(
     field: &'static str,
     message: &'static str,
 ) -> validify::ValidationErrors {

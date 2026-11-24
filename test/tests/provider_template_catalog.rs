@@ -30,7 +30,7 @@ async fn setup() -> anyhow::Result<(DatabaseTransaction, CatalogMigrations)> {
     };
     tx.execute_unprepared(&format!("LOCK TABLE {table} IN ACCESS EXCLUSIVE MODE"))
         .await?;
-    for table in ["provider_models", "models"] {
+    for table in ["provider_models", "models", "providers"] {
         tx.execute(&Query::delete().from_table(Alias::new(table)).to_owned())
             .await?;
     }

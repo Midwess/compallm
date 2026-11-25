@@ -455,6 +455,44 @@ fn rejects_unsupported_openai_request_fields() {
     assert!(failure.is_some(), "expected an explicit decoding failure");
 }
 
+#[test]
+fn keeps_tool_boundaries_for_an_empty_tools_array() {
+    let response = r#"{"model": "gpt-4o", "input": [{"type": "message", "role": "user", "content": "hi"}], "tools": []}"#;
+    let components = decode(
+        response.as_bytes(),
+        OpenAIResponseRequestDecoder::new(JsonDecoder::new()),
+    );
+    assert_eq!(tool_boundaries(&components), vec!["started", "ended"]);
+
+    let completion =
+        r#"{"model": "gpt-4o", "messages": [{"role": "user", "content": "hi"}], "tools": []}"#;
+    let components = decode(
+        completion.as_bytes(),
+        OpenAICompletionRequestDecoder::new(JsonDecoder::new()),
+    );
+    assert_eq!(tool_boundaries(&components), vec!["started", "ended"]);
+
+    let compatible =
+        r#"{"model": "gpt-4o", "messages": [{"role": "user", "content": "hi"}], "tools": []}"#;
+    let components = decode(
+        compatible.as_bytes(),
+        CompatibleOpenAIRequestDecoder::new(JsonDecoder::new()),
+    );
+    assert_eq!(tool_boundaries(&components), vec!["started", "ended"]);
+}
+
+fn tool_boundaries(components: &[TextRequestComponent]) -> Vec<&'static str> {
+    components
+        .iter()
+        .filter_map(|component| match component {
+            TextRequestComponent::ToolsStarted => Some("started"),
+            TextRequestComponent::ToolsEnded => Some("ended"),
+            TextRequestComponent::Tool(_) => Some("tool"),
+            _ => None,
+        })
+        .collect()
+}
+
 fn stored_json(value: &str) -> Value {
     serde_json::from_str(value).expect("stored JSON text")
 }

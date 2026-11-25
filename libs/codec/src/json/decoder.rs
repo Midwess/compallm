@@ -86,6 +86,11 @@ impl JsonDecoder {
         loop {
             match self.reader.next(input, eof)? {
                 DecoderStatus::Component(token) => {
+                    if matches!(token, Event::ArrayEnd) && self.parse.depth == 0 {
+                        // The enclosing array ended before it held a value.
+                        self.parse.discard();
+                        return Ok(DecoderStatus::Finished);
+                    }
                     let complete = self
                         .parse
                         .push(token)

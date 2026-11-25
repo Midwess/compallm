@@ -15,7 +15,7 @@ pub(super) enum JsonState {
 #[derive(Debug, Default)]
 pub(super) struct ParseState {
     bytes: Vec<u8>,
-    depth: usize,
+    pub(super) depth: usize,
     pub(super) active: bool,
 }
 
@@ -36,6 +36,13 @@ impl ParseState {
 
     pub(super) fn buffer(&mut self, bytes: &[u8]) {
         self.bytes.extend_from_slice(bytes);
+    }
+
+    /// Discards a capture that ended without a value.
+    pub(super) fn discard(&mut self) {
+        self.bytes.clear();
+        self.depth = 0;
+        self.active = false;
     }
 
     pub(super) fn deserialize<T: serde::de::DeserializeOwned>(

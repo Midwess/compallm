@@ -52,7 +52,7 @@
     </div>
     <main
       aria-label={contentLabel}
-      class="h-full min-h-0 min-w-0 overflow-x-auto overflow-y-scroll overscroll-y-none rounded-xl
+      class="h-full min-h-0 min-w-0 overflow-x-auto overflow-y-scroll scrollbar-gutter-stable overscroll-y-none rounded-xl
 border-(length:--border-hairline) border-divider bg-surface"
     >
       <ContentValue value={children} />

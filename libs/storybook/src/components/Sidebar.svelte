@@ -70,7 +70,7 @@
 >
   <nav
     aria-label={navigationLabel}
-    class="-mx-0.5 flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-y-none px-0.5"
+    class="-mx-0.5 flex min-h-0 min-w-0 flex-1 flex-col gap-2.5 overflow-y-scroll scrollbar-gutter-stable overscroll-y-none px-0.5"
   >
     {@render children?.()}
   </nav>

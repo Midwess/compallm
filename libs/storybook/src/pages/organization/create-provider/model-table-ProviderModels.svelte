@@ -62,7 +62,7 @@
   let busy = $derived(readStore(__provider.store, (state) => state.submitting) || !!readOnly)
   const supported = (model: (typeof models)[number]) =>
     !!model.protocol || model.modes.some((mode) => ['chat_completions', 'responses', 'messages'].includes(mode))
-  let visible = $derived(
+  let filtered = $derived(
     models.filter(
       (model) =>
         `${model.id} ${model.name} ${model.description ?? ''}`.toLowerCase().includes(query.toLowerCase()) &&
@@ -81,6 +81,16 @@
         capabilities.every((capability) => model.capabilities?.includes(capability)),
     ),
   )
+  const pageSize = 20
+  let page = $state({ key: '', limit: pageSize })
+  let filterKey = $derived(
+    JSON.stringify([providerId, __provider.store.getState().selectedProviderId, query, status, protocol, capabilities]),
+  )
+  let limit = $derived(page.key === filterKey ? page.limit : pageSize)
+  let visible = $derived(filtered.slice(0, limit))
+  function loadMore() {
+    page = { key: filterKey, limit: Math.min(filtered.length, limit + pageSize) }
+  }
   let enabled = $derived(models.filter((model) => model.enabled).length)
 </script>
 
@@ -124,7 +134,11 @@
             <span class="sr-only">Enabled</span>
           </Table.Head>
         </Table.Row>
-      </Table.Header><Table.Body items={visible} getKey={(model) => model.id}>
+      </Table.Header><Table.Body
+        items={visible}
+        getKey={(model) => model.id}
+        paging={{ hasMore: visible.length < filtered.length, loading: false, onLoadMore: loadMore }}
+      >
         {#snippet children(model)}<Table.Row class="h-12 border-b border-divider last:border-b-0">
             <Table.Cell column="name" class="min-w-0 px-1 text-left">
               <div class="w-max max-w-40 sm:max-w-44">

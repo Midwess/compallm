@@ -16,11 +16,18 @@ pub(super) enum JsonToken<'a> {
     Null,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(super) struct TokenDecoder {
     state: JsonState,
     bytes: Vec<u8>,
-    decoded: String,
+    decoded: Vec<u8>,
+    escaped_string: bool,
+}
+
+impl Default for TokenDecoder {
+    fn default() -> Self {
+        Self::with_capacity(16 * 1024)
+    }
 }
 
 impl Decoder for TokenDecoder {
@@ -143,6 +150,7 @@ impl Decoder for TokenDecoder {
             self.bytes.extend_from_slice(part);
             &self.bytes
         };
+        self.escaped_string = string && bytes.contains(&b'\\');
         match Self::token(bytes, string, &mut self.decoded) {
             Ok(token) => Ok(DecoderStatus::Component(token)),
             Err(error) => {
@@ -165,16 +173,37 @@ impl Decoder for TokenDecoder {
 }
 
 impl TokenDecoder {
+    pub(super) fn with_capacity(bytes: usize) -> Self {
+        Self {
+            state: JsonState::Idle,
+            bytes: Vec::with_capacity(bytes),
+            decoded: Vec::with_capacity(bytes),
+            escaped_string: false,
+        }
+    }
+
+    pub(super) fn buffered_string(&self) -> Result<&str, JsonDecodeError> {
+        if self.escaped_string {
+            return std::str::from_utf8(&self.decoded).map_err(|_| JsonDecodeError::InvalidState);
+        }
+        serde_json::from_slice::<&str>(&self.bytes).map_err(|_| JsonDecodeError::InvalidState)
+    }
+
     fn token<'a>(
         bytes: &'a [u8],
         string: bool,
-        decoded: &'a mut String,
+        decoded: &'a mut Vec<u8>,
     ) -> Result<JsonToken<'a>, JsonDecodeError> {
         if string {
             if bytes.contains(&b'\\') {
-                *decoded =
-                    serde_json::from_slice(bytes).map_err(|_| JsonDecodeError::InvalidToken)?;
-                return Ok(JsonToken::String(decoded));
+                decoded.resize(bytes.len(), 0);
+                let length = compallm_serde_rules::string::decode(bytes, decoded)
+                    .map_err(|_| JsonDecodeError::InvalidToken)?
+                    .len();
+                decoded.truncate(length);
+                return std::str::from_utf8(decoded)
+                    .map(JsonToken::String)
+                    .map_err(|_| JsonDecodeError::InvalidToken);
             }
             return serde_json::from_slice::<&str>(bytes)
                 .map(JsonToken::String)

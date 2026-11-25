@@ -61,9 +61,13 @@ impl CompatibleOpenAIRequestEncoder {
         }
     }
 
-    fn encode(
+    pub fn finish(self) -> Result<(), RequestEncodeError> {
+        <Self as Encoder<TextRequestComponent>>::finish(self)
+    }
+
+    fn encode<S: serde::Serialize + AsRef<str>>(
         &mut self,
-        component: Option<&mut TextRequestComponent>,
+        component: Option<&mut TextRequestComponent<S>>,
         output: &mut [u8],
     ) -> Result<EncoderStatus, RequestEncodeError> {
         if self.tools_open
@@ -102,7 +106,7 @@ impl CompatibleOpenAIRequestEncoder {
                     return Err(RequestEncodeError::InvalidState);
                 }
                 TextRequestComponent::Model(value) => {
-                    if self.has_model || value.is_empty() {
+                    if self.has_model || value.as_ref().is_empty() {
                         return Err(RequestEncodeError::InvalidState);
                     }
                     self.has_model = true;
@@ -283,12 +287,14 @@ impl CompatibleOpenAIRequestEncoder {
     }
 }
 
-impl Encoder<TextRequestComponent> for CompatibleOpenAIRequestEncoder {
+impl<S: serde::Serialize + AsRef<str>> Encoder<TextRequestComponent<S>>
+    for CompatibleOpenAIRequestEncoder
+{
     type Error = RequestEncodeError;
 
     fn next(
         &mut self,
-        component: Option<&mut TextRequestComponent>,
+        component: Option<&mut TextRequestComponent<S>>,
         output: &mut [u8],
     ) -> Result<EncoderStatus, Self::Error> {
         let result = self.encode(component, output);
@@ -327,8 +333,8 @@ enum Field {
     StreamOptions,
 }
 
-impl From<&TextRequestComponent> for Field {
-    fn from(component: &TextRequestComponent) -> Self {
+impl<S> From<&TextRequestComponent<S>> for Field {
+    fn from(component: &TextRequestComponent<S>) -> Self {
         use TextRequestComponent as C;
         match component {
             C::Model(_) => Self::Model,

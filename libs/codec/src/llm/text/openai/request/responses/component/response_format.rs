@@ -1,24 +1,26 @@
 use crate::llm::text::component::*;
-use compallm_serde_rules::deserialize;
+use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(in crate::llm::text::openai::request::responses) struct Text {
-    pub format: FormatInput,
+pub(in crate::llm::text::openai::request::responses) struct Text<'a> {
+    #[serde(borrow)]
+    pub format: FormatInput<'a>,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(in crate::llm::text::openai::request::responses) struct FormatInput {
+pub(in crate::llm::text::openai::request::responses) struct FormatInput<'a> {
     #[serde(rename = "type")]
     kind: FormatKind,
-    #[serde(default, deserialize_with = "deserialize::optional_schema")]
-    schema: Option<String>,
-    #[serde(default)]
-    name: Option<String>,
-    #[serde(default)]
-    description: Option<String>,
+    #[serde(default, borrow, deserialize_with = "borrowed::optional_schema")]
+    schema: Option<Cow<'a, str>>,
+    #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
+    name: Option<Cow<'a, str>>,
+    #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
+    description: Option<Cow<'a, str>>,
     #[serde(default)]
     strict: Option<bool>,
 }
@@ -31,10 +33,10 @@ pub(in crate::llm::text::openai::request::responses) enum FormatKind {
     JsonSchema,
 }
 
-impl TryFrom<FormatInput> for ResponseFormat {
+impl<'a> TryFrom<FormatInput<'a>> for ResponseFormat<Cow<'a, str>> {
     type Error = &'static str;
 
-    fn try_from(value: FormatInput) -> Result<Self, Self::Error> {
+    fn try_from(value: FormatInput<'a>) -> Result<Self, Self::Error> {
         let FormatInput {
             kind,
             schema,
@@ -89,16 +91,16 @@ pub(in crate::llm::text::openai::request::responses) enum FormatOutput<'a> {
     },
 }
 
-impl<'a> From<&'a ResponseFormat> for FormatOutput<'a> {
-    fn from(format: &'a ResponseFormat) -> Self {
+impl<'a, S: AsRef<str>> From<&'a ResponseFormat<S>> for FormatOutput<'a> {
+    fn from(format: &'a ResponseFormat<S>) -> Self {
         match format {
             ResponseFormat::Text => Self::Text,
             ResponseFormat::JsonObject => Self::JsonObject,
             ResponseFormat::JsonSchema(schema) => Self::JsonSchema {
-                name: &schema.name,
-                description: schema.description.as_deref(),
+                name: schema.name.as_ref(),
+                description: schema.description.as_ref().map(AsRef::as_ref),
                 strict: schema.strict,
-                schema: &schema.schema,
+                schema: schema.schema.as_ref(),
             },
         }
     }

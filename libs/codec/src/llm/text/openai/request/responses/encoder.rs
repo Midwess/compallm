@@ -75,9 +75,13 @@ impl OpenAIResponseRequestEncoder {
         }
     }
 
-    fn encode(
+    pub fn finish(self) -> Result<(), RequestEncodeError> {
+        <Self as Encoder<TextRequestComponent>>::finish(self)
+    }
+
+    fn encode<S: serde::Serialize + AsRef<str>>(
         &mut self,
-        component: Option<&mut TextRequestComponent>,
+        component: Option<&mut TextRequestComponent<S>>,
         output: &mut [u8],
     ) -> Result<EncoderStatus, RequestEncodeError> {
         use TextRequestComponent as C;
@@ -105,7 +109,7 @@ impl OpenAIResponseRequestEncoder {
         {
             let field = match component {
                 C::Model(model) => {
-                    if self.has_model || model.is_empty() {
+                    if self.has_model || model.as_ref().is_empty() {
                         return Err(RequestEncodeError::InvalidState);
                     }
                     self.has_model = true;
@@ -292,12 +296,14 @@ impl OpenAIResponseRequestEncoder {
     }
 }
 
-impl Encoder<TextRequestComponent> for OpenAIResponseRequestEncoder {
+impl<S: serde::Serialize + AsRef<str>> Encoder<TextRequestComponent<S>>
+    for OpenAIResponseRequestEncoder
+{
     type Error = RequestEncodeError;
 
     fn next(
         &mut self,
-        component: Option<&mut TextRequestComponent>,
+        component: Option<&mut TextRequestComponent<S>>,
         output: &mut [u8],
     ) -> Result<EncoderStatus, Self::Error> {
         let result = self.encode(component, output);

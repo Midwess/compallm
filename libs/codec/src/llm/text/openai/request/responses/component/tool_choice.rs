@@ -1,46 +1,22 @@
 use super::tools::FunctionType;
 use crate::llm::text::component::*;
-use compallm_serde_rules::deserialize;
+use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-pub(in crate::llm::text::openai::request::responses) enum ToolChoiceInput {
-    Name(ChoiceName),
-    Function(FunctionChoice),
-}
-
-#[derive(Clone, Copy, Debug, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub(in crate::llm::text::openai::request::responses) enum ChoiceName {
-    Auto,
-    None,
-    Required,
-}
-
+use std::borrow::Cow;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(in crate::llm::text::openai::request::responses) struct FunctionChoice {
+pub(in crate::llm::text::openai::request::responses) struct FunctionChoice<'a> {
     #[serde(rename = "type")]
     kind: FunctionType,
-    #[serde(deserialize_with = "deserialize::nonempty")]
-    name: String,
+    #[serde(borrow, deserialize_with = "borrowed::nonempty")]
+    name: Cow<'a, str>,
 }
-
-impl From<ToolChoiceInput> for ToolChoice {
-    fn from(value: ToolChoiceInput) -> Self {
-        match value {
-            ToolChoiceInput::Name(ChoiceName::Auto) => Self::Auto,
-            ToolChoiceInput::Name(ChoiceName::None) => Self::None,
-            ToolChoiceInput::Name(ChoiceName::Required) => Self::Required,
-            ToolChoiceInput::Function(FunctionChoice { kind, name }) => {
-                let FunctionType::Function = kind;
-                Self::Function(name)
-            }
-        }
+impl<'a> From<FunctionChoice<'a>> for ToolChoice<Cow<'a, str>> {
+    fn from(v: FunctionChoice<'a>) -> Self {
+        let FunctionType::Function = v.kind;
+        Self::Function(v.name)
     }
 }
-
 /// Encoded Responses tool choice.
 #[derive(Serialize)]
 #[serde(untagged)]
@@ -53,15 +29,15 @@ pub(in crate::llm::text::openai::request::responses) enum ToolChoiceOutput<'a> {
     },
 }
 
-impl<'a> From<&'a ToolChoice> for ToolChoiceOutput<'a> {
-    fn from(choice: &'a ToolChoice) -> Self {
+impl<'a, T: AsRef<str>> From<&'a ToolChoice<T>> for ToolChoiceOutput<'a> {
+    fn from(choice: &'a ToolChoice<T>) -> Self {
         match choice {
             ToolChoice::Auto => Self::Name("auto"),
             ToolChoice::None => Self::Name("none"),
             ToolChoice::Required => Self::Name("required"),
             ToolChoice::Function(name) => Self::Function {
                 kind: "function",
-                name,
+                name: name.as_ref(),
             },
         }
     }

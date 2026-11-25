@@ -1,7 +1,10 @@
-use super::component::{InputItem, ReasoningInput, Text, Tool, ToolChoiceInput};
+use super::component::{FunctionChoice, InputItem, ReasoningInput, Text, Tool};
 use crate::decoder::{Decoder, DecoderError, DecoderStatus};
+use crate::json::StringReference;
 use crate::json::{JsonContainer, JsonDecoder, JsonToken};
+use crate::llm::text::component::request::ScalarText;
 use crate::llm::text::component::*;
+use std::borrow::Cow;
 
 #[derive(Debug, Clone, Copy)]
 enum Field {
@@ -36,19 +39,11 @@ impl OpenAIResponseRequestDecoder {
         }
     }
 
-    fn scalar(&mut self, token: JsonToken<'_>) -> Result<TextRequestComponent, DecoderError> {
+    fn scalar<'s>(
+        &mut self,
+        token: JsonToken<'_>,
+    ) -> Result<TextRequestComponent<Cow<'s, str>>, DecoderError> {
         Ok(match token {
-            JsonToken::ValueString(Some("model"), value) if !value.is_empty() => {
-                self.has_model = true;
-                TextRequestComponent::Model(value.into())
-            }
-            JsonToken::ValueString(Some("input"), value) => {
-                self.has_input = true;
-                TextRequestComponent::Message(Message::from(InputItem::Message {
-                    role: super::component::InputRole::User,
-                    content: value.into(),
-                }))
-            }
             JsonToken::ValueBoolean(Some("stream"), value) => TextRequestComponent::Stream(value),
             JsonToken::ValueBoolean(Some("parallel_tool_calls"), value) => {
                 TextRequestComponent::ParallelToolCalls(value)
@@ -82,45 +77,97 @@ impl OpenAIResponseRequestDecoder {
 }
 
 impl Decoder for OpenAIResponseRequestDecoder {
-    type Component<'a> = TextRequestComponent;
+    type Component<'a> = TextRequestComponent<Cow<'a, str>>;
     type Error = DecoderError;
 
     fn next<'a, 'input: 'a>(
         &'a mut self,
         input: &mut &'input [u8],
         eof: bool,
-    ) -> Result<DecoderStatus<TextRequestComponent>, DecoderError> {
+    ) -> Result<DecoderStatus<TextRequestComponent<Cow<'a, str>>>, DecoderError> {
         if self.failed {
             return Err(DecoderError::InvalidState);
         }
         let mut json = self.json.take().ok_or(DecoderError::InvalidState)?;
+        let mut captured_tool = None;
+        let mut captured_scalar = None;
+        let mut captured_choice = None;
+        let mut captured_message = None;
+        let mut captured_format = None;
         let result = (|| loop {
             if let Some(field) = self.field {
-                let status = match field {
-                    Field::Input => json
-                        .parse_next::<InputItem>(input, eof)?
-                        .map_component(|v| TextRequestComponent::Message(v.into())),
-                    Field::Tools => json
-                        .parse_next::<Tool>(input, eof)?
-                        .map_component(|v| TextRequestComponent::Tool(v.into())),
-                    Field::Text => {
-                        let status = json.parse_next::<Text>(input, eof)?;
-                        match status {
-                            DecoderStatus::Component(value) => {
-                                let format = value.format.try_into().map_err(|_| {
-                                    DecoderError::InvalidInput("invalid response format")
-                                })?;
-                                DecoderStatus::Component(TextRequestComponent::ResponseFormat(
-                                    format,
-                                ))
-                            }
-                            DecoderStatus::NeedInput => DecoderStatus::NeedInput,
-                            DecoderStatus::Finished => DecoderStatus::Finished,
+                if matches!(field, Field::Tools) {
+                    let source = *input;
+                    match json.capture_next(input, eof) {
+                        Ok(DecoderStatus::Component(range)) => {
+                            captured_tool = Some((source, range));
+                            return Ok((DecoderStatus::NeedInput, json));
                         }
+                        Ok(DecoderStatus::NeedInput) => {
+                            return Ok((DecoderStatus::NeedInput, json));
+                        }
+                        Ok(DecoderStatus::Finished) => {
+                            self.field = None;
+                            return Ok((
+                                DecoderStatus::Component(TextRequestComponent::ToolsEnded),
+                                json,
+                            ));
+                        }
+                        Err(error) => return Err(error.into()),
                     }
-                    Field::ToolChoice => json
-                        .parse_next::<ToolChoiceInput>(input, eof)?
-                        .map_component(|v| TextRequestComponent::ToolChoice(v.into())),
+                }
+                if matches!(field, Field::Text) {
+                    let source = *input;
+                    match json.capture_next(input, eof) {
+                        Ok(DecoderStatus::Component(range)) => {
+                            captured_format = Some((source, range));
+                            self.field = None;
+                            return Ok((DecoderStatus::NeedInput, json));
+                        }
+                        Ok(DecoderStatus::NeedInput) => {
+                            return Ok((DecoderStatus::NeedInput, json));
+                        }
+                        Ok(DecoderStatus::Finished) => return Err(DecoderError::IncompleteInput),
+                        Err(error) => return Err(error.into()),
+                    }
+                }
+                if matches!(field, Field::Input) {
+                    let source = *input;
+                    match json.capture_next(input, eof) {
+                        Ok(DecoderStatus::Component(range)) => {
+                            captured_message = Some((source, range));
+                            return Ok((DecoderStatus::NeedInput, json));
+                        }
+                        Ok(DecoderStatus::NeedInput) => {
+                            return Ok((DecoderStatus::NeedInput, json));
+                        }
+                        Ok(DecoderStatus::Finished) => {
+                            self.field = None;
+                            continue;
+                        }
+                        Err(error) => return Err(error.into()),
+                    }
+                }
+                if matches!(field, Field::ToolChoice) {
+                    let source = *input;
+                    match json.capture_next(input, eof) {
+                        Ok(DecoderStatus::Component(range)) => {
+                            captured_choice = Some((source, range));
+                            self.field = None;
+                            return Ok((DecoderStatus::NeedInput, json));
+                        }
+                        Ok(DecoderStatus::NeedInput) => {
+                            return Ok((DecoderStatus::NeedInput, json));
+                        }
+                        Ok(DecoderStatus::Finished) => return Err(DecoderError::IncompleteInput),
+                        Err(error) => return Err(error.into()),
+                    }
+                }
+                let status = match field {
+                    Field::Input => unreachable!(),
+                    Field::Tools => unreachable!(),
+                    Field::Text => unreachable!(),
+                    Field::ToolChoice => unreachable!(),
                     Field::Reasoning => json
                         .parse_next::<ReasoningInput>(input, eof)?
                         .map_component(|v| TextRequestComponent::Reasoning(v.into())),
@@ -145,6 +192,7 @@ impl Decoder for OpenAIResponseRequestDecoder {
                 }
                 return Ok((status, json));
             }
+            let source = *input;
             match json.next(input, eof)? {
                 DecoderStatus::Component(JsonToken::ObjectStart(None)) if !self.started => {
                     self.started = true
@@ -182,6 +230,29 @@ impl Decoder for OpenAIResponseRequestDecoder {
                 }
                 DecoderStatus::Component(JsonToken::ValueNull(Some("top_p"))) => {}
                 DecoderStatus::Component(token) => {
+                    if let JsonToken::ValueString(Some(key), value) = &token {
+                        let kind = match *key {
+                            "model" => {
+                                if value.is_empty() {
+                                    return Err(DecoderError::InvalidInput("invalid model"));
+                                }
+                                self.has_model = true;
+                                Some(ScalarText::Model)
+                            }
+                            "input" => {
+                                self.has_input = true;
+                                Some(ScalarText::UserMessage)
+                            }
+
+                            _ => None,
+                        };
+                        if let Some(kind) = kind {
+                            captured_scalar =
+                                Some((kind, source, StringReference::new(value, source)));
+                            return Ok((DecoderStatus::NeedInput, json));
+                        }
+                    }
+
                     return self
                         .scalar(token)
                         .map(|value| (DecoderStatus::Component(value), json));
@@ -196,6 +267,70 @@ impl Decoder for OpenAIResponseRequestDecoder {
         match result {
             Ok((status, json)) => {
                 self.json = Some(json);
+                if let Some((source, range)) = captured_format {
+                    let value = self
+                        .json
+                        .as_mut()
+                        .ok_or(DecoderError::InvalidState)?
+                        .deserialize_captured::<Text<'_>>(source, range)
+                        .map_err(DecoderError::from)
+                        .inspect_err(|_| self.failed = true)?;
+                    let format = value
+                        .format
+                        .try_into()
+                        .map_err(|_| DecoderError::InvalidInput("invalid response format"))
+                        .inspect_err(|_| self.failed = true)?;
+                    return Ok(DecoderStatus::Component(
+                        TextRequestComponent::ResponseFormat(format),
+                    ));
+                }
+                if let Some((source, range)) = captured_message {
+                    let value = self
+                        .json
+                        .as_mut()
+                        .ok_or(DecoderError::InvalidState)?
+                        .deserialize_captured::<InputItem<'_>>(source, range)
+                        .map_err(DecoderError::from)
+                        .inspect_err(|_| self.failed = true)?;
+                    let message = value.into();
+                    return Ok(DecoderStatus::Component(TextRequestComponent::Message(
+                        message,
+                    )));
+                }
+                if let Some((source, range)) = captured_choice {
+                    let value = self
+                        .json
+                        .as_mut()
+                        .ok_or(DecoderError::InvalidState)?
+                        .deserialize_captured::<FunctionChoice<'_>>(source, range)
+                        .map_err(DecoderError::from)
+                        .inspect_err(|_| self.failed = true)?;
+                    let choice = value.into();
+                    return Ok(DecoderStatus::Component(TextRequestComponent::ToolChoice(
+                        choice,
+                    )));
+                }
+                if let Some((kind, source, reference)) = captured_scalar {
+                    let text = self
+                        .json
+                        .as_ref()
+                        .ok_or(DecoderError::InvalidState)?
+                        .resolve_string(source, reference)
+                        .map_err(DecoderError::from)?;
+                    return Ok(DecoderStatus::Component((kind, text).into()));
+                }
+                if let Some((source, range)) = captured_tool {
+                    let tool = self
+                        .json
+                        .as_mut()
+                        .ok_or(DecoderError::InvalidState)?
+                        .deserialize_captured::<Tool<'_>>(source, range)
+                        .map_err(DecoderError::from)
+                        .inspect_err(|_| self.failed = true)?;
+                    return Ok(DecoderStatus::Component(TextRequestComponent::Tool(
+                        tool.into(),
+                    )));
+                }
                 Ok(status)
             }
             Err(error) => {

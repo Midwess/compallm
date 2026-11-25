@@ -274,12 +274,17 @@ fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {
     }
     let mut input = &b""[..];
     let before = measurement.snapshot();
-    let decoder_status = decoder.next(&mut input, true).expect("decode EOF");
+    let decoder_finished = matches!(
+        decoder.next(&mut input, true).expect("decode EOF"),
+        DecoderStatus::Finished
+    );
     decoder.finish().expect("finish decoding");
     let decoder_finalization = measurement.snapshot().since(before);
     let before = measurement.snapshot();
     loop {
-        let status = encoder.next(None, &mut output).expect("finalize encoding");
+        let status = encoder
+            .next(None::<&mut TextRequestComponent>, &mut output)
+            .expect("finalize encoding");
         let (written, complete) = match status {
             EncoderStatus::NeedOutput { written } => (written, false),
             EncoderStatus::Finished { written } => (written, true),
@@ -296,7 +301,7 @@ fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {
     let total = measurement.snapshot();
     drop(measurement);
 
-    assert_eq!(decoder_status, DecoderStatus::Finished);
+    assert!(decoder_finished);
     let expected = request_components();
     assert_eq!(component_count, expected.len());
     assert_eq!(decode_request(&encoded[..encoded_length]), expected);
@@ -347,7 +352,7 @@ fn decode_request(request: &[u8]) -> Vec<TextRequestComponent> {
                 .next(&mut input, false)
                 .expect("decode full request")
             {
-                DecoderStatus::Component(component) => components.push(component),
+                DecoderStatus::Component(component) => components.push(component.into_owned()),
                 DecoderStatus::NeedInput => {
                     assert!(input.is_empty());
                     break;
@@ -529,7 +534,10 @@ fn encodes_full_request_across_output_buffer_sizes() {
                 }
             }
             loop {
-                match encoder.next(None, &mut output).expect("finalize request") {
+                match encoder
+                    .next(None::<&mut TextRequestComponent>, &mut output)
+                    .expect("finalize request")
+                {
                     EncoderStatus::NeedOutput { written } => {
                         assert!(written > 0);
                         encoded.extend_from_slice(&output[..written]);

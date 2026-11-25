@@ -1,73 +1,39 @@
 use super::tools::ToolTypeWire;
 use crate::llm::text::component::*;
-use compallm_serde_rules::deserialize;
+use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_with::{DeserializeAs, SerializeAs, serde_as};
+use serde_with::{SerializeAs, serde_as};
+use std::borrow::Cow;
 
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[serde(remote = "Message", deny_unknown_fields)]
-pub(crate) struct MessageWire {
+pub(crate) struct MessageWire<T: Serialize> {
     #[serde(with = "RoleWire")]
     role: Role,
     #[serde(
         default,
-        deserialize_with = "content",
-        serialize_with = "serde_with::As::<Option<ContentWire>>::serialize",
+        serialize_with = "serde_with::As::<Option<ContentWire<T>>>::serialize",
         skip_serializing_if = "Option::is_none"
     )]
-    content: Option<Content>,
-    #[serde_as(as = "Option<Vec<ToolCallWire>>")]
+    content: Option<Content<T>>,
+    #[serde_as(as = "Option<Vec<ToolCallWire<T>>>")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    tool_calls: Option<Vec<ToolCall>>,
+    tool_calls: Option<Vec<ToolCall<T>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    tool_call_id: Option<String>,
+    tool_call_id: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    reasoning: Option<String>,
+    reasoning: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    reasoning_content: Option<String>,
-    #[serde_as(as = "Option<Vec<ReasoningWire>>")]
+    reasoning_content: Option<T>,
+    #[serde_as(as = "Option<Vec<ReasoningWire<T>>>")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    reasoning_details: Option<Vec<ReasoningDetail>>,
-}
-
-impl<'de> DeserializeAs<'de, Message> for MessageWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Message, D::Error> {
-        let value = Self::deserialize(deserializer)?;
-        let history = value
-            .tool_calls
-            .as_ref()
-            .is_some_and(|calls| !calls.is_empty())
-            || value.reasoning.is_some()
-            || value.reasoning_content.is_some()
-            || value
-                .reasoning_details
-                .as_ref()
-                .is_some_and(|details| !details.is_empty());
-        let has_content = value
-            .content
-            .as_ref()
-            .is_some_and(|content| !matches!(content, Content::Null));
-        if (value.role != Role::Assistant
-            && (value.tool_calls.is_some()
-                || value.reasoning.is_some()
-                || value.reasoning_content.is_some()
-                || value.reasoning_details.is_some()))
-            || (value.role == Role::Tool
-                && (value.tool_call_id.as_ref().is_none_or(String::is_empty)
-                    || !matches!(value.content, Some(Content::Text(_)))))
-            || (value.role != Role::Tool && value.tool_call_id.is_some())
-            || (!has_content && !(value.role == Role::Assistant && history))
-        {
-            return Err(serde::de::Error::custom("invalid request message"));
-        }
-        Ok(value)
-    }
+    reasoning_details: Option<Vec<ReasoningDetail<T>>>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Role", rename_all = "snake_case")]
-enum RoleWire {
+pub(crate) enum RoleWire {
     System,
     Developer,
     User,
@@ -78,183 +44,267 @@ enum RoleWire {
 #[serde_as]
 #[derive(Serialize)]
 #[serde(remote = "Content", untagged)]
-pub(super) enum ContentWire {
+pub(super) enum ContentWire<T: Serialize> {
     Null,
-    Text(String),
-    Object(#[serde(with = "ObjectMessageWire")] ObjectMessage),
-    Array(#[serde_as(as = "Vec<ObjectMessageWire>")] Vec<ObjectMessage>),
+    Text(T),
+    Object(#[serde(with = "ObjectMessageWire")] ObjectMessage<T>),
+    Array(#[serde_as(as = "Vec<ObjectMessageWire<T>>")] Vec<ObjectMessage<T>>),
 }
 
-impl SerializeAs<Content> for ContentWire {
-    fn serialize_as<S: Serializer>(value: &Content, serializer: S) -> Result<S::Ok, S::Error> {
+impl<T: Serialize> SerializeAs<Content<T>> for ContentWire<T> {
+    fn serialize_as<S: Serializer>(value: &Content<T>, serializer: S) -> Result<S::Ok, S::Error> {
         Self::serialize(value, serializer)
     }
 }
 
-impl<'de> DeserializeAs<'de, Content> for ContentWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Content, D::Error> {
-        deserializer.deserialize_any(ContentVisitor)
-    }
-}
-
-struct ContentVisitor;
-
-impl<'de> serde::de::Visitor<'de> for ContentVisitor {
-    type Value = Content;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("null, text, a text object, or an array of text objects")
-    }
-
-    fn visit_unit<E: serde::de::Error>(self) -> Result<Content, E> {
-        Ok(Content::Null)
-    }
-
-    fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Content, E> {
-        Ok(Content::Text(value.to_owned()))
-    }
-
-    fn visit_string<E: serde::de::Error>(self, value: String) -> Result<Content, E> {
-        Ok(Content::Text(value))
-    }
-
-    fn visit_map<A: serde::de::MapAccess<'de>>(self, map: A) -> Result<Content, A::Error> {
-        ObjectMessageWire::deserialize(serde::de::value::MapAccessDeserializer::new(map))
-            .map(Content::Object)
-    }
-
-    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut sequence: A) -> Result<Content, A::Error> {
-        let mut parts = Vec::new();
-        while let Some(part) = sequence
-            .next_element::<serde_with::de::DeserializeAsWrap<ObjectMessage, ObjectMessageWire>>()?
-        {
-            parts.push(part.into_inner());
-        }
-        Ok(Content::Array(parts))
-    }
-}
-
-fn content<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Content>, D::Error> {
-    ContentWire::deserialize_as(deserializer).map(Some)
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[serde(
     remote = "ObjectMessage",
     tag = "type",
     rename_all = "snake_case",
     deny_unknown_fields
 )]
-enum ObjectMessageWire {
-    Text { text: String },
+enum ObjectMessageWire<T: Serialize> {
+    Text { text: T },
 }
 
-impl SerializeAs<ObjectMessage> for ObjectMessageWire {
+impl<T: Serialize> SerializeAs<ObjectMessage<T>> for ObjectMessageWire<T> {
     fn serialize_as<S: Serializer>(
-        value: &ObjectMessage,
+        value: &ObjectMessage<T>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         Self::serialize(value, serializer)
     }
 }
 
-impl<'de> DeserializeAs<'de, ObjectMessage> for ObjectMessageWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<ObjectMessage, D::Error> {
-        Self::deserialize(deserializer)
-    }
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[serde(remote = "ToolCall", deny_unknown_fields)]
-struct ToolCallWire {
-    #[serde(deserialize_with = "deserialize::nonempty")]
-    id: String,
+struct ToolCallWire<T: Serialize> {
+    id: T,
     #[serde(rename = "type", with = "ToolTypeWire")]
     kind: ToolType,
     #[serde(with = "FunctionCallWire")]
-    function: FunctionCall,
+    function: FunctionCall<T>,
 }
 
-impl SerializeAs<ToolCall> for ToolCallWire {
-    fn serialize_as<S: Serializer>(value: &ToolCall, serializer: S) -> Result<S::Ok, S::Error> {
+impl<T: Serialize> SerializeAs<ToolCall<T>> for ToolCallWire<T> {
+    fn serialize_as<S: Serializer>(value: &ToolCall<T>, serializer: S) -> Result<S::Ok, S::Error> {
         Self::serialize(value, serializer)
     }
 }
 
-impl<'de> DeserializeAs<'de, ToolCall> for ToolCallWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<ToolCall, D::Error> {
-        Self::deserialize(deserializer)
-    }
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[serde(remote = "FunctionCall", deny_unknown_fields)]
-struct FunctionCallWire {
-    #[serde(deserialize_with = "deserialize::nonempty")]
-    name: String,
-    arguments: String,
+struct FunctionCallWire<T: Serialize> {
+    name: T,
+    arguments: T,
 }
 
 #[derive(Serialize)]
 #[serde(remote = "ReasoningDetail")]
-struct ReasoningWire {
+struct ReasoningWire<T: Serialize> {
     #[serde(flatten, with = "ReasoningContentWire")]
-    content: ReasoningDetailContent,
+    content: ReasoningDetailContent<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<String>,
+    id: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    format: Option<String>,
+    format: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
     index: Option<u32>,
 }
 
 #[derive(Serialize)]
 #[serde(remote = "ReasoningDetailContent", tag = "type")]
-enum ReasoningContentWire {
+enum ReasoningContentWire<T: Serialize> {
     #[serde(rename = "reasoning.summary")]
-    Summary { summary: String },
+    Summary { summary: T },
     #[serde(rename = "reasoning.text")]
     Text {
-        text: String,
+        text: T,
         #[serde(skip_serializing_if = "Option::is_none")]
-        signature: Option<String>,
+        signature: Option<T>,
     },
     #[serde(rename = "reasoning.encrypted")]
-    Encrypted { data: String },
+    Encrypted { data: T },
 }
 
-impl SerializeAs<ReasoningDetail> for ReasoningWire {
+impl<T: Serialize> SerializeAs<ReasoningDetail<T>> for ReasoningWire<T> {
     fn serialize_as<S: Serializer>(
-        value: &ReasoningDetail,
+        value: &ReasoningDetail<T>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         Self::serialize(value, serializer)
     }
 }
 
-impl<'de> DeserializeAs<'de, ReasoningDetail> for ReasoningWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<ReasoningDetail, D::Error> {
-        ReasoningInput::deserialize(deserializer)?
-            .try_into()
-            .map_err(serde::de::Error::custom)
+#[serde_as]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct MessageInput<'a> {
+    #[serde(with = "RoleWire")]
+    role: Role,
+    #[serde(default, borrow, deserialize_with = "content")]
+    content: Option<Content<Cow<'a, str>>>,
+    #[serde(default, borrow)]
+    #[serde_as(as = "Option<Vec<serde_with::FromInto<ToolCallInput<'a>>>>")]
+    tool_calls: Option<Vec<ToolCall<Cow<'a, str>>>>,
+    #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
+    tool_call_id: Option<Cow<'a, str>>,
+    #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
+    reasoning: Option<Cow<'a, str>>,
+    #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
+    reasoning_content: Option<Cow<'a, str>>,
+    #[serde(default, borrow)]
+    #[serde_as(as = "Option<Vec<serde_with::TryFromInto<ReasoningInput<'a>>>>")]
+    reasoning_details: Option<Vec<ReasoningDetail<Cow<'a, str>>>>,
+}
+
+impl<'a> TryFrom<MessageInput<'a>> for Message<Cow<'a, str>> {
+    type Error = &'static str;
+    fn try_from(value: MessageInput<'a>) -> Result<Self, Self::Error> {
+        let value = Self {
+            role: value.role,
+            content: value.content,
+            tool_calls: value.tool_calls,
+            tool_call_id: value.tool_call_id,
+            reasoning: value.reasoning,
+            reasoning_content: value.reasoning_content,
+            reasoning_details: value.reasoning_details,
+        };
+        let history = value.tool_calls.as_ref().is_some_and(|v| !v.is_empty())
+            || value.reasoning.is_some()
+            || value.reasoning_content.is_some()
+            || value
+                .reasoning_details
+                .as_ref()
+                .is_some_and(|v| !v.is_empty());
+        let has_content = value
+            .content
+            .as_ref()
+            .is_some_and(|v| !matches!(v, Content::Null));
+        if (value.role != Role::Assistant
+            && (value.tool_calls.is_some()
+                || value.reasoning.is_some()
+                || value.reasoning_content.is_some()
+                || value.reasoning_details.is_some()))
+            || (value.role == Role::Tool
+                && (value.tool_call_id.as_ref().is_none_or(|v| v.is_empty())
+                    || !matches!(value.content, Some(Content::Text(_)))))
+            || (value.role != Role::Tool && value.tool_call_id.is_some())
+            || (!has_content && !(value.role == Role::Assistant && history))
+        {
+            return Err("invalid request message");
+        }
+        Ok(value)
     }
 }
 
+pub(crate) fn content<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Content<Cow<'de, str>>>, D::Error> {
+    deserializer.deserialize_any(ContentVisitor).map(Some)
+}
+struct ContentVisitor;
+impl<'de> serde::de::Visitor<'de> for ContentVisitor {
+    type Value = Content<Cow<'de, str>>;
+    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("null, text, a text object, or an array of text objects")
+    }
+    fn visit_unit<E: serde::de::Error>(self) -> Result<Self::Value, E> {
+        Ok(Content::Null)
+    }
+    fn visit_borrowed_str<E: serde::de::Error>(self, v: &'de str) -> Result<Self::Value, E> {
+        Ok(Content::Text(Cow::Borrowed(v)))
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+        TextPart::deserialize(serde::de::value::MapAccessDeserializer::new(map))
+            .map(|v| Content::Object(v.into()))
+    }
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        let mut parts = Vec::new();
+        while let Some(part) = seq.next_element::<TextPart<'de>>()? {
+            parts.push(part.into());
+        }
+        Ok(Content::Array(parts))
+    }
+}
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+enum TextPart<'a> {
+    Text {
+        #[serde(borrow)]
+        text: Cow<'a, str>,
+    },
+}
+impl<'a> From<TextPart<'a>> for ObjectMessage<Cow<'a, str>> {
+    fn from(TextPart::Text { text }: TextPart<'a>) -> Self {
+        Self::Text { text }
+    }
+}
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct ReasoningInput {
+pub(crate) struct ToolCallInput<'a> {
+    #[serde(borrow, deserialize_with = "borrowed::nonempty")]
+    id: Cow<'a, str>,
+    #[serde(rename = "type", with = "ToolTypeWire")]
+    kind: ToolType,
+    #[serde(borrow)]
+    function: FunctionCallInput<'a>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FunctionCallInput<'a> {
+    #[serde(borrow, deserialize_with = "borrowed::nonempty")]
+    name: Cow<'a, str>,
+    #[serde(borrow)]
+    arguments: Cow<'a, str>,
+}
+impl<'a> From<ToolCallInput<'a>> for ToolCall<Cow<'a, str>> {
+    fn from(v: ToolCallInput<'a>) -> Self {
+        Self {
+            id: v.id,
+            kind: v.kind,
+            function: FunctionCall {
+                name: v.function.name,
+                arguments: v.function.arguments,
+            },
+        }
+    }
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReasoningInput<'a> {
     #[serde(rename = "type")]
     kind: ReasoningKind,
-    #[serde(default, deserialize_with = "deserialize::present")]
-    summary: Option<String>,
-    #[serde(default, deserialize_with = "deserialize::present")]
-    text: Option<String>,
-    #[serde(default, deserialize_with = "deserialize::present")]
-    data: Option<String>,
-    #[serde(default, deserialize_with = "deserialize::present")]
-    signature: Option<Option<String>>,
-    id: Option<String>,
-    format: Option<String>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    summary: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    text: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    data: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_optional_text"
+    )]
+    signature: Option<Option<Cow<'a, str>>>,
+    #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
+    id: Option<Cow<'a, str>>,
+    #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
+    format: Option<Cow<'a, str>>,
     index: Option<u32>,
 }
 
@@ -267,47 +317,37 @@ enum ReasoningKind {
     #[serde(rename = "reasoning.encrypted", alias = "encrypted")]
     Encrypted,
 }
-
-impl TryFrom<ReasoningInput> for ReasoningDetail {
+impl<'a> TryFrom<ReasoningInput<'a>> for ReasoningDetail<Cow<'a, str>> {
     type Error = &'static str;
-
-    fn try_from(value: ReasoningInput) -> Result<Self, Self::Error> {
-        let ReasoningInput {
-            kind,
-            summary,
-            text,
-            data,
-            signature,
-            id,
-            format,
-            index,
-        } = value;
-        let content = match kind {
-            ReasoningKind::Summary if text.is_none() && data.is_none() && signature.is_none() => {
+    fn try_from(v: ReasoningInput<'a>) -> Result<Self, Self::Error> {
+        let content = match v.kind {
+            ReasoningKind::Summary
+                if v.text.is_none() && v.data.is_none() && v.signature.is_none() =>
+            {
                 ReasoningDetailContent::Summary {
-                    summary: summary.ok_or("missing summary")?,
+                    summary: v.summary.ok_or("missing summary")?,
                 }
             }
-            ReasoningKind::Text if summary.is_none() && data.is_none() => {
+            ReasoningKind::Text if v.summary.is_none() && v.data.is_none() => {
                 ReasoningDetailContent::Text {
-                    text: text.ok_or("missing text")?,
-                    signature: signature.flatten(),
+                    text: v.text.ok_or("missing text")?,
+                    signature: v.signature.flatten(),
                 }
             }
             ReasoningKind::Encrypted
-                if summary.is_none() && text.is_none() && signature.is_none() =>
+                if v.summary.is_none() && v.text.is_none() && v.signature.is_none() =>
             {
                 ReasoningDetailContent::Encrypted {
-                    data: data.ok_or("missing data")?,
+                    data: v.data.ok_or("missing data")?,
                 }
             }
             _ => return Err("invalid reasoning detail"),
         };
         Ok(Self {
             content,
-            id,
-            format,
-            index,
+            id: v.id,
+            format: v.format,
+            index: v.index,
         })
     }
 }

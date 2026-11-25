@@ -1,169 +1,20 @@
-use super::tools::ToolTypeWire;
 use crate::llm::text::component::*;
-use compallm_serde_rules::deserialize;
-use serde::{Deserialize, Deserializer, Serialize, Serializer, ser::SerializeSeq};
-use serde_with::DeserializeAs;
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub(in crate::llm::text::openai::request::completions) enum RoleWire {
-    System,
-    Developer,
-    User,
-    Assistant,
-    Tool,
-}
-
-impl From<RoleWire> for Role {
-    fn from(value: RoleWire) -> Self {
-        match value {
-            RoleWire::System => Self::System,
-            RoleWire::Developer => Self::Developer,
-            RoleWire::User => Self::User,
-            RoleWire::Assistant => Self::Assistant,
-            RoleWire::Tool => Self::Tool,
-        }
-    }
-}
-
-pub(in crate::llm::text::openai::request::completions) fn role(value: Role) -> &'static str {
-    match value {
-        Role::System => "system",
-        Role::Developer => "developer",
-        Role::User => "user",
-        Role::Assistant => "assistant",
-        Role::Tool => "tool",
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-pub(in crate::llm::text::openai::request::completions) enum ContentInput {
-    Text(String),
-    Null,
-}
-
-impl From<ContentInput> for Content {
-    fn from(value: ContentInput) -> Self {
-        match value {
-            ContentInput::Text(text) => Self::Text(text),
-            ContentInput::Null => Self::Null,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(in crate::llm::text::openai::request::completions) struct MessageInput {
-    role: RoleWire,
-    #[serde(default, deserialize_with = "content")]
-    content: Option<Content>,
-    #[serde(default)]
-    tool_calls: Option<Vec<ToolCallInput>>,
-    #[serde(default)]
-    tool_call_id: Option<String>,
-}
-
-fn content<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Content>, D::Error> {
-    ContentInput::deserialize(deserializer).map(|value| Some(value.into()))
-}
-
-impl TryFrom<MessageInput> for Message {
-    type Error = &'static str;
-
-    fn try_from(value: MessageInput) -> Result<Self, Self::Error> {
-        let MessageInput {
-            role,
-            content,
-            tool_calls,
-            tool_call_id,
-        } = value;
-        let role = Role::from(role);
-        let tool_calls: Option<Vec<ToolCall>> =
-            tool_calls.map(|calls| calls.into_iter().map(Into::into).collect());
-        let calls = tool_calls.as_ref().is_some_and(|calls| !calls.is_empty());
-        if role == Role::Tool {
-            if tool_call_id.as_ref().is_none_or(String::is_empty) {
-                return Err("tool message requires a tool call identifier");
-            }
-            if !matches!(content, Some(Content::Text(_))) {
-                return Err("tool message requires text content");
-            }
-        } else if tool_call_id.is_some() {
-            return Err("tool call identifier requires a tool message");
-        }
-        if calls && role != Role::Assistant {
-            return Err("tool calls require an assistant message");
-        }
-        if !calls && !matches!(content, Some(Content::Text(_))) {
-            return Err("message requires text content");
-        }
-        Ok(Self {
-            role,
-            content,
-            tool_calls,
-            tool_call_id,
-            reasoning: None,
-            reasoning_content: None,
-            reasoning_details: None,
-        })
-    }
-}
-
-impl<'de> DeserializeAs<'de, Message> for MessageInput {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Message, D::Error> {
-        MessageInput::deserialize(deserializer)?
-            .try_into()
-            .map_err(serde::de::Error::custom)
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(in crate::llm::text::openai::request::completions) struct ToolCallInput {
-    #[serde(deserialize_with = "deserialize::nonempty")]
-    id: String,
-    #[serde(rename = "type")]
-    kind: ToolTypeWire,
-    function: FunctionCallInput,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(in crate::llm::text::openai::request::completions) struct FunctionCallInput {
-    #[serde(deserialize_with = "deserialize::nonempty")]
-    name: String,
-    arguments: String,
-}
-
-impl From<ToolCallInput> for ToolCall {
-    fn from(value: ToolCallInput) -> Self {
-        let ToolTypeWire::Function = value.kind;
-        Self {
-            id: value.id,
-            kind: ToolType::Function,
-            function: FunctionCall {
-                name: value.function.name,
-                arguments: value.function.arguments,
-            },
-        }
-    }
-}
+use serde::{Serialize, Serializer, ser::SerializeSeq};
 
 /// Encoded Chat Completions message.
 #[derive(Serialize)]
-pub(in crate::llm::text::openai::request::completions) struct MessageOutput<'a> {
+pub(in crate::llm::text::openai::request::completions) struct MessageOutput<'a, T: AsRef<str>> {
     role: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    content: Option<ContentOutput<'a>>,
+    content: Option<ContentOutput<'a, T>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    tool_calls: Option<ToolCallsOutput<'a>>,
+    tool_calls: Option<ToolCallsOutput<'a, T>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_call_id: Option<&'a str>,
 }
 
-impl<'a> From<&'a Message> for MessageOutput<'a> {
-    fn from(message: &'a Message) -> Self {
+impl<'a, T: AsRef<str>> From<&'a Message<T>> for MessageOutput<'a, T> {
+    fn from(message: &'a Message<T>) -> Self {
         Self {
             role: role(message.role),
             content: message.content.as_ref().map(ContentOutput),
@@ -171,17 +22,17 @@ impl<'a> From<&'a Message> for MessageOutput<'a> {
                 .tool_calls
                 .as_ref()
                 .map(|calls| ToolCallsOutput(calls)),
-            tool_call_id: message.tool_call_id.as_deref(),
+            tool_call_id: message.tool_call_id.as_ref().map(AsRef::as_ref),
         }
     }
 }
 
-pub(in crate::llm::text::openai::request::completions) struct ContentOutput<'a>(&'a Content);
+pub(in crate::llm::text::openai::request::completions) struct ContentOutput<'a, T>(&'a Content<T>);
 
-impl Serialize for ContentOutput<'_> {
+impl<T: AsRef<str>> Serialize for ContentOutput<'_, T> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self.0 {
-            Content::Text(text) => serializer.serialize_str(text),
+            Content::Text(text) => serializer.serialize_str(text.as_ref()),
             Content::Null => serializer.serialize_none(),
             Content::Object(_) | Content::Array(_) => {
                 Err(serde::ser::Error::custom("unsupported message content"))
@@ -190,9 +41,9 @@ impl Serialize for ContentOutput<'_> {
     }
 }
 
-struct ToolCallsOutput<'a>(&'a [ToolCall]);
+struct ToolCallsOutput<'a, T>(&'a [ToolCall<T>]);
 
-impl Serialize for ToolCallsOutput<'_> {
+impl<T: AsRef<str>> Serialize for ToolCallsOutput<'_, T> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut sequence = serializer.serialize_seq(Some(self.0.len()))?;
         for call in self.0 {
@@ -210,14 +61,14 @@ pub(in crate::llm::text::openai::request::completions) struct ToolCallOutput<'a>
     function: FunctionCallOutput<'a>,
 }
 
-impl<'a> From<&'a ToolCall> for ToolCallOutput<'a> {
-    fn from(call: &'a ToolCall) -> Self {
+impl<'a, T: AsRef<str>> From<&'a ToolCall<T>> for ToolCallOutput<'a> {
+    fn from(call: &'a ToolCall<T>) -> Self {
         Self {
-            id: &call.id,
+            id: call.id.as_ref(),
             kind: "function",
             function: FunctionCallOutput {
-                name: &call.function.name,
-                arguments: &call.function.arguments,
+                name: call.function.name.as_ref(),
+                arguments: call.function.arguments.as_ref(),
             },
         }
     }
@@ -227,4 +78,72 @@ impl<'a> From<&'a ToolCall> for ToolCallOutput<'a> {
 pub(in crate::llm::text::openai::request::completions) struct FunctionCallOutput<'a> {
     name: &'a str,
     arguments: &'a str,
+}
+
+fn role(value: Role) -> &'static str {
+    match value {
+        Role::System => "system",
+        Role::Developer => "developer",
+        Role::User => "user",
+        Role::Assistant => "assistant",
+        Role::Tool => "tool",
+    }
+}
+
+#[serde_with::serde_as]
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(in crate::llm::text::openai::request::completions) struct MessageInput<'a> {
+    #[serde(with = "crate::llm::text::copenai::request::component::RoleWire")]
+    role: Role,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "crate::llm::text::copenai::request::component::content"
+    )]
+    content: Option<Content<std::borrow::Cow<'a, str>>>,
+    #[serde(default, borrow)]
+    #[serde_as(
+        as = "Option<Vec<serde_with::FromInto<crate::llm::text::copenai::request::component::ToolCallInput<'a>>>>"
+    )]
+    tool_calls: Option<Vec<ToolCall<std::borrow::Cow<'a, str>>>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::optional_text"
+    )]
+    tool_call_id: Option<std::borrow::Cow<'a, str>>,
+}
+impl<'a> TryFrom<MessageInput<'a>> for Message<std::borrow::Cow<'a, str>> {
+    type Error = &'static str;
+    fn try_from(v: MessageInput<'a>) -> Result<Self, Self::Error> {
+        let calls = v.tool_calls.as_ref().is_some_and(|v| !v.is_empty());
+        if matches!(v.content, Some(Content::Object(_) | Content::Array(_))) {
+            return Err("unsupported message content");
+        }
+        if v.role == Role::Tool {
+            if v.tool_call_id.as_ref().is_none_or(|v| v.is_empty())
+                || !matches!(v.content, Some(Content::Text(_)))
+            {
+                return Err("invalid tool message");
+            }
+        } else if v.tool_call_id.is_some() {
+            return Err("tool call identifier requires a tool message");
+        }
+        if calls && v.role != Role::Assistant {
+            return Err("tool calls require an assistant message");
+        }
+        if !calls && !matches!(v.content, Some(Content::Text(_))) {
+            return Err("message requires text content");
+        }
+        Ok(Self {
+            role: v.role,
+            content: v.content,
+            tool_calls: v.tool_calls,
+            tool_call_id: v.tool_call_id,
+            reasoning: None,
+            reasoning_content: None,
+            reasoning_details: None,
+        })
+    }
 }

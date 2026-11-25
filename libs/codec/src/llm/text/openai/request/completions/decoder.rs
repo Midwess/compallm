@@ -1,11 +1,11 @@
-use super::component::{
-    EffortInput, FormatInput, MessageInput, StopInput, StreamOptionsInput, ToolChoiceInput,
-    ToolsWire,
-};
+use super::component::{EffortInput, MessageInput, StreamOptionsInput};
 use crate::decoder::{Decoder, DecoderError, DecoderStatus};
+use crate::json::StringReference;
 use crate::json::{JsonContainer, JsonDecoder, JsonToken};
+use crate::llm::text::component::request::ScalarText;
 use crate::llm::text::component::*;
 use serde_with::de::DeserializeAsWrap as Input;
+use std::borrow::Cow;
 
 #[derive(Debug, Clone, Copy)]
 enum Field {
@@ -43,10 +43,10 @@ impl OpenAICompletionRequestDecoder {
         }
     }
 
-    fn proceed_scalar(
+    fn proceed_scalar<'s>(
         &mut self,
         token: JsonToken<'_>,
-    ) -> Result<Option<TextRequestComponent>, DecoderError> {
+    ) -> Result<Option<TextRequestComponent<Cow<'s, str>>>, DecoderError> {
         use TextRequestComponent as C;
         let component = match token {
             JsonToken::ValueBoolean(Some("stream"), value) => C::Stream(value),
@@ -79,12 +79,7 @@ impl OpenAICompletionRequestDecoder {
                 "required" => ToolChoice::Required,
                 _ => return Err(DecoderError::InvalidInput("invalid tool choice")),
             }),
-            JsonToken::ValueString(Some("stop"), value) => {
-                if value.is_empty() || value.len() > 4096 {
-                    return Err(DecoderError::InvalidInput("invalid stop sequence"));
-                }
-                C::Stop(Stop::Text(value.to_owned()))
-            }
+
             JsonToken::ValueNull(Some("stop")) => C::Stop(Stop::Null),
             JsonToken::ValueString(Some("reasoning_effort"), value) => {
                 let effort = match value {
@@ -99,13 +94,7 @@ impl OpenAICompletionRequestDecoder {
                     ..Reasoning::default()
                 })
             }
-            JsonToken::ValueString(Some("model"), model) => {
-                if model.is_empty() {
-                    return Err(DecoderError::InvalidInput("invalid model"));
-                }
-                self.has_model = true;
-                C::Model(model.to_owned())
-            }
+
             _ => return Err(DecoderError::Unsupported("request field")),
         };
         Ok(Some(component))
@@ -113,7 +102,7 @@ impl OpenAICompletionRequestDecoder {
 }
 
 impl Decoder for OpenAICompletionRequestDecoder {
-    type Component<'a> = TextRequestComponent;
+    type Component<'a> = TextRequestComponent<Cow<'a, str>>;
     type Error = DecoderError;
 
     fn next<'a, 'input: 'a>(
@@ -125,20 +114,87 @@ impl Decoder for OpenAICompletionRequestDecoder {
             return Err(DecoderError::InvalidState);
         }
         let mut json = self.json.take().ok_or(DecoderError::InvalidState)?;
+        let mut captured_tool = None;
+        let mut captured_scalar = None;
+        let mut captured_choice = None;
+        let mut captured_message = None;
+        let mut captured_format = None;
+        let mut captured_stop = None;
         let result = loop {
             if let Some(field) = self.field {
+                if matches!(field, Field::Tools) {
+                    let source = *input;
+                    match json.capture_next(input, eof) {
+                        Ok(DecoderStatus::Component(range)) => {
+                            captured_tool = Some((source, range));
+                            break Ok(DecoderStatus::NeedInput);
+                        }
+                        Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
+                        Ok(DecoderStatus::Finished) => {
+                            self.field = None;
+                            break Ok(DecoderStatus::Component(TextRequestComponent::ToolsEnded));
+                        }
+                        Err(error) => break Err(error.into()),
+                    }
+                }
+                if matches!(field, Field::Stop) {
+                    let source = *input;
+                    match json.capture_next(input, eof) {
+                        Ok(DecoderStatus::Component(range)) => {
+                            captured_stop = Some((source, range));
+                            self.field = None;
+                            break Ok(DecoderStatus::NeedInput);
+                        }
+                        Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
+                        Ok(DecoderStatus::Finished) => break Err(DecoderError::IncompleteInput),
+                        Err(error) => break Err(error.into()),
+                    }
+                }
+                if matches!(field, Field::ResponseFormat) {
+                    let source = *input;
+                    match json.capture_next(input, eof) {
+                        Ok(DecoderStatus::Component(range)) => {
+                            captured_format = Some((source, range));
+                            self.field = None;
+                            break Ok(DecoderStatus::NeedInput);
+                        }
+                        Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
+                        Ok(DecoderStatus::Finished) => break Err(DecoderError::IncompleteInput),
+                        Err(error) => break Err(error.into()),
+                    }
+                }
+                if matches!(field, Field::Messages) {
+                    let source = *input;
+                    match json.capture_next(input, eof) {
+                        Ok(DecoderStatus::Component(range)) => {
+                            captured_message = Some((source, range));
+                            break Ok(DecoderStatus::NeedInput);
+                        }
+                        Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
+                        Ok(DecoderStatus::Finished) => {
+                            self.field = None;
+                            continue;
+                        }
+                        Err(error) => break Err(error.into()),
+                    }
+                }
+                if matches!(field, Field::ToolChoice) {
+                    let source = *input;
+                    match json.capture_next(input, eof) {
+                        Ok(DecoderStatus::Component(range)) => {
+                            captured_choice = Some((source, range));
+                            self.field = None;
+                            break Ok(DecoderStatus::NeedInput);
+                        }
+                        Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
+                        Ok(DecoderStatus::Finished) => break Err(DecoderError::IncompleteInput),
+                        Err(error) => break Err(error.into()),
+                    }
+                }
                 let status = match field {
-                    Field::Messages => json
-                        .parse_next::<Input<Message, MessageInput>>(input, eof)
-                        .map(|status| DecodedField(status, TextRequestComponent::Message).into()),
-                    Field::ResponseFormat => json
-                        .parse_next::<Input<ResponseFormat, FormatInput>>(input, eof)
-                        .map(|status| {
-                            DecodedField(status, TextRequestComponent::ResponseFormat).into()
-                        }),
-                    Field::Stop => json
-                        .parse_next::<Input<Stop, StopInput>>(input, eof)
-                        .map(|status| DecodedField(status, TextRequestComponent::Stop).into()),
+                    Field::Messages => unreachable!(),
+                    Field::ResponseFormat => unreachable!(),
+                    Field::Stop => unreachable!(),
                     Field::StreamOptions => json
                         .parse_next::<Input<StreamOptions, StreamOptionsInput>>(input, eof)
                         .map(|status| {
@@ -147,14 +203,8 @@ impl Decoder for OpenAICompletionRequestDecoder {
                             })
                             .into()
                         }),
-                    Field::ToolChoice => json
-                        .parse_next::<Input<ToolChoice, ToolChoiceInput>>(input, eof)
-                        .map(|status| {
-                            DecodedField(status, TextRequestComponent::ToolChoice).into()
-                        }),
-                    Field::Tools => json
-                        .parse_next::<Input<ToolDefinition, ToolsWire>>(input, eof)
-                        .map(|status| DecodedField(status, TextRequestComponent::Tool).into()),
+                    Field::ToolChoice => unreachable!(),
+                    Field::Tools => unreachable!(),
                 };
                 match status {
                     Ok(DecoderStatus::Component(component)) => {
@@ -174,17 +224,44 @@ impl Decoder for OpenAICompletionRequestDecoder {
                     Err(error) => break Err(error.into()),
                 }
             }
+            let source = *input;
             match json.next(input, eof) {
                 Ok(DecoderStatus::Component(
                     token @ (JsonToken::ValueString(..)
                     | JsonToken::ValueNumber(..)
                     | JsonToken::ValueBoolean(..)
                     | JsonToken::ValueNull(..)),
-                )) => match self.proceed_scalar(token) {
-                    Ok(Some(component)) => break Ok(DecoderStatus::Component(component)),
-                    Ok(None) => continue,
-                    Err(error) => break Err(error),
-                },
+                )) => {
+                    if let JsonToken::ValueString(Some(key), value) = &token {
+                        let kind = match *key {
+                            "model" => {
+                                if value.is_empty() {
+                                    break Err(DecoderError::InvalidInput("invalid model"));
+                                }
+                                self.has_model = true;
+                                Some(ScalarText::Model)
+                            }
+                            "stop" => {
+                                if value.is_empty() || value.len() > 4096 {
+                                    break Err(DecoderError::InvalidInput("invalid stop sequence"));
+                                }
+                                Some(ScalarText::Stop)
+                            }
+
+                            _ => None,
+                        };
+                        if let Some(kind) = kind {
+                            captured_scalar =
+                                Some((kind, source, StringReference::new(value, source)));
+                            break Ok(DecoderStatus::NeedInput);
+                        }
+                    }
+                    match self.proceed_scalar(token) {
+                        Ok(Some(component)) => break Ok(DecoderStatus::Component(component)),
+                        Ok(None) => continue,
+                        Err(error) => break Err(error),
+                    }
+                }
                 Ok(DecoderStatus::Component(JsonToken::ObjectStart(None))) if !self.started => {
                     self.started = true;
                 }
@@ -261,6 +338,74 @@ impl Decoder for OpenAICompletionRequestDecoder {
         };
         self.json = Some(json);
         self.failed = result.is_err();
+        if let Some((source, range)) = captured_stop {
+            let value = self
+                .json
+                .as_mut()
+                .ok_or(DecoderError::InvalidState)?
+                .deserialize_captured::<crate::llm::text::copenai::request::component::Stops<'_>>(
+                    source, range,
+                )
+                .map_err(DecoderError::from)
+                .inspect_err(|_| self.failed = true)?;
+            return Ok(DecoderStatus::Component(TextRequestComponent::Stop(
+                value.0,
+            )));
+        }
+        if let Some((source, range)) = captured_format {
+            let value = self.json.as_mut().ok_or(DecoderError::InvalidState)?
+                .deserialize_captured::<crate::llm::text::copenai::request::component::FormatInput<'_>>(source, range)
+                .map_err(DecoderError::from).inspect_err(|_| self.failed = true)?;
+            let format = value
+                .try_into()
+                .map_err(|_| DecoderError::InvalidInput("invalid response format"))
+                .inspect_err(|_| self.failed = true)?;
+            return Ok(DecoderStatus::Component(
+                TextRequestComponent::ResponseFormat(format),
+            ));
+        }
+        if let Some((source, range)) = captured_message {
+            let value = self
+                .json
+                .as_mut()
+                .ok_or(DecoderError::InvalidState)?
+                .deserialize_captured::<MessageInput<'_>>(source, range)
+                .map_err(DecoderError::from)
+                .inspect_err(|_| self.failed = true)?;
+            let message = value
+                .try_into()
+                .map_err(|_| DecoderError::InvalidInput("invalid message"))
+                .inspect_err(|_| self.failed = true)?;
+            return Ok(DecoderStatus::Component(TextRequestComponent::Message(
+                message,
+            )));
+        }
+        if let Some((source, range)) = captured_choice {
+            let value=self.json.as_mut().ok_or(DecoderError::InvalidState)?
+                .deserialize_captured::<crate::llm::text::copenai::request::component::FunctionChoice<'_>>(source,range)
+                .map_err(DecoderError::from).inspect_err(|_|self.failed=true)?;
+            let choice = value.into();
+            return Ok(DecoderStatus::Component(TextRequestComponent::ToolChoice(
+                choice,
+            )));
+        }
+        if let Some((kind, source, reference)) = captured_scalar {
+            let text = self
+                .json
+                .as_ref()
+                .ok_or(DecoderError::InvalidState)?
+                .resolve_string(source, reference)
+                .map_err(DecoderError::from)?;
+            return Ok(DecoderStatus::Component((kind, text).into()));
+        }
+        if let Some((source, range)) = captured_tool {
+            let tool = self.json.as_mut().ok_or(DecoderError::InvalidState)?
+                .deserialize_captured::<crate::llm::text::copenai::request::component::ChatTool<'_>>(source, range)
+                .map_err(DecoderError::from).inspect_err(|_| self.failed = true)?;
+            return Ok(DecoderStatus::Component(TextRequestComponent::Tool(
+                tool.into(),
+            )));
+        }
         result
     }
 
@@ -278,10 +423,10 @@ impl Decoder for OpenAICompletionRequestDecoder {
     }
 }
 
-struct DecodedField<T, A>(DecoderStatus<Input<T, A>>, fn(T) -> TextRequestComponent);
+struct DecodedField<T, A, S>(DecoderStatus<Input<T, A>>, fn(T) -> TextRequestComponent<S>);
 
-impl<T, A> From<DecodedField<T, A>> for DecoderStatus<TextRequestComponent> {
-    fn from(DecodedField(status, component): DecodedField<T, A>) -> Self {
+impl<T, A, S> From<DecodedField<T, A, S>> for DecoderStatus<TextRequestComponent<S>> {
+    fn from(DecodedField(status, component): DecodedField<T, A, S>) -> Self {
         match status {
             DecoderStatus::Component(value) => Self::Component(component(value.into_inner())),
             DecoderStatus::NeedInput => Self::NeedInput,

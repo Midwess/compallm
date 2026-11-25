@@ -1,21 +1,29 @@
 use crate::llm::text::component::*;
+use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize, Serializer, ser::SerializeMap};
+use std::borrow::Cow;
 
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-pub(in crate::llm::text::openai::request::responses) enum InputItem {
+pub(in crate::llm::text::openai::request::responses) enum InputItem<'a> {
     Message {
         role: InputRole,
-        content: String,
+        #[serde(borrow, deserialize_with = "borrowed::text")]
+        content: Cow<'a, str>,
     },
     FunctionCall {
-        call_id: String,
-        name: String,
-        arguments: String,
+        #[serde(borrow, deserialize_with = "borrowed::text")]
+        call_id: Cow<'a, str>,
+        #[serde(borrow, deserialize_with = "borrowed::text")]
+        name: Cow<'a, str>,
+        #[serde(borrow, deserialize_with = "borrowed::text")]
+        arguments: Cow<'a, str>,
     },
     FunctionCallOutput {
-        call_id: String,
-        output: String,
+        #[serde(borrow, deserialize_with = "borrowed::text")]
+        call_id: Cow<'a, str>,
+        #[serde(borrow, deserialize_with = "borrowed::text")]
+        output: Cow<'a, str>,
     },
 }
 
@@ -39,8 +47,8 @@ impl From<InputRole> for Role {
     }
 }
 
-impl From<InputItem> for Message {
-    fn from(value: InputItem) -> Self {
+impl<'a> From<InputItem<'a>> for Message<Cow<'a, str>> {
+    fn from(value: InputItem<'a>) -> Self {
         let mut message = Self {
             role: Role::User,
             content: None,
@@ -104,17 +112,18 @@ pub(in crate::llm::text::openai::request::responses) enum InputItemWire<'a> {
     },
 }
 
-pub(in crate::llm::text::openai::request::responses) fn input_item(
-    message: &Message,
+pub(in crate::llm::text::openai::request::responses) fn input_item<T: AsRef<str>>(
+    message: &Message<T>,
     index: usize,
 ) -> Result<Option<InputItemWire<'_>>, &'static str> {
     if message.role == Role::Tool {
         let call_id = message
             .tool_call_id
-            .as_deref()
+            .as_ref()
+            .map(AsRef::as_ref)
             .ok_or("tool message requires a tool call identifier")?;
         let output = match message.content.as_ref() {
-            Some(Content::Text(output)) => output.as_str(),
+            Some(Content::Text(output)) => output.as_ref(),
             _ => return Err("tool message requires text content"),
         };
         return Ok((index == 0).then_some(InputItemWire::FunctionCallOutput { call_id, output }));
@@ -122,7 +131,7 @@ pub(in crate::llm::text::openai::request::responses) fn input_item(
     let text = match message.content.as_ref() {
         None | Some(Content::Null) => None,
         Some(Content::Text(text) | Content::Object(ObjectMessage::Text { text })) => {
-            Some(text.as_str())
+            Some(text.as_ref())
         }
         Some(Content::Array(_)) => return Err("message content parts are not supported"),
     };
@@ -142,9 +151,9 @@ pub(in crate::llm::text::openai::request::responses) fn input_item(
         .get(call_index)
     {
         return Ok(Some(InputItemWire::FunctionCall {
-            call_id: &call.id,
-            name: &call.function.name,
-            arguments: &call.function.arguments,
+            call_id: call.id.as_ref(),
+            name: call.function.name.as_ref(),
+            arguments: call.function.arguments.as_ref(),
         }));
     }
     if index == 0 {

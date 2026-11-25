@@ -196,7 +196,7 @@ fn translate(
     let mut encoder = AnthropicRequestEncoder::new(JsonEncoder::new(), configuration);
     let mut output = vec![0; output_size];
     let mut encoded = Vec::new();
-    let mut encode_component = |component: &mut TextRequestComponent| loop {
+    let mut encode_component = |component: &mut TextRequestComponent<std::borrow::Cow<'_, str>>| loop {
         match encoder
             .next(Some(component), &mut output)
             .expect("encode decoded component")
@@ -239,7 +239,7 @@ fn translate(
     decoder.finish().expect("finish decoder");
     loop {
         match encoder
-            .next(None, &mut output)
+            .next(None::<&mut TextRequestComponent>, &mut output)
             .expect("finalize Anthropic request")
         {
             EncoderStatus::NeedOutput { written } => {
@@ -270,7 +270,7 @@ fn round_trip_anthropic(request: &str, input_size: usize, output_size: usize) ->
                 )
             });
             match status {
-                DecoderStatus::Component(component) => components.push(component),
+                DecoderStatus::Component(component) => components.push(component.into_owned()),
                 DecoderStatus::NeedInput => {
                     assert!(input.is_empty());
                     break;
@@ -285,7 +285,7 @@ fn round_trip_anthropic(request: &str, input_size: usize, output_size: usize) ->
             .next(&mut input, true)
             .expect("decode Anthropic EOF")
         {
-            DecoderStatus::Component(component) => components.push(component),
+            DecoderStatus::Component(component) => components.push(component.into_owned()),
             DecoderStatus::Finished => break,
             DecoderStatus::NeedInput => panic!("decoder needs input after EOF"),
         }
@@ -316,7 +316,10 @@ fn round_trip_anthropic(request: &str, input_size: usize, output_size: usize) ->
         }
     }
     loop {
-        match encoder.next(None, &mut output).expect("finalize request") {
+        match encoder
+            .next(None::<&mut TextRequestComponent>, &mut output)
+            .expect("finalize request")
+        {
             EncoderStatus::NeedOutput { written } => encoded.extend_from_slice(&output[..written]),
             EncoderStatus::Finished { written } => {
                 encoded.extend_from_slice(&output[..written]);
@@ -336,7 +339,7 @@ fn measures_anthropic_request_encoding_allocations() {
     let mut input = COMPATIBLE_REQUEST.as_bytes();
     loop {
         match decoder.next(&mut input, true).expect("decode components") {
-            DecoderStatus::Component(component) => components.push(component),
+            DecoderStatus::Component(component) => components.push(component.into_owned()),
             DecoderStatus::Finished => break,
             DecoderStatus::NeedInput => panic!("complete input needs more bytes"),
         }
@@ -358,7 +361,9 @@ fn measures_anthropic_request_encoding_allocations() {
         ));
     }
     assert!(matches!(
-        encoder.next(None, &mut output).expect("finalize request"),
+        encoder
+            .next(None::<&mut TextRequestComponent>, &mut output)
+            .expect("finalize request"),
         EncoderStatus::Finished { .. }
     ));
     encoder.finish().expect("finish encoder");
@@ -460,7 +465,10 @@ fn measure_compatible_to_anthropic_allocations<const BUFFER_SIZE: usize>() {
     }
     decoder.finish().expect("finish decoder");
     loop {
-        match encoder.next(None, &mut output).expect("finalize encoder") {
+        match encoder
+            .next(None::<&mut TextRequestComponent>, &mut output)
+            .expect("finalize encoder")
+        {
             EncoderStatus::NeedOutput { written } => encoded_bytes += written,
             EncoderStatus::Finished { written } => {
                 encoded_bytes += written;
@@ -486,7 +494,7 @@ fn measure_compatible_to_anthropic_allocations<const BUFFER_SIZE: usize>() {
     assert!(encoded_bytes > 0);
 }
 
-fn component_name(component: &TextRequestComponent) -> &'static str {
+fn component_name<S>(component: &TextRequestComponent<S>) -> &'static str {
     match component {
         TextRequestComponent::Model(_) => "Model",
         TextRequestComponent::Message(_) => "Message",

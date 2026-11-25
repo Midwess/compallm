@@ -25,6 +25,31 @@ enum Prepared {
 }
 
 impl JsonDecoder {
+    pub(crate) fn string_layout(&self) -> super::StringLayout {
+        self.parse.string_layout()
+    }
+
+    pub(crate) fn resolve_retained(
+        &self,
+        reference: super::RetainedString,
+    ) -> Result<&str, JsonDecodeError> {
+        self.parse.resolve_retained(reference)
+    }
+
+    pub(crate) fn resolve_string<'a>(
+        &'a self,
+        source: &'a [u8],
+        reference: super::StringReference,
+    ) -> Result<&'a str, JsonDecodeError> {
+        match reference {
+            super::StringReference::Input(range) => {
+                std::str::from_utf8(source.get(range).ok_or(JsonDecodeError::InvalidState)?)
+                    .map_err(|_| JsonDecodeError::InvalidState)
+            }
+            super::StringReference::Buffered => self.reader.tokens.buffered_string(),
+        }
+    }
+
     pub(super) fn container_start(&self) -> Result<bool, JsonDecodeError> {
         self.container_start.ok_or(JsonDecodeError::InvalidState)
     }
@@ -43,6 +68,7 @@ impl JsonDecoder {
             return Err(JsonDecodeError::InvalidState);
         }
         self.container_start = None;
+        self.parse.reset();
         if !array {
             self.parse.active = true;
             self.parse.push(Event::ObjectStart(None))?;
@@ -55,16 +81,71 @@ impl JsonDecoder {
         Self::default()
     }
 
-    pub fn parse_next<T: serde::de::DeserializeOwned>(
+    pub fn with_capacity(buffer_bytes: usize) -> Self {
+        let bytes = if buffer_bytes == 0 {
+            16 * 1024
+        } else {
+            buffer_bytes
+        };
+        Self {
+            reader: JsonReader {
+                tokens: TokenDecoder::with_capacity(bytes),
+                grammar: Grammar::with_capacity(bytes),
+                failed: false,
+            },
+            parse: ParseState::with_capacity(bytes),
+            container_start: None,
+        }
+    }
+
+    pub fn parse_next<'de, 'input: 'de, T: serde::Deserialize<'de>>(
+        &'de mut self,
+        input: &mut &'input [u8],
+        eof: bool,
+    ) -> Result<DecoderStatus<T>, JsonDecodeError> {
+        let source = *input;
+        match self.capture_next(input, eof)? {
+            DecoderStatus::Component(range) => self
+                .deserialize_captured(source, range)
+                .map(DecoderStatus::Component),
+            DecoderStatus::NeedInput => Ok(DecoderStatus::NeedInput),
+            DecoderStatus::Finished => Ok(DecoderStatus::Finished),
+        }
+    }
+
+    pub(crate) fn retain_captured(
+        &mut self,
+        source: &[u8],
+        range: std::ops::Range<usize>,
+    ) -> Result<(), JsonDecodeError> {
+        self.parse
+            .retain(source.get(range).ok_or(JsonDecodeError::InvalidState)?);
+        Ok(())
+    }
+
+    pub(crate) fn deserialize_captured<'de, T: serde::Deserialize<'de>>(
+        &'de mut self,
+        source: &'de [u8],
+        range: std::ops::Range<usize>,
+    ) -> Result<T, JsonDecodeError> {
+        let bytes = source.get(range).ok_or(JsonDecodeError::InvalidState)?;
+        self.parse
+            .deserialize(bytes)
+            .inspect_err(|_| self.reader.failed = true)
+    }
+
+    pub(crate) fn capture_next(
         &mut self,
         input: &mut &[u8],
         eof: bool,
-    ) -> Result<DecoderStatus<T>, JsonDecodeError> {
+    ) -> Result<DecoderStatus<std::ops::Range<usize>>, JsonDecodeError> {
         if self.reader.failed {
             return Err(JsonDecodeError::InvalidState);
         }
+        let original_length = input.len();
         self.container_start = None;
         if !self.parse.active {
+            self.parse.reset();
             // Exclude parent keys and separators from the captured value.
             match self.reader.prepare(input, eof) {
                 Ok(DecoderStatus::Component(Prepared::Value)) => self.parse.active = true,
@@ -82,6 +163,7 @@ impl JsonDecoder {
                 }
             }
         }
+        let start = original_length - input.len();
         let source = *input;
         loop {
             match self.reader.next(input, eof)? {
@@ -96,11 +178,9 @@ impl JsonDecoder {
                         .push(token)
                         .inspect_err(|_| self.reader.failed = true)?;
                     if complete {
-                        return self
-                            .parse
-                            .deserialize(&source[..source.len() - input.len()])
-                            .map(DecoderStatus::Component)
-                            .inspect_err(|_| self.reader.failed = true);
+                        let length = source.len() - input.len();
+                        self.parse.complete_capture(&source[..length]);
+                        return Ok(DecoderStatus::Component(start..start + length));
                     }
                 }
                 DecoderStatus::NeedInput => {

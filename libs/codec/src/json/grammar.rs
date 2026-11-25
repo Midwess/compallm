@@ -26,12 +26,18 @@ pub(super) struct Grammar {
 
 impl Default for Grammar {
     fn default() -> Self {
+        Self::with_capacity(16 * 1024)
+    }
+}
+
+impl Grammar {
+    pub(super) fn with_capacity(bytes: usize) -> Self {
         Self {
             stack: [Position::ObjectFirst; 64],
             depth: 0,
             root: false,
-            key_bytes: String::with_capacity(64),
-            keys: Vec::with_capacity(16),
+            key_bytes: String::with_capacity(bytes),
+            keys: Vec::with_capacity(bytes / 16),
             key_starts: [0; 64],
             byte_starts: [0; 64],
         }

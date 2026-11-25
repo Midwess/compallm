@@ -1,7 +1,7 @@
 use crate::llm::text::component::{JsonSchema, ResponseFormat};
-use compallm_serde_rules::{deserialize, serialize};
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{DeserializeAs, de::DeserializeAsWrap};
+use compallm_serde_rules::{borrowed, deserialize, serialize};
+use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 #[derive(Serialize)]
 #[serde(
@@ -10,27 +10,31 @@ use serde_with::{DeserializeAs, de::DeserializeAsWrap};
     content = "json_schema",
     rename_all = "snake_case"
 )]
-pub(crate) enum ResponseFormatWire {
+pub(crate) enum ResponseFormatWire<S: AsRef<str> + Serialize> {
     Text,
     JsonObject,
-    JsonSchema(#[serde(with = "JsonSchemaWire")] JsonSchema),
+    JsonSchema(#[serde(with = "JsonSchemaWire")] JsonSchema<S>),
 }
 
-impl<'de> DeserializeAs<'de, ResponseFormat> for ResponseFormatWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<ResponseFormat, D::Error> {
-        FormatInput::deserialize(deserializer)?
-            .try_into()
-            .map_err(serde::de::Error::custom)
-    }
+#[derive(Serialize)]
+#[serde(remote = "JsonSchema", bound(serialize = "S: Serialize + AsRef<str>"))]
+struct JsonSchemaWire<S> {
+    name: S,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<S>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    strict: Option<bool>,
+    #[serde(serialize_with = "serialize::serialize_raw")]
+    schema: S,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct FormatInput {
+pub(crate) struct FormatInput<'a> {
     #[serde(rename = "type")]
     kind: FormatKind,
-    #[serde(default, deserialize_with = "deserialize::present")]
-    json_schema: Option<DeserializeAsWrap<JsonSchema, JsonSchemaWire>>,
+    #[serde(default, borrow, deserialize_with = "deserialize::present")]
+    json_schema: Option<JsonSchemaInput<'a>>,
 }
 
 #[derive(Deserialize)]
@@ -41,36 +45,31 @@ enum FormatKind {
     JsonSchema,
 }
 
-impl TryFrom<FormatInput> for ResponseFormat {
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct JsonSchemaInput<'a> {
+    #[serde(borrow, deserialize_with = "borrowed::nonempty")]
+    name: Cow<'a, str>,
+    #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
+    description: Option<Cow<'a, str>>,
+    strict: Option<bool>,
+    #[serde(borrow, deserialize_with = "borrowed::schema")]
+    schema: Cow<'a, str>,
+}
+
+impl<'a> TryFrom<FormatInput<'a>> for ResponseFormat<Cow<'a, str>> {
     type Error = &'static str;
-    fn try_from(value: FormatInput) -> Result<Self, Self::Error> {
+    fn try_from(value: FormatInput<'a>) -> Result<Self, Self::Error> {
         match (value.kind, value.json_schema) {
             (FormatKind::Text, None) => Ok(Self::Text),
             (FormatKind::JsonObject, None) => Ok(Self::JsonObject),
-            (FormatKind::JsonSchema, Some(schema)) => Ok(Self::JsonSchema(schema.into_inner())),
+            (FormatKind::JsonSchema, Some(schema)) => Ok(Self::JsonSchema(JsonSchema {
+                name: schema.name,
+                description: schema.description,
+                strict: schema.strict,
+                schema: schema.schema,
+            })),
             _ => Err("invalid response format"),
         }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(remote = "JsonSchema", deny_unknown_fields)]
-struct JsonSchemaWire {
-    #[serde(deserialize_with = "deserialize::nonempty")]
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    strict: Option<bool>,
-    #[serde(
-        deserialize_with = "deserialize::schema",
-        serialize_with = "serialize::serialize_raw"
-    )]
-    schema: String,
-}
-
-impl<'de> DeserializeAs<'de, JsonSchema> for JsonSchemaWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<JsonSchema, D::Error> {
-        Self::deserialize(deserializer)
     }
 }

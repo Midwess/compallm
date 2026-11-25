@@ -499,7 +499,7 @@ fn stored_json(value: &str) -> Value {
 
 fn decode<D>(request: &[u8], mut decoder: D) -> Vec<TextRequestComponent>
 where
-    D: for<'a> Decoder<Component<'a> = TextRequestComponent>,
+    D: for<'a> Decoder<Component<'a> = TextRequestComponent<std::borrow::Cow<'a, str>>>,
     D::Error: Debug,
 {
     let mut components = Vec::new();
@@ -512,7 +512,7 @@ where
                 .next(&mut input, false)
                 .expect("decode full request")
             {
-                DecoderStatus::Component(component) => components.push(component),
+                DecoderStatus::Component(component) => components.push(component.into_owned()),
                 DecoderStatus::NeedInput => {
                     assert!(input.is_empty());
                     break;
@@ -555,7 +555,10 @@ where
         }
     }
     loop {
-        match encoder.next(None, &mut output).expect("finalize encoding") {
+        match encoder
+            .next(None::<&mut TextRequestComponent>, &mut output)
+            .expect("finalize encoding")
+        {
             EncoderStatus::NeedOutput { written } => {
                 encoded.extend_from_slice(&output[..written]);
             }
@@ -572,10 +575,10 @@ where
 
 fn round_trip<D, E>(request: &str, mut decoder: D, mut encoder: E, size: usize)
 where
-    D: for<'a> Decoder<Component<'a> = TextRequestComponent>,
+    D: for<'a> Decoder<Component<'a> = TextRequestComponent<std::borrow::Cow<'a, str>>>,
     D::Error: Debug,
-    E: Encoder<TextRequestComponent>,
-    E::Error: Debug,
+    E: for<'a> Encoder<TextRequestComponent<std::borrow::Cow<'a, str>>>,
+    for<'a> <E as Encoder<TextRequestComponent<std::borrow::Cow<'a, str>>>>::Error: Debug,
 {
     let mut output = vec![0; size];
     let mut encoded = Vec::new();
@@ -641,7 +644,12 @@ where
     let mut encoder_finalization = 0;
     loop {
         let before = measurement.count();
-        let status = encoder.next(None, &mut output).expect("finalize encoding");
+        let status = encoder
+            .next(
+                None::<&mut TextRequestComponent<std::borrow::Cow<'_, str>>>,
+                &mut output,
+            )
+            .expect("finalize encoding");
         encoder_finalization += measurement.count() - before;
         match status {
             EncoderStatus::NeedOutput { written } => {

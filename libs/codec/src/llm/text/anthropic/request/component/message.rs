@@ -1,10 +1,10 @@
 use crate::llm::text::component::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, ser::SerializeSeq};
-use serde_with::DeserializeAs;
+use std::borrow::Cow;
 
 #[derive(Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub(crate) enum Block<'a> {
+#[serde(tag = "type", rename_all = "snake_case", bound(serialize = ""))]
+pub(crate) enum Block<'a, T: AsRef<str>> {
     Text {
         text: &'a str,
     },
@@ -20,14 +20,14 @@ pub(crate) enum Block<'a> {
     },
     ToolResult {
         tool_use_id: &'a str,
-        content: ContentBlocks<'a>,
+        content: ContentBlocks<'a, T>,
     },
 }
 
 #[derive(Clone, Copy)]
-pub(crate) struct ContentBlocks<'a>(Option<&'a Content>);
+pub(crate) struct ContentBlocks<'a, T: AsRef<str>>(Option<&'a Content<T>>);
 
-impl Serialize for ContentBlocks<'_> {
+impl<T: AsRef<str>> Serialize for ContentBlocks<'_, T> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let length = match self.0 {
             Some(Content::Text(_) | Content::Object(_)) => 1,
@@ -37,11 +37,15 @@ impl Serialize for ContentBlocks<'_> {
         let mut sequence = serializer.serialize_seq(Some(length))?;
         match self.0 {
             Some(Content::Text(text) | Content::Object(ObjectMessage::Text { text })) => {
-                sequence.serialize_element(&Block::Text { text })?;
+                sequence.serialize_element(&Block::<T>::Text {
+                    text: text.as_ref(),
+                })?;
             }
             Some(Content::Array(parts)) => {
                 for ObjectMessage::Text { text } in parts {
-                    sequence.serialize_element(&Block::Text { text })?;
+                    sequence.serialize_element(&Block::<T>::Text {
+                        text: text.as_ref(),
+                    })?;
                 }
             }
             Some(Content::Null) | None => {}
@@ -50,18 +54,18 @@ impl Serialize for ContentBlocks<'_> {
     }
 }
 
-pub(crate) fn system(message: &Message) -> ContentBlocks<'_> {
+pub(crate) fn system<T: AsRef<str>>(message: &Message<T>) -> ContentBlocks<'_, T> {
     ContentBlocks(message.content.as_ref())
 }
 
 #[derive(Serialize)]
-pub(crate) struct MessageWire<'a> {
+pub(crate) struct MessageWire<'a, T: AsRef<str>> {
     role: &'static str,
-    content: MessageBlocks<'a>,
+    content: MessageBlocks<'a, T>,
 }
 
-impl<'a> From<&'a Message> for MessageWire<'a> {
-    fn from(message: &'a Message) -> Self {
+impl<'a, T: AsRef<str>> From<&'a Message<T>> for MessageWire<'a, T> {
+    fn from(message: &'a Message<T>) -> Self {
         Self {
             role: match message.role {
                 Role::Assistant => "assistant",
@@ -74,15 +78,19 @@ impl<'a> From<&'a Message> for MessageWire<'a> {
     }
 }
 
-struct MessageBlocks<'a>(&'a Message);
+struct MessageBlocks<'a, T: AsRef<str>>(&'a Message<T>);
 
-impl Serialize for MessageBlocks<'_> {
+impl<T: AsRef<str>> Serialize for MessageBlocks<'_, T> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let message = self.0;
         if message.role == Role::Tool {
             let mut sequence = serializer.serialize_seq(Some(1))?;
             sequence.serialize_element(&Block::ToolResult {
-                tool_use_id: message.tool_call_id.as_deref().unwrap_or(""),
+                tool_use_id: message
+                    .tool_call_id
+                    .as_ref()
+                    .map(AsRef::as_ref)
+                    .unwrap_or(""),
                 content: ContentBlocks(message.content.as_ref()),
             })?;
             return sequence.end();
@@ -124,30 +132,34 @@ impl Serialize for MessageBlocks<'_> {
                     signature: Some(signature),
                 } = &detail.content
                 {
-                    sequence.serialize_element(&Block::Thinking {
-                        thinking: text,
-                        signature,
+                    sequence.serialize_element(&Block::<T>::Thinking {
+                        thinking: text.as_ref(),
+                        signature: signature.as_ref(),
                     })?;
                 }
             }
         }
         match message.content.as_ref() {
             Some(Content::Text(text) | Content::Object(ObjectMessage::Text { text })) => {
-                sequence.serialize_element(&Block::Text { text })?;
+                sequence.serialize_element(&Block::<T>::Text {
+                    text: text.as_ref(),
+                })?;
             }
             Some(Content::Array(parts)) => {
                 for ObjectMessage::Text { text } in parts {
-                    sequence.serialize_element(&Block::Text { text })?;
+                    sequence.serialize_element(&Block::<T>::Text {
+                        text: text.as_ref(),
+                    })?;
                 }
             }
             Some(Content::Null) | None => {}
         }
         if message.role == Role::Assistant {
             for call in message.tool_calls.iter().flatten() {
-                sequence.serialize_element(&Block::ToolUse {
-                    id: &call.id,
-                    name: &call.function.name,
-                    input: &call.function.arguments,
+                sequence.serialize_element(&Block::<T>::ToolUse {
+                    id: call.id.as_ref(),
+                    name: call.function.name.as_ref(),
+                    input: call.function.arguments.as_ref(),
                 })?;
             }
         }
@@ -156,10 +168,11 @@ impl Serialize for MessageBlocks<'_> {
 }
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct MessageInput {
+#[serde(deny_unknown_fields, bound(deserialize = "'de: 'a, 'a: 'de"))]
+struct MessageInput<'a> {
     role: MessageRole,
-    content: MessageContent,
+    #[serde(borrow)]
+    content: MessageContent<'a>,
 }
 
 #[derive(Deserialize, PartialEq)]
@@ -170,81 +183,53 @@ enum MessageRole {
     System,
 }
 
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum MessageContent {
-    Text(String),
-    Blocks(Vec<BlockInput>),
+enum MessageContent<'a> {
+    Text(Cow<'a, str>),
+    Blocks(Vec<BlockInput<'a>>),
 }
 
-#[derive(Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-enum BlockInput {
+enum BlockInput<'a> {
     Text {
-        text: String,
+        text: Cow<'a, str>,
     },
     Thinking {
-        thinking: String,
-        signature: String,
+        thinking: Cow<'a, str>,
+        signature: Cow<'a, str>,
     },
     RedactedThinking {
-        data: String,
+        data: Cow<'a, str>,
     },
     ToolUse {
-        id: String,
-        name: String,
-        input: serde_json::Value,
+        id: Cow<'a, str>,
+        name: Cow<'a, str>,
+        input: Cow<'a, str>,
     },
     ToolResult {
-        tool_use_id: String,
-        content: ToolResultContent,
+        tool_use_id: Cow<'a, str>,
+        content: ToolResultContent<'a>,
     },
 }
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-enum ToolResultContent {
-    Text(String),
-    Blocks(Vec<TextBlockInput>),
+enum ToolResultContent<'a> {
+    Text(#[serde(borrow)] Cow<'a, str>),
+    Blocks(#[serde(borrow)] Vec<TextBlockInput<'a>>),
 }
 
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-enum TextBlockInput {
-    Text { text: String },
+enum TextBlockInput<'a> {
+    Text {
+        #[serde(borrow)]
+        text: Cow<'a, str>,
+    },
 }
 
-pub(crate) struct MessagesWire;
-
-impl<'de> DeserializeAs<'de, Vec<Message>> for MessagesWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Vec<Message>, D::Error> {
-        let input = MessageInput::deserialize(deserializer)?;
-        input.try_into().map_err(serde::de::Error::custom)
-    }
-}
-
-pub(crate) struct SystemWire;
-
-impl<'de> DeserializeAs<'de, Message> for SystemWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Message, D::Error> {
-        let content = MessageContent::deserialize(deserializer)?;
-        let messages: Vec<Message> = MessageInput {
-            role: MessageRole::System,
-            content,
-        }
-        .try_into()
-        .map_err(serde::de::Error::custom)?;
-        messages
-            .into_iter()
-            .next()
-            .ok_or_else(|| serde::de::Error::custom("empty system"))
-    }
-}
-
-impl TryFrom<MessageInput> for Vec<Message> {
+impl<'a> TryFrom<MessageInput<'a>> for Vec<Message<Cow<'a, str>>> {
     type Error = &'static str;
 
-    fn try_from(value: MessageInput) -> Result<Self, Self::Error> {
+    fn try_from(value: MessageInput<'a>) -> Result<Self, Self::Error> {
         let role = match value.role {
             MessageRole::User => Role::User,
             MessageRole::Assistant => Role::Assistant,
@@ -290,7 +275,7 @@ impl TryFrom<MessageInput> for Vec<Message> {
                 BlockInput::RedactedThinking { data } => reasoning.push(ReasoningDetail {
                     content: ReasoningDetailContent::Encrypted { data },
                     id: None,
-                    format: Some("anthropic".to_owned()),
+                    format: Some(Cow::Borrowed("anthropic")),
                     index: None,
                 }),
                 BlockInput::ToolUse { id, name, input } => calls.push(ToolCall {
@@ -298,7 +283,7 @@ impl TryFrom<MessageInput> for Vec<Message> {
                     kind: ToolType::Function,
                     function: FunctionCall {
                         name,
-                        arguments: input.to_string(),
+                        arguments: input,
                     },
                 }),
                 BlockInput::ToolResult {
@@ -354,5 +339,207 @@ impl TryFrom<MessageInput> for Vec<Message> {
             return Err("empty message content");
         }
         Ok(vec![message])
+    }
+}
+
+pub(crate) struct MessagesInput<'a>(pub Vec<Message<Cow<'a, str>>>);
+impl<'de> Deserialize<'de> for MessagesInput<'de> {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        MessageInput::deserialize(d)?
+            .try_into()
+            .map(Self)
+            .map_err(serde::de::Error::custom)
+    }
+}
+pub(crate) struct SystemInput<'a>(pub Message<Cow<'a, str>>);
+impl<'de> Deserialize<'de> for SystemInput<'de> {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let content = MessageContent::deserialize(d)?;
+        let messages: Vec<Message<Cow<'de, str>>> = MessageInput {
+            role: MessageRole::System,
+            content,
+        }
+        .try_into()
+        .map_err(serde::de::Error::custom)?;
+        messages
+            .into_iter()
+            .next()
+            .map(Self)
+            .ok_or_else(|| serde::de::Error::custom("empty system"))
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BlockFields<'a> {
+    #[serde(rename = "type")]
+    kind: BlockKind,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    text: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    thinking: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    signature: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    data: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    id: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    name: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_schema"
+    )]
+    input: Option<Cow<'a, str>>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::borrowed::present_text"
+    )]
+    tool_use_id: Option<Cow<'a, str>>,
+    #[serde(default, borrow)]
+    content: Option<ToolResultContent<'a>>,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum BlockKind {
+    Text,
+    Thinking,
+    RedactedThinking,
+    ToolUse,
+    ToolResult,
+}
+
+impl<'de> Deserialize<'de> for BlockInput<'de> {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = BlockFields::deserialize(d)?;
+        use serde::de::Error;
+        let result = match (
+            v.kind,
+            v.text,
+            v.thinking,
+            v.signature,
+            v.data,
+            v.id,
+            v.name,
+            v.input,
+            v.tool_use_id,
+            v.content,
+        ) {
+            (BlockKind::Text, Some(text), None, None, None, None, None, None, None, None) => {
+                Self::Text { text }
+            }
+            (
+                BlockKind::Thinking,
+                None,
+                Some(thinking),
+                Some(signature),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ) => Self::Thinking {
+                thinking,
+                signature,
+            },
+            (
+                BlockKind::RedactedThinking,
+                None,
+                None,
+                None,
+                Some(data),
+                None,
+                None,
+                None,
+                None,
+                None,
+            ) => Self::RedactedThinking { data },
+            (
+                BlockKind::ToolUse,
+                None,
+                None,
+                None,
+                None,
+                Some(id),
+                Some(name),
+                Some(input),
+                None,
+                None,
+            ) => Self::ToolUse { id, name, input },
+            (
+                BlockKind::ToolResult,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(tool_use_id),
+                Some(content),
+            ) => Self::ToolResult {
+                tool_use_id,
+                content,
+            },
+            _ => return Err(D::Error::custom("invalid message block")),
+        };
+        Ok(result)
+    }
+}
+
+impl<'de> Deserialize<'de> for MessageContent<'de> {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        struct Visitor;
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = MessageContent<'de>;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("text or message blocks")
+            }
+            fn visit_borrowed_str<E: serde::de::Error>(
+                self,
+                v: &'de str,
+            ) -> Result<Self::Value, E> {
+                Ok(MessageContent::Text(Cow::Borrowed(v)))
+            }
+
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(
+                self,
+                mut seq: A,
+            ) -> Result<Self::Value, A::Error> {
+                let mut blocks = Vec::new();
+                while let Some(block) = seq.next_element::<BlockInput<'de>>()? {
+                    blocks.push(block);
+                }
+                Ok(MessageContent::Blocks(blocks))
+            }
+        }
+        d.deserialize_any(Visitor)
     }
 }

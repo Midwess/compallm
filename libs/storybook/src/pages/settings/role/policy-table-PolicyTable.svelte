@@ -110,7 +110,7 @@
           >
             <Table.Row>
               <Table.Head class="px-2 py-0">Policy</Table.Head><Table.Head class="px-1 py-0">Description</Table.Head><Table.Head
-                class="px-2 py-0"
+                class="px-0 py-0 text-center"
               >
                 Allow
               </Table.Head>
@@ -132,34 +132,36 @@
                 {open}
                 onOpenChange={(next) => (disclosure = ((current) => ({ ...current, [category]: next }))(disclosure))}
               >
-                {#snippet action()}<DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
-                    <PermissionRequest
-                      actions={['role.policy.update']}
-                      resource={{ type: 'Role', id: c.store.getState().draft?.id }}
-                    >
-                      {#snippet children(allowed)}<DisabledTooltip
-                          disabled={!allowed}
-                          reason="You do not have permission to perform this action."
-                        >
-                          <Switch
-                            aria-label={'Allow ' + category + ' policies'}
-                            checked={allEditableSelected}
-                            disabled={!allowed || disabled || editable.length === 0}
-                            aria-disabled={!allowed || disabled || editable.length === 0 || busy}
-                            onchange={() =>
-                              !busy &&
-                              c.store.form.perform(
-                                () =>
-                                  c.setPolicyActions(
-                                    editable.map((a) => a.id),
-                                    !allEditableSelected,
-                                  ),
-                                ['draft.source'],
-                              )}
-                          ></Switch>
-                        </DisabledTooltip>{/snippet}
-                    </PermissionRequest>
-                  </DisabledTooltip>{/snippet}{#snippet children(action)}<PermissionRow
+                {#snippet action()}<div class="flex justify-center">
+                    <DisabledTooltip disabled={draft.builtin} reason={ownerExplanation}>
+                      <PermissionRequest
+                        actions={['role.policy.update']}
+                        resource={{ type: 'Role', id: c.store.getState().draft?.id }}
+                      >
+                        {#snippet children(allowed)}<DisabledTooltip
+                            disabled={!allowed}
+                            reason="You do not have permission to perform this action."
+                          >
+                            <Switch
+                              aria-label={'Allow ' + category + ' policies'}
+                              checked={allEditableSelected}
+                              disabled={!allowed || disabled || editable.length === 0}
+                              aria-disabled={!allowed || disabled || editable.length === 0 || busy}
+                              onchange={() =>
+                                !busy &&
+                                c.store.form.perform(
+                                  () =>
+                                    c.setPolicyActions(
+                                      editable.map((a) => a.id),
+                                      !allEditableSelected,
+                                    ),
+                                  ['draft.source'],
+                                )}
+                            ></Switch>
+                          </DisabledTooltip>{/snippet}
+                      </PermissionRequest>
+                    </DisabledTooltip>
+                  </div>{/snippet}{#snippet children(action)}<PermissionRow
                     id={id + '-category-' + index + '-' + action.id}
                     {action}
                     statements={projection.get(action.id) ?? []}

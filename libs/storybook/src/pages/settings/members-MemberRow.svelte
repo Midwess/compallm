@@ -25,17 +25,19 @@
   <Table.Cell column="name" class="pl-0">
     <div class="flex items-center gap-2.5 py-1">
       <MemberAvatar {member}></MemberAvatar><span class="relative min-w-0 pr-3 text-xsm font-medium">
-        <span class="block truncate">{member.name}</span>{#if member.id === currentMemberId}<Tooltip.Control
-            content="This is you"
-          >
-            <button
-              type="button"
-              aria-label="This is you"
-              class="absolute -top-1 right-0 rounded text-foreground focus-visible:outline-ring"
-            >
-              <ArrowDownLeftIcon weight="bold" class="size-2.5" aria-hidden="true"></ArrowDownLeftIcon>
-            </button>
-          </Tooltip.Control>{:else}{/if}
+        <span class="block truncate">{member.name}</span>{#if member.id === currentMemberId}<Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}<button
+                  {...props}
+                  type="button"
+                  aria-label="This is you"
+                  class="absolute -top-1 right-0 inline-flex rounded text-foreground focus-visible:outline-ring"
+                >
+                  <ArrowDownLeftIcon weight="bold" class="size-2.5" aria-hidden="true"></ArrowDownLeftIcon>
+                </button>{/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content>This is you</Tooltip.Content>
+          </Tooltip.Root>{:else}{/if}
       </span>
     </div>
   </Table.Cell><Table.Cell column="email" class="text-muted-foreground">

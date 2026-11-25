@@ -59,25 +59,27 @@
         {#each disabledPolicies as source (source)}<pre class="mt-1 whitespace-pre-wrap wrap-break-word">{source}</pre>{/each}
       </details>{:else}{/if}
   </Table.Cell><Table.Cell class="px-1 py-0 text-xs text-muted-foreground">{action.description}</Table.Cell><Table.Cell
-    class="px-2 py-0"
+    class="px-0 py-0"
   >
-    <DisabledTooltip disabled={owner} reason={ownerExplanation}>
-      <PermissionRequest actions={['role.policy.update']} resource={{ type: 'Role', id: c.store.getState().draft?.id }}>
-        {#snippet children(allowed)}<DisabledTooltip
-            disabled={!allowed}
-            reason="You do not have permission to perform this action."
-          >
-            <Switch
-              aria-label={action.label}
-              checked={permits.length > 0}
-              disabled={!allowed || disabled || advanced}
-              aria-disabled={!allowed || disabled || advanced || busy}
-              onchange={() => {
-                if (!busy) void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])
-              }}
-            ></Switch>
-          </DisabledTooltip>{/snippet}
-      </PermissionRequest>
-    </DisabledTooltip>
+    <div class="flex justify-center">
+      <DisabledTooltip disabled={owner} reason={ownerExplanation}>
+        <PermissionRequest actions={['role.policy.update']} resource={{ type: 'Role', id: c.store.getState().draft?.id }}>
+          {#snippet children(allowed)}<DisabledTooltip
+              disabled={!allowed}
+              reason="You do not have permission to perform this action."
+            >
+              <Switch
+                aria-label={action.label}
+                checked={permits.length > 0}
+                disabled={!allowed || disabled || advanced}
+                aria-disabled={!allowed || disabled || advanced || busy}
+                onchange={() => {
+                  if (!busy) void c.store.form.perform(() => c.togglePolicyAction(action.id), ['draft.source'])
+                }}
+              ></Switch>
+            </DisabledTooltip>{/snippet}
+        </PermissionRequest>
+      </DisabledTooltip>
+    </div>
   </Table.Cell>
 </Table.Row>

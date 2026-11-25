@@ -17,7 +17,7 @@
     "dev:api": "cargo run -p compallm-api -- start",
     "dev:vite": "vite --host 127.0.0.1",
     "start": "cargo run --release -p compallm-api -- --environment production start",
-    "serve": "node build/index.js"
+    "serve": "HOST=127.0.0.1 PORT=4868 HOST_HEADER=x-forwarded-host PROTOCOL_HEADER=x-forwarded-proto node build/index.js"
   },
   "dependencies": {
     "@cedar-policy/cedar-wasm": "4.14.0",

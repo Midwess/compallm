@@ -175,15 +175,15 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
                             DecodedField(status, TextRequestComponent::ToolChoice).into()
                         }),
                     Field::Tools => json
-                        .parse_next::<Input<Vec<ToolDefinition>, Vec<ToolWire>>>(input, eof)
-                        .map(|status| DecodedField(status, TextRequestComponent::Tools).into()),
+                        .parse_next::<Input<ToolDefinition, ToolWire>>(input, eof)
+                        .map(|status| DecodedField(status, TextRequestComponent::Tool).into()),
                     Field::Stop => json
                         .parse_next::<Input<Stop, StopWire>>(input, eof)
                         .map(|status| DecodedField(status, TextRequestComponent::Stop).into()),
                 };
                 match status {
                     Ok(DecoderStatus::Component(component)) => {
-                        if !matches!(field, Field::Messages) {
+                        if !matches!(field, Field::Messages | Field::Tools) {
                             self.field = None;
                         }
                         break Ok(DecoderStatus::Component(component));
@@ -191,6 +191,9 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
                     Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
                     Ok(DecoderStatus::Finished) => {
                         self.field = None;
+                        if matches!(field, Field::Tools) {
+                            break Ok(DecoderStatus::Component(TextRequestComponent::ToolsEnded));
+                        }
                         continue;
                     }
                     Err(error) => break Err(error.into()),
@@ -245,7 +248,11 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
                         "stop" => Field::Stop,
                         _ => break Err(DecoderError::Unsupported("request array")),
                     };
-                    json = match json.enter_value() {
+                    json = match if matches!(field, Field::Tools) {
+                        json.enter()
+                    } else {
+                        json.enter_value()
+                    } {
                         Ok(array) => array,
                         Err(error) => {
                             self.failed = true;
@@ -253,6 +260,9 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
                         }
                     };
                     self.field = Some(field);
+                    if matches!(field, Field::Tools) {
+                        break Ok(DecoderStatus::Component(TextRequestComponent::ToolsStarted));
+                    }
                 }
                 Ok(DecoderStatus::Component(JsonToken::ObjectEnd)) => {
                     if !self.started || !self.has_model || !self.has_messages {

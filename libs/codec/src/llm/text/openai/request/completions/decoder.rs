@@ -153,12 +153,12 @@ impl Decoder for OpenAICompletionRequestDecoder {
                             DecodedField(status, TextRequestComponent::ToolChoice).into()
                         }),
                     Field::Tools => json
-                        .parse_next::<Input<Vec<ToolDefinition>, ToolsWire>>(input, eof)
-                        .map(|status| DecodedField(status, TextRequestComponent::Tools).into()),
+                        .parse_next::<Input<ToolDefinition, ToolsWire>>(input, eof)
+                        .map(|status| DecodedField(status, TextRequestComponent::Tool).into()),
                 };
                 match status {
                     Ok(DecoderStatus::Component(component)) => {
-                        if !matches!(field, Field::Messages) {
+                        if !matches!(field, Field::Messages | Field::Tools) {
                             self.field = None;
                         }
                         break Ok(DecoderStatus::Component(component));
@@ -166,6 +166,9 @@ impl Decoder for OpenAICompletionRequestDecoder {
                     Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
                     Ok(DecoderStatus::Finished) => {
                         self.field = None;
+                        if matches!(field, Field::Tools) {
+                            break Ok(DecoderStatus::Component(TextRequestComponent::ToolsEnded));
+                        }
                         continue;
                     }
                     Err(error) => break Err(error.into()),
@@ -202,7 +205,11 @@ impl Decoder for OpenAICompletionRequestDecoder {
                         "tools" => Field::Tools,
                         _ => break Err(DecoderError::Unsupported("request array")),
                     };
-                    json = match json.enter_value() {
+                    json = match if matches!(field, Field::Tools) {
+                        json.enter()
+                    } else {
+                        json.enter_value()
+                    } {
                         Ok(array) => array,
                         Err(error) => {
                             self.failed = true;
@@ -210,6 +217,9 @@ impl Decoder for OpenAICompletionRequestDecoder {
                         }
                     };
                     self.field = Some(field);
+                    if matches!(field, Field::Tools) {
+                        break Ok(DecoderStatus::Component(TextRequestComponent::ToolsStarted));
+                    }
                 }
                 Ok(DecoderStatus::Component(JsonToken::ObjectStart(Some(key)))) => {
                     let field = match key {

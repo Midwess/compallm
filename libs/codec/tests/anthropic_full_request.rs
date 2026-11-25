@@ -490,7 +490,9 @@ fn component_name(component: &TextRequestComponent) -> &'static str {
     match component {
         TextRequestComponent::Model(_) => "Model",
         TextRequestComponent::Message(_) => "Message",
-        TextRequestComponent::Tools(_) => "Tools",
+        TextRequestComponent::ToolsStarted => "ToolsStarted",
+        TextRequestComponent::Tool(_) => "Tool",
+        TextRequestComponent::ToolsEnded => "ToolsEnded",
         TextRequestComponent::ToolChoice(_) => "ToolChoice",
         TextRequestComponent::ParallelToolCalls(_) => "ParallelToolCalls",
         TextRequestComponent::MaxTokens(_) => "MaxTokens",

@@ -1,6 +1,6 @@
 use super::component::{
     MessageOutput, ResponseFormatOutput, StopOutput, StreamOptionsOutput, ToolChoiceOutput,
-    ToolsOutput, effort,
+    ToolOutput, effort,
 };
 use crate::encoder::{Encoder, EncoderStatus};
 use crate::json::{JsonEncodeError, JsonEncoder, JsonToken};
@@ -41,6 +41,7 @@ enum Field {
 pub struct OpenAICompletionRequestEncoder {
     json: JsonEncoder,
     started: bool,
+    tools_open: bool,
     messages_open: bool,
     messages_closed: bool,
     has_model: bool,
@@ -61,6 +62,7 @@ impl OpenAICompletionRequestEncoder {
         Self {
             json,
             started: false,
+            tools_open: false,
             messages_open: false,
             messages_closed: false,
             has_model: false,
@@ -84,6 +86,12 @@ impl OpenAICompletionRequestEncoder {
             return Err(RequestEncodeError::InvalidState);
         }
         let component = component.as_deref();
+        if self.tools_open && !matches!(component, Some(C::Tool(_) | C::ToolsEnded)) {
+            return Err(RequestEncodeError::InvalidState);
+        }
+        if !self.tools_open && matches!(component, Some(C::Tool(_) | C::ToolsEnded)) {
+            return Err(RequestEncodeError::InvalidState);
+        }
         if self.phase == 2 {
             return Ok(EncoderStatus::Finished { written: 0 });
         }
@@ -113,7 +121,7 @@ impl OpenAICompletionRequestEncoder {
                     }
                     Field::Messages
                 }
-                C::Tools(_) => Field::Tools,
+                C::ToolsStarted | C::Tool(_) | C::ToolsEnded => Field::Tools,
                 C::ToolChoice(_) => Field::ToolChoice,
                 C::ParallelToolCalls(_) => Field::ParallelToolCalls,
                 C::MaxTokens(limit) => {
@@ -160,6 +168,27 @@ impl OpenAICompletionRequestEncoder {
                 JsonToken::ArrayEnd
             } else if message && !self.messages_open {
                 JsonToken::ArrayStart(Some("messages"))
+            } else if matches!(component, Some(C::ToolsStarted | C::ToolsEnded)) {
+                let opening = matches!(component, Some(C::ToolsStarted));
+                let mut token = if opening {
+                    JsonToken::ArrayStart(Some("tools"))
+                } else {
+                    JsonToken::ArrayEnd
+                };
+                let status = self.json.next(Some(&mut token), &mut output[written..])?;
+                return match status {
+                    EncoderStatus::NeedOutput { written: n } => Ok(EncoderStatus::NeedOutput {
+                        written: written + n,
+                    }),
+                    EncoderStatus::ComponentFinished { written: n } => {
+                        self.tools_open = opening;
+                        self.active = None;
+                        Ok(EncoderStatus::ComponentFinished {
+                            written: written + n,
+                        })
+                    }
+                    _ => Err(RequestEncodeError::InvalidState),
+                };
             } else if let Some(component) = component {
                 let output = &mut output[written..];
                 let status = match (self.active, component) {
@@ -170,9 +199,9 @@ impl OpenAICompletionRequestEncoder {
                         self.json
                             .serialize_next(None, &MessageOutput::from(value), output)
                     }
-                    (Some(Field::Tools), C::Tools(value)) => {
+                    (Some(Field::Tools), C::Tool(value)) => {
                         self.json
-                            .serialize_next(Some("tools"), &ToolsOutput(value), output)
+                            .serialize_next(None, &ToolOutput::from(value), output)
                     }
                     (Some(Field::ToolChoice), C::ToolChoice(value)) => self.json.serialize_next(
                         Some("tool_choice"),

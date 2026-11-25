@@ -14,6 +14,70 @@ use codec::llm::text::openai::request::responses::{
 use serde_json::{Value, json};
 use std::fmt::Debug;
 
+use std::alloc::{GlobalAlloc, Layout, System};
+use std::cell::Cell;
+
+struct CountingAllocator;
+
+thread_local! {
+    static ALLOCATIONS: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+#[global_allocator]
+static ALLOCATOR: CountingAllocator = CountingAllocator;
+
+unsafe impl GlobalAlloc for CountingAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let pointer = unsafe { System.alloc(layout) };
+        if !pointer.is_null() {
+            ALLOCATIONS.with(|count| count.set(count.get().map(|value| value + 1)));
+        }
+        pointer
+    }
+
+    unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
+        unsafe { System.dealloc(pointer, layout) }
+    }
+
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        let pointer = unsafe { System.alloc_zeroed(layout) };
+        if !pointer.is_null() {
+            ALLOCATIONS.with(|count| count.set(count.get().map(|value| value + 1)));
+        }
+        pointer
+    }
+
+    unsafe fn realloc(&self, pointer: *mut u8, layout: Layout, size: usize) -> *mut u8 {
+        let pointer = unsafe { System.realloc(pointer, layout, size) };
+        if !pointer.is_null() {
+            ALLOCATIONS.with(|count| count.set(count.get().map(|value| value + 1)));
+        }
+        pointer
+    }
+}
+
+struct AllocationMeasurement;
+
+impl AllocationMeasurement {
+    fn start() -> Self {
+        ALLOCATIONS.with(|count| {
+            assert!(count.get().is_none());
+            count.set(Some(0));
+        });
+        Self
+    }
+
+    fn count(&self) -> usize {
+        ALLOCATIONS.with(|count| count.get().expect("active measurement"))
+    }
+}
+
+impl Drop for AllocationMeasurement {
+    fn drop(&mut self) {
+        ALLOCATIONS.with(|count| count.set(None));
+    }
+}
+
 const COMPLETION_REQUEST: &str = r#"{
   "model": "gpt-4o",
   "messages": [
@@ -189,16 +253,14 @@ fn decodes_openai_completion_request_fields() {
     };
     assert_eq!(result.role, Role::Tool);
     assert_eq!(result.tool_call_id.as_deref(), Some("call_abc123"));
-    let TextRequestComponent::Tools(tools) = &components[6] else {
+    let TextRequestComponent::Tool(tool) = &components[7] else {
         panic!("expected tool declarations");
     };
-    assert_eq!(tools.len(), 1);
-    assert_eq!(tools[0].function.name, "get_weather");
-    assert_eq!(tools[0].function.strict, Some(true));
+    assert_eq!(tool.function.name, "get_weather");
+    assert_eq!(tool.function.strict, Some(true));
     assert_eq!(
         stored_json(
-            tools[0]
-                .function
+            tool.function
                 .parameters
                 .as_deref()
                 .expect("tool parameters")
@@ -211,19 +273,22 @@ fn decodes_openai_completion_request_fields() {
         })
     );
     assert_eq!(
-        components[7],
+        components[9],
         TextRequestComponent::ToolChoice(ToolChoice::Auto)
     );
-    assert_eq!(components[8], TextRequestComponent::ParallelToolCalls(true));
-    assert_eq!(components[9], TextRequestComponent::MaxTokens(1500));
     assert_eq!(
-        components[11],
+        components[10],
+        TextRequestComponent::ParallelToolCalls(true)
+    );
+    assert_eq!(components[11], TextRequestComponent::MaxTokens(1500));
+    assert_eq!(
+        components[13],
         TextRequestComponent::Stop(Stop::Array(vec![
             "<|endoftext|>".to_owned(),
             "User:".to_owned()
         ]))
     );
-    let TextRequestComponent::ResponseFormat(ResponseFormat::JsonSchema(schema)) = &components[12]
+    let TextRequestComponent::ResponseFormat(ResponseFormat::JsonSchema(schema)) = &components[14]
     else {
         panic!("expected a JSON schema response format");
     };
@@ -238,7 +303,7 @@ fn decodes_openai_completion_request_fields() {
             "additionalProperties": false
         })
     );
-    assert_eq!(components[13], TextRequestComponent::Stream(true));
+    assert_eq!(components[15], TextRequestComponent::Stream(true));
 }
 
 #[test]
@@ -263,15 +328,14 @@ fn decodes_openai_response_request_fields() {
     };
     assert_eq!(result.role, Role::Tool);
     assert_eq!(result.tool_call_id.as_deref(), Some("call_abc123"));
-    let TextRequestComponent::Tools(tools) = &components[7] else {
+    let TextRequestComponent::Tool(tool) = &components[8] else {
         panic!("expected tool declarations");
     };
-    assert_eq!(tools[0].function.name, "get_weather");
-    assert_eq!(tools[0].function.strict, Some(true));
+    assert_eq!(tool.function.name, "get_weather");
+    assert_eq!(tool.function.strict, Some(true));
     assert_eq!(
         stored_json(
-            tools[0]
-                .function
+            tool.function
                 .parameters
                 .as_deref()
                 .expect("tool parameters")
@@ -283,7 +347,7 @@ fn decodes_openai_response_request_fields() {
             "additionalProperties": false
         })
     );
-    let TextRequestComponent::ResponseFormat(ResponseFormat::JsonSchema(schema)) = &components[12]
+    let TextRequestComponent::ResponseFormat(ResponseFormat::JsonSchema(schema)) = &components[14]
     else {
         panic!("expected a JSON schema response format");
     };
@@ -478,17 +542,32 @@ where
     let mut output = vec![0; size];
     let mut encoded = Vec::new();
     let mut component_count = 0;
+    let mut rows = Vec::new();
+    let mut pending_decode = 0;
+    let mut decoding = 0;
+    let mut encoding = 0;
+    let measurement = AllocationMeasurement::start();
     for chunk in request.as_bytes().chunks(size) {
         let mut input = chunk;
         loop {
-            match decoder.next(&mut input, false).expect("decode request") {
+            let before = measurement.count();
+            let status = decoder.next(&mut input, false).expect("decode request");
+            let count = measurement.count() - before;
+            decoding += count;
+            pending_decode += count;
+            match status {
                 DecoderStatus::Component(mut component) => {
                     component_count += 1;
+                    let mut component_encoding = 0;
                     loop {
-                        match encoder
+                        let before = measurement.count();
+                        let status = encoder
                             .next(Some(&mut component), &mut output)
-                            .expect("encode component")
-                        {
+                            .expect("encode component");
+                        let count = measurement.count() - before;
+                        encoding += count;
+                        component_encoding += count;
+                        match status {
                             EncoderStatus::NeedOutput { written } => {
                                 assert!(written > 0);
                                 encoded.extend_from_slice(&output[..written]);
@@ -502,6 +581,8 @@ where
                             }
                         }
                     }
+                    rows.push((pending_decode, component_encoding));
+                    pending_decode = 0;
                 }
                 DecoderStatus::NeedInput => {
                     assert!(input.is_empty());
@@ -511,14 +592,20 @@ where
             }
         }
     }
+    let before = measurement.count();
     assert_eq!(
         decoder.next(&mut &b""[..], true).expect("decode EOF"),
         DecoderStatus::Finished
     );
     decoder.finish().expect("finish decoding");
+    let decoder_finalization = measurement.count() - before;
     assert!(component_count > 0);
+    let mut encoder_finalization = 0;
     loop {
-        match encoder.next(None, &mut output).expect("finalize encoding") {
+        let before = measurement.count();
+        let status = encoder.next(None, &mut output).expect("finalize encoding");
+        encoder_finalization += measurement.count() - before;
+        match status {
             EncoderStatus::NeedOutput { written } => {
                 assert!(written > 0);
                 encoded.extend_from_slice(&output[..written]);
@@ -530,10 +617,58 @@ where
             EncoderStatus::ComponentFinished { .. } => panic!("component during finalization"),
         }
     }
+    let before = measurement.count();
     encoder.finish().expect("finish encoding");
+    encoder_finalization += measurement.count() - before;
+    drop(measurement);
+    println!(
+        "{size}-byte buffers: {component_count} components, {} encoded bytes",
+        encoded.len()
+    );
+    println!(
+        "allocations/reallocations: decoding={decoding}, encoding={encoding}, decoder finalization={decoder_finalization}, encoder finalization={encoder_finalization}"
+    );
+    println!("| Component | Decode | Encode |");
+    println!("| --- | --- | --- |");
+    for (index, (decode, encode)) in rows.iter().enumerate() {
+        println!("| {} | {decode} | {encode} |", index + 1);
+    }
+    println!("trailing decode allocations: {pending_decode}");
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&encoded).expect("encoded request JSON"),
         serde_json::from_str::<serde_json::Value>(request).unwrap(),
         "buffer size {size}",
     );
+}
+
+#[test]
+fn measures_openai_completion_request_allocations() {
+    for size in [16, 16 * 1024] {
+        let measurement = AllocationMeasurement::start();
+        let decoder = OpenAICompletionRequestDecoder::new(JsonDecoder::new());
+        let decoder_construction = measurement.count();
+        let encoder = OpenAICompletionRequestEncoder::new(JsonEncoder::new(), Default::default());
+        let encoder_construction = measurement.count() - decoder_construction;
+        drop(measurement);
+        println!(
+            "Chat Completions, {size}-byte buffers: decoder construction={decoder_construction}, encoder construction={encoder_construction}"
+        );
+        round_trip(COMPLETION_REQUEST, decoder, encoder, size);
+    }
+}
+
+#[test]
+fn measures_openai_response_request_allocations() {
+    for size in [16, 16 * 1024] {
+        let measurement = AllocationMeasurement::start();
+        let decoder = OpenAIResponseRequestDecoder::new(JsonDecoder::new());
+        let decoder_construction = measurement.count();
+        let encoder = OpenAIResponseRequestEncoder::new(JsonEncoder::new(), Default::default());
+        let encoder_construction = measurement.count() - decoder_construction;
+        drop(measurement);
+        println!(
+            "Responses, {size}-byte buffers: decoder construction={decoder_construction}, encoder construction={encoder_construction}"
+        );
+        round_trip(RESPONSE_REQUEST, decoder, encoder, size);
+    }
 }

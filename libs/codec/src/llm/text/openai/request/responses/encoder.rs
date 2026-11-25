@@ -1,5 +1,5 @@
 use super::component::{
-    FormatOutput, ReasoningOutput, TextOutput, ToolChoiceOutput, ToolsOutput, effort, input_items,
+    FormatOutput, ReasoningOutput, TextOutput, ToolChoiceOutput, ToolOutput, effort, input_item,
 };
 use crate::encoder::{Encoder, EncoderStatus};
 use crate::json::{JsonEncodeError, JsonEncoder, JsonToken};
@@ -38,6 +38,7 @@ enum Field {
 pub struct OpenAIResponseRequestEncoder {
     json: JsonEncoder,
     started: bool,
+    tools_open: bool,
     input_open: bool,
     input_closed: bool,
     has_model: bool,
@@ -59,6 +60,7 @@ impl OpenAIResponseRequestEncoder {
         Self {
             json,
             started: false,
+            tools_open: false,
             input_open: false,
             input_closed: false,
             has_model: false,
@@ -83,6 +85,12 @@ impl OpenAIResponseRequestEncoder {
             return Err(RequestEncodeError::InvalidState);
         }
         let component = component.as_deref();
+        if self.tools_open && !matches!(component, Some(C::Tool(_) | C::ToolsEnded)) {
+            return Err(RequestEncodeError::InvalidState);
+        }
+        if !self.tools_open && matches!(component, Some(C::Tool(_) | C::ToolsEnded)) {
+            return Err(RequestEncodeError::InvalidState);
+        }
         if self.phase == 2 {
             return Ok(EncoderStatus::Finished { written: 0 });
         }
@@ -109,7 +117,7 @@ impl OpenAIResponseRequestEncoder {
                     }
                     Field::Input
                 }
-                C::Tools(_) => Field::Tools,
+                C::ToolsStarted | C::Tool(_) | C::ToolsEnded => Field::Tools,
                 C::ToolChoice(_) => Field::ToolChoice,
                 C::ParallelToolCalls(_) => Field::ParallelToolCalls,
                 C::MaxTokens(limit) => {
@@ -151,28 +159,42 @@ impl OpenAIResponseRequestEncoder {
                 JsonToken::ArrayEnd
             } else if message && !self.input_open {
                 JsonToken::ArrayStart(Some("input"))
+            } else if matches!(component, Some(C::ToolsStarted | C::ToolsEnded)) {
+                let opening = matches!(component, Some(C::ToolsStarted));
+                let mut token = if opening {
+                    JsonToken::ArrayStart(Some("tools"))
+                } else {
+                    JsonToken::ArrayEnd
+                };
+                let status = self.json.next(Some(&mut token), &mut output[written..])?;
+                return match status {
+                    EncoderStatus::NeedOutput { written: n } => Ok(EncoderStatus::NeedOutput {
+                        written: written + n,
+                    }),
+                    EncoderStatus::ComponentFinished { written: n } => {
+                        self.tools_open = opening;
+                        self.active = None;
+                        Ok(EncoderStatus::ComponentFinished {
+                            written: written + n,
+                        })
+                    }
+                    _ => Err(RequestEncodeError::InvalidState),
+                };
             } else if let Some(component) = component {
                 let output = &mut output[written..];
-                let items = match (self.active, component) {
-                    (Some(Field::Input), C::Message(value)) => {
-                        Some(input_items(value).map_err(|_| RequestEncodeError::InvalidState)?)
-                    }
-                    _ => None,
-                };
                 let status = match (self.active, component) {
                     (Some(Field::Model), C::Model(value)) => {
                         self.json.serialize_next(Some("model"), value, output)
                     }
-                    (Some(Field::Input), C::Message(_)) => {
-                        let items = items.as_ref().ok_or(RequestEncodeError::InvalidState)?;
-                        let item = items
-                            .get(self.item)
+                    (Some(Field::Input), C::Message(value)) => {
+                        let item = input_item(value, self.item)
+                            .map_err(|_| RequestEncodeError::InvalidState)?
                             .ok_or(RequestEncodeError::InvalidState)?;
-                        self.json.serialize_next(None, item, output)
+                        self.json.serialize_next(None, &item, output)
                     }
-                    (Some(Field::Tools), C::Tools(value)) => {
+                    (Some(Field::Tools), C::Tool(value)) => {
                         self.json
-                            .serialize_next(Some("tools"), &ToolsOutput(value), output)
+                            .serialize_next(None, &ToolOutput::from(value), output)
                     }
                     (Some(Field::ToolChoice), C::ToolChoice(value)) => self.json.serialize_next(
                         Some("tool_choice"),
@@ -218,9 +240,12 @@ impl OpenAIResponseRequestEncoder {
                     }
                     EncoderStatus::ComponentFinished { written: n } => {
                         written += n;
-                        if let Some(items) = items {
+                        if let (Some(Field::Input), C::Message(value)) = (self.active, component) {
                             self.item += 1;
-                            if self.item < items.len() {
+                            if input_item(value, self.item)
+                                .map_err(|_| RequestEncodeError::InvalidState)?
+                                .is_some()
+                            {
                                 continue;
                             }
                             self.item = 0;

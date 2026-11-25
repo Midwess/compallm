@@ -76,7 +76,7 @@ enum RoleWire {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[serde(remote = "Content", untagged)]
 pub(super) enum ContentWire {
     Null,
@@ -93,12 +93,49 @@ impl SerializeAs<Content> for ContentWire {
 
 impl<'de> DeserializeAs<'de, Content> for ContentWire {
     fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Content, D::Error> {
-        Self::deserialize(deserializer)
+        deserializer.deserialize_any(ContentVisitor)
+    }
+}
+
+struct ContentVisitor;
+
+impl<'de> serde::de::Visitor<'de> for ContentVisitor {
+    type Value = Content;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("null, text, a text object, or an array of text objects")
+    }
+
+    fn visit_unit<E: serde::de::Error>(self) -> Result<Content, E> {
+        Ok(Content::Null)
+    }
+
+    fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Content, E> {
+        Ok(Content::Text(value.to_owned()))
+    }
+
+    fn visit_string<E: serde::de::Error>(self, value: String) -> Result<Content, E> {
+        Ok(Content::Text(value))
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(self, map: A) -> Result<Content, A::Error> {
+        ObjectMessageWire::deserialize(serde::de::value::MapAccessDeserializer::new(map))
+            .map(Content::Object)
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut sequence: A) -> Result<Content, A::Error> {
+        let mut parts = Vec::new();
+        while let Some(part) = sequence
+            .next_element::<serde_with::de::DeserializeAsWrap<ObjectMessage, ObjectMessageWire>>()?
+        {
+            parts.push(part.into_inner());
+        }
+        Ok(Content::Array(parts))
     }
 }
 
 fn content<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Content>, D::Error> {
-    ContentWire::deserialize(deserializer).map(Some)
+    ContentWire::deserialize_as(deserializer).map(Some)
 }
 
 #[derive(Serialize, Deserialize)]

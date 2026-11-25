@@ -101,10 +101,8 @@ impl Decoder for OpenAIResponseRequestDecoder {
                         .parse_next::<InputItem>(input, eof)?
                         .map_component(|v| TextRequestComponent::Message(v.into())),
                     Field::Tools => json
-                        .parse_next::<Vec<Tool>>(input, eof)?
-                        .map_component(|v| {
-                            TextRequestComponent::Tools(v.into_iter().map(Into::into).collect())
-                        }),
+                        .parse_next::<Tool>(input, eof)?
+                        .map_component(|v| TextRequestComponent::Tool(v.into())),
                     Field::Text => {
                         let status = json.parse_next::<Text>(input, eof)?;
                         match status {
@@ -130,9 +128,17 @@ impl Decoder for OpenAIResponseRequestDecoder {
                 match status {
                     DecoderStatus::Finished => {
                         self.field = None;
+                        if matches!(field, Field::Tools) {
+                            return Ok((
+                                DecoderStatus::Component(TextRequestComponent::ToolsEnded),
+                                json,
+                            ));
+                        }
                         continue;
                     }
-                    DecoderStatus::Component(_) if !matches!(field, Field::Input) => {
+                    DecoderStatus::Component(_)
+                        if !matches!(field, Field::Input | Field::Tools) =>
+                    {
                         self.field = None
                     }
                     _ => {}
@@ -149,8 +155,12 @@ impl Decoder for OpenAIResponseRequestDecoder {
                     self.field = Some(Field::Input);
                 }
                 DecoderStatus::Component(JsonToken::ArrayStart(Some("tools"))) => {
-                    json = json.enter_value()?;
+                    json = json.enter()?;
                     self.field = Some(Field::Tools);
+                    return Ok((
+                        DecoderStatus::Component(TextRequestComponent::ToolsStarted),
+                        json,
+                    ));
                 }
                 DecoderStatus::Component(JsonToken::ObjectStart(Some("text"))) => {
                     json = json.enter()?;

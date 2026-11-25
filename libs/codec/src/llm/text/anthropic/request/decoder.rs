@@ -158,11 +158,9 @@ impl Decoder for AnthropicRequestDecoder {
                     Field::System => json
                         .parse_next::<Input<Message, SystemWire>>(input, eof)
                         .map(|s| map_status(s, |v| TextRequestComponent::Message(v.into_inner()))),
-                    Field::Tools => json.parse_next::<Vec<ToolInput>>(input, eof).map(|s| {
-                        map_status(s, |v| {
-                            TextRequestComponent::Tools(v.into_iter().map(Into::into).collect())
-                        })
-                    }),
+                    Field::Tools => json
+                        .parse_next::<ToolInput>(input, eof)
+                        .map(|s| map_status(s, |v| TextRequestComponent::Tool(v.into()))),
                     Field::ToolChoice => json.parse_next::<ChoiceInput>(input, eof).map(|s| {
                         map_status(s, |v| {
                             let (choice, parallel) = v.into_components();
@@ -193,7 +191,9 @@ impl Decoder for AnthropicRequestDecoder {
                 };
                 match status {
                     Ok(DecoderStatus::Component(component)) => {
-                        self.field = None;
+                        if !matches!(field, Field::Tools) {
+                            self.field = None;
+                        }
                         break Ok(DecoderStatus::Component(component));
                     }
                     Ok(DecoderStatus::NeedInput) => break Ok(DecoderStatus::NeedInput),
@@ -204,6 +204,9 @@ impl Decoder for AnthropicRequestDecoder {
                             ));
                         }
                         self.field = None;
+                        if matches!(field, Field::Tools) {
+                            break Ok(DecoderStatus::Component(TextRequestComponent::ToolsEnded));
+                        }
                         if let Some(component) = self.pending.pop_front() {
                             break Ok(DecoderStatus::Component(component));
                         }
@@ -237,8 +240,16 @@ impl Decoder for AnthropicRequestDecoder {
                         "stop_sequences" => Field::Stop,
                         _ => break Err(DecoderError::Unsupported("request array")),
                     };
-                    json = json.enter_value().map_err(DecoderError::from)?;
+                    json = if matches!(field, Field::Tools) {
+                        json.enter()
+                    } else {
+                        json.enter_value()
+                    }
+                    .map_err(DecoderError::from)?;
                     self.field = Some(field);
+                    if matches!(field, Field::Tools) {
+                        break Ok(DecoderStatus::Component(TextRequestComponent::ToolsStarted));
+                    }
                 }
                 Ok(DecoderStatus::Component(JsonToken::ObjectStart(Some(key)))) => {
                     let field = match key {

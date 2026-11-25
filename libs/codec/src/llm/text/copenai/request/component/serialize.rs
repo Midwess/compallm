@@ -18,7 +18,9 @@ pub(in crate::llm::text::copenai::request) struct Request<'a>(
 enum RequestWire {
     Model(String),
     Message(#[serde(with = "MessageWire")] Message),
-    Tools(#[serde_as(as = "Vec<ToolWire>")] Vec<ToolDefinition>),
+    ToolsStarted,
+    Tool(#[serde_as(as = "ToolWire")] ToolDefinition),
+    ToolsEnded,
     ToolChoice(#[serde_as(as = "ToolChoiceWire")] ToolChoice),
     ParallelToolCalls(bool),
     MaxTokens(u32),

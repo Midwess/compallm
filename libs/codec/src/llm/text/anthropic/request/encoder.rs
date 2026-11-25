@@ -37,6 +37,7 @@ enum Field {
 pub struct AnthropicRequestEncoder {
     json: JsonEncoder,
     started: bool,
+    tools_open: bool,
     first_message: bool,
     system_written: bool,
     messages_open: bool,
@@ -57,6 +58,7 @@ impl AnthropicRequestEncoder {
         Self {
             json,
             started: false,
+            tools_open: false,
             first_message: true,
             system_written: false,
             messages_open: false,
@@ -83,6 +85,12 @@ impl AnthropicRequestEncoder {
             return Err(RequestEncodeError::InvalidState);
         }
         let component = component.as_deref();
+        if self.tools_open && !matches!(component, Some(C::Tool(_) | C::ToolsEnded)) {
+            return Err(RequestEncodeError::InvalidState);
+        }
+        if !self.tools_open && matches!(component, Some(C::Tool(_) | C::ToolsEnded)) {
+            return Err(RequestEncodeError::InvalidState);
+        }
         if self.phase == 5 {
             return Ok(EncoderStatus::Finished { written: 0 });
         }
@@ -121,7 +129,7 @@ impl AnthropicRequestEncoder {
                         Field::Messages
                     }
                 }
-                C::Tools(_) => Field::Tools,
+                C::ToolsStarted | C::Tool(_) | C::ToolsEnded => Field::Tools,
                 C::ToolChoice(_) => Field::ToolChoice,
                 C::MaxTokens(limit) => {
                     if *limit == 0 {
@@ -182,6 +190,27 @@ impl AnthropicRequestEncoder {
                 JsonToken::ArrayEnd
             } else if message && !self.messages_open {
                 JsonToken::ArrayStart(Some("messages"))
+            } else if matches!(component, Some(C::ToolsStarted | C::ToolsEnded)) {
+                let opening = matches!(component, Some(C::ToolsStarted));
+                let mut token = if opening {
+                    JsonToken::ArrayStart(Some("tools"))
+                } else {
+                    JsonToken::ArrayEnd
+                };
+                let status = self.json.next(Some(&mut token), &mut output[written..])?;
+                return match status {
+                    EncoderStatus::NeedOutput { written: n } => Ok(EncoderStatus::NeedOutput {
+                        written: written + n,
+                    }),
+                    EncoderStatus::ComponentFinished { written: n } => {
+                        self.tools_open = opening;
+                        self.active = None;
+                        Ok(EncoderStatus::ComponentFinished {
+                            written: written + n,
+                        })
+                    }
+                    _ => Err(RequestEncodeError::InvalidState),
+                };
             } else if let Some(component) = component {
                 let output = &mut output[written..];
                 let status = match (self.active, component) {
@@ -196,9 +225,9 @@ impl AnthropicRequestEncoder {
                         self.json
                             .serialize_next(None, &MessageWire::from(value), output)
                     }
-                    (Some(Field::Tools), C::Tools(value)) => {
+                    (Some(Field::Tools), C::Tool(value)) => {
                         self.json
-                            .serialize_next(Some("tools"), &ToolsWire(value), output)
+                            .serialize_next(None, &ToolWire::from(value), output)
                     }
                     (Some(Field::ToolChoice), C::ToolChoice(value)) => {
                         self.json

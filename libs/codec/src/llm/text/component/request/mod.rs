@@ -24,7 +24,9 @@ pub enum TextRequestComponent {
     /// One conversation message, including text, tool calls/results, or reasoning history.
     Message(Message),
     /// Declares the functions the model may request the caller to execute.
-    Tools(Vec<ToolDefinition>),
+    ToolsStarted,
+    Tool(ToolDefinition),
+    ToolsEnded,
     /// Controls whether the model may, must, or must not call a tool, or selects one function.
     ToolChoice(ToolChoice),
     /// Controls whether the model may request multiple tool calls in one turn.

@@ -22,6 +22,7 @@ pub struct CompatibleOpenAIRequestEncoderConfiguration {
 pub struct CompatibleOpenAIRequestEncoder {
     json: JsonEncoder,
     started: bool,
+    tools_open: bool,
     messages_open: bool,
     messages_closed: bool,
     has_model: bool,
@@ -44,6 +45,7 @@ impl CompatibleOpenAIRequestEncoder {
         Self {
             json,
             started: false,
+            tools_open: false,
             messages_open: false,
             messages_closed: false,
             has_model: false,
@@ -64,6 +66,22 @@ impl CompatibleOpenAIRequestEncoder {
         component: Option<&mut TextRequestComponent>,
         output: &mut [u8],
     ) -> Result<EncoderStatus, RequestEncodeError> {
+        if self.tools_open
+            && !matches!(
+                component.as_deref(),
+                Some(TextRequestComponent::Tool(_) | TextRequestComponent::ToolsEnded)
+            )
+        {
+            return Err(RequestEncodeError::InvalidState);
+        }
+        if !self.tools_open
+            && matches!(
+                component.as_deref(),
+                Some(TextRequestComponent::Tool(_) | TextRequestComponent::ToolsEnded)
+            )
+        {
+            return Err(RequestEncodeError::InvalidState);
+        }
         if self.failed || (self.finalizing && component.is_some()) {
             return Err(RequestEncodeError::InvalidState);
         }
@@ -121,6 +139,33 @@ impl CompatibleOpenAIRequestEncoder {
                 JsonToken::ArrayEnd
             } else if message && !self.messages_open {
                 JsonToken::ArrayStart(Some("messages"))
+            } else if matches!(
+                component.as_deref(),
+                Some(TextRequestComponent::ToolsStarted | TextRequestComponent::ToolsEnded)
+            ) {
+                let opening = matches!(
+                    component.as_deref(),
+                    Some(TextRequestComponent::ToolsStarted)
+                );
+                let mut token = if opening {
+                    JsonToken::ArrayStart(Some("tools"))
+                } else {
+                    JsonToken::ArrayEnd
+                };
+                let status = self.json.next(Some(&mut token), &mut output[written..])?;
+                return match status {
+                    EncoderStatus::NeedOutput { written: n } => Ok(EncoderStatus::NeedOutput {
+                        written: written + n,
+                    }),
+                    EncoderStatus::ComponentFinished { written: n } => {
+                        self.tools_open = opening;
+                        self.field = None;
+                        Ok(EncoderStatus::ComponentFinished {
+                            written: written + n,
+                        })
+                    }
+                    _ => Err(RequestEncodeError::InvalidState),
+                };
             } else if let Some(component) = component.as_deref() {
                 if self.field == Some(Field::Reasoning) {
                     let reasoning = self.reasoning.ok_or(RequestEncodeError::InvalidState)?;
@@ -288,7 +333,7 @@ impl From<&TextRequestComponent> for Field {
         match component {
             C::Model(_) => Self::Model,
             C::Message(_) => Self::Messages,
-            C::Tools(_) => Self::Tools,
+            C::ToolsStarted | C::Tool(_) | C::ToolsEnded => Self::Tools,
             C::ToolChoice(_) => Self::ToolChoice,
             C::ParallelToolCalls(_) => Self::ParallelToolCalls,
             C::MaxTokens(_) => Self::MaxTokens,
@@ -309,7 +354,7 @@ impl Field {
         Some(match self {
             Self::Messages => return None,
             Self::Model => "model",
-            Self::Tools => "tools",
+            Self::Tools => return None,
             Self::ToolChoice => "tool_choice",
             Self::ParallelToolCalls => "parallel_tool_calls",
             Self::MaxTokens => "max_tokens",

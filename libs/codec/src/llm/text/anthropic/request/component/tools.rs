@@ -1,18 +1,6 @@
 use crate::llm::text::component::*;
 use compallm_serde_rules::deserialize;
-use serde::{Deserialize, Serialize, Serializer, ser::SerializeSeq};
-
-pub(crate) struct ToolsWire<'a>(pub &'a [ToolDefinition]);
-
-impl Serialize for ToolsWire<'_> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut sequence = serializer.serialize_seq(Some(self.0.len()))?;
-        for tool in self.0 {
-            sequence.serialize_element(&ToolWire::from(tool))?;
-        }
-        sequence.end()
-    }
-}
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 pub(crate) struct ToolWire<'a> {

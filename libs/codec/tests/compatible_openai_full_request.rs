@@ -228,7 +228,7 @@ fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {
     let mut decoding = AllocationCount::default();
     let mut encoding = AllocationCount::default();
     let mut pending_decode = AllocationCount::default();
-    let mut per_component = [(AllocationCount::default(), AllocationCount::default()); 18];
+    let mut per_component = [(AllocationCount::default(), AllocationCount::default()); 20];
 
     for chunk in REQUEST.as_bytes().chunks(BUFFER_SIZE) {
         let mut input = chunk;
@@ -423,7 +423,8 @@ fn request_components() -> Vec<TextRequestComponent> {
         TextRequestComponent::Message(message(Role::System, "Use Fahrenheit for temperatures in the weather response.")),
         TextRequestComponent::Message(assistant),
         TextRequestComponent::Message(result),
-        TextRequestComponent::Tools(vec![ToolDefinition {
+        TextRequestComponent::ToolsStarted,
+        TextRequestComponent::Tool(ToolDefinition {
             kind: ToolType::Function,
             function: FunctionDefinition {
                 name: "get_weather".into(),
@@ -431,7 +432,8 @@ fn request_components() -> Vec<TextRequestComponent> {
                 parameters: Some(r#"{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}"#.into()),
                 strict: Some(true),
             },
-        }]),
+        }),
+        TextRequestComponent::ToolsEnded,
         TextRequestComponent::ToolChoice(ToolChoice::Auto),
         TextRequestComponent::ParallelToolCalls(true),
         TextRequestComponent::MaxTokens(1500),

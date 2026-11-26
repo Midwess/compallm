@@ -1,4 +1,5 @@
-use crate::llm::text::component::{FunctionDefinition, ToolDefinition, ToolType};
+use super::CollectionWire;
+use crate::llm::text::component::{Collection, FunctionDefinition, ToolDefinition, ToolType};
 use compallm_serde_rules::borrowed::{nonempty, optional_text};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::SerializeAs;
@@ -15,7 +16,7 @@ pub(super) enum ToolTypeWire {
     deny_unknown_fields,
     bound(serialize = "T: Serialize + AsRef<str>")
 )]
-pub(crate) struct ToolWire<T = String> {
+pub(in crate::llm::text::copenai::request) struct ToolWire<T = String> {
     #[serde(rename = "type", with = "ToolTypeWire")]
     kind: ToolType,
     #[serde(with = "FunctionDefinitionWire")]
@@ -42,14 +43,14 @@ struct FunctionDefinitionWire<T = String> {
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<T>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    parameters: Option<crate::json::JsonValue<T>>,
+    parameters: Option<crate::json::JsonView<T>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     strict: Option<bool>,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct ChatTool<'a> {
+pub(in crate::llm::text::copenai::request) struct ChatTool<'a> {
     #[serde(rename = "type")]
     kind: FunctionType,
     #[serde(borrow)]
@@ -70,7 +71,7 @@ struct Function<'a> {
     #[serde(default, borrow, deserialize_with = "optional_text")]
     description: Option<&'a str>,
     #[serde(default, borrow)]
-    parameters: Option<crate::json::JsonValue<&'a str>>,
+    parameters: Option<crate::json::JsonView<&'a str>>,
     strict: Option<bool>,
 }
 
@@ -88,3 +89,12 @@ impl<'a> From<ChatTool<'a>> for ToolDefinition<&'a str> {
         }
     }
 }
+
+#[serde_with::serde_as]
+#[derive(Deserialize)]
+#[serde(transparent)]
+pub(in crate::llm::text::copenai::request) struct ChatTools<'a>(
+    #[serde(borrow)]
+    #[serde_as(as = "CollectionWire<serde_with::FromInto<ChatTool<'a>>>")]
+    pub Collection<ToolDefinition<&'a str>, &'a str>,
+);

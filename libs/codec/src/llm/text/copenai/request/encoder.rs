@@ -22,7 +22,6 @@ pub struct CompatibleOpenAIRequestEncoderConfiguration {
 pub struct CompatibleOpenAIRequestEncoder {
     json: JsonEncoder,
     started: bool,
-    tools_open: bool,
     messages_open: bool,
     messages_closed: bool,
     has_model: bool,
@@ -45,7 +44,6 @@ impl CompatibleOpenAIRequestEncoder {
         Self {
             json,
             started: false,
-            tools_open: false,
             messages_open: false,
             messages_closed: false,
             has_model: false,
@@ -61,229 +59,212 @@ impl CompatibleOpenAIRequestEncoder {
         }
     }
 
-    pub fn finish(self) -> Result<(), RequestEncodeError> {
-        <Self as Encoder<TextRequestComponent>>::finish(self)
-    }
-
-    fn encode<S: serde::Serialize + AsRef<str>>(
-        &mut self,
-        component: Option<&mut TextRequestComponent<S>>,
-        output: &mut [u8],
-    ) -> Result<EncoderStatus, RequestEncodeError> {
-        if self.tools_open
-            && !matches!(
-                component.as_deref(),
-                Some(TextRequestComponent::Tool(_) | TextRequestComponent::ToolsEnded)
-            )
-        {
-            return Err(RequestEncodeError::InvalidState);
-        }
-        if !self.tools_open
-            && matches!(
-                component.as_deref(),
-                Some(TextRequestComponent::Tool(_) | TextRequestComponent::ToolsEnded)
-            )
-        {
-            return Err(RequestEncodeError::InvalidState);
-        }
-        if self.failed || (self.finalizing && component.is_some()) {
-            return Err(RequestEncodeError::InvalidState);
-        }
-        if self.finished {
-            return Ok(EncoderStatus::Finished { written: 0 });
-        }
-        if component.is_none() {
-            if self.field.is_some() || !self.has_model || !self.has_messages {
-                return Err(RequestEncodeError::Incomplete);
-            }
-            self.finalizing = true;
-        } else if self.field.is_none() {
-            let component = component
-                .as_deref()
-                .ok_or(RequestEncodeError::InvalidState)?;
-            match component {
-                TextRequestComponent::Message(_) if self.messages_closed => {
-                    return Err(RequestEncodeError::InvalidState);
-                }
-                TextRequestComponent::Model(value) => {
-                    if self.has_model || value.as_ref().is_empty() {
-                        return Err(RequestEncodeError::InvalidState);
-                    }
-                    self.has_model = true;
-                }
-                TextRequestComponent::MaxTokens(0) => {
-                    return Err(RequestEncodeError::InvalidState);
-                }
-                TextRequestComponent::TopP(value)
-                    if !value.is_finite() || !(0.0..=1.0).contains(value) =>
-                {
-                    return Err(RequestEncodeError::InvalidState);
-                }
-                _ => {}
-            }
-            if let TextRequestComponent::Reasoning(value) = component {
-                let mut value = *value;
-                value.effort = None;
-                ReasoningWire::validate(&value).map_err(|_| RequestEncodeError::InvalidState)?;
-                self.reasoning = Some(value);
-            }
-            self.field = Some(Field::from(component));
-        }
-        if let Some(component) = component.as_deref()
-            && self.field != Some(Field::from(component))
-        {
-            return Err(RequestEncodeError::InvalidState);
-        }
-        let message = self.field == Some(Field::Messages);
+    fn prepare_output(&mut self, output: &mut [u8]) -> Result<EncoderStatus, RequestEncodeError> {
         let mut written = 0;
-        loop {
-            let mut token = if !self.started {
-                JsonToken::ObjectStart(None)
-            } else if self.messages_open && !message {
-                JsonToken::ArrayEnd
-            } else if message && !self.messages_open {
-                JsonToken::ArrayStart(Some("messages"))
-            } else if matches!(
-                component.as_deref(),
-                Some(TextRequestComponent::ToolsStarted | TextRequestComponent::ToolsEnded)
-            ) {
-                let opening = matches!(
-                    component.as_deref(),
-                    Some(TextRequestComponent::ToolsStarted)
-                );
-                let mut token = if opening {
-                    JsonToken::ArrayStart(Some("tools"))
-                } else {
-                    JsonToken::ArrayEnd
-                };
-                let status = self.json.next(Some(&mut token), &mut output[written..])?;
-                return match status {
-                    EncoderStatus::NeedOutput { written: n } => Ok(EncoderStatus::NeedOutput {
-                        written: written + n,
-                    }),
-                    EncoderStatus::ComponentFinished { written: n } => {
-                        self.tools_open = opening;
-                        self.field = None;
-                        Ok(EncoderStatus::ComponentFinished {
-                            written: written + n,
-                        })
-                    }
-                    _ => Err(RequestEncodeError::InvalidState),
-                };
-            } else if let Some(component) = component.as_deref() {
-                if self.field == Some(Field::Reasoning) {
-                    let reasoning = self.reasoning.ok_or(RequestEncodeError::InvalidState)?;
-                    let status = self.json.serialize_next(
-                        Some("reasoning"),
-                        &ConfiguredReasoning {
-                            enabled: reasoning.enabled,
-                            effort: self.reasoning_effort,
-                            max_tokens: self
-                                .reasoning_effort
-                                .is_none()
-                                .then_some(reasoning.max_tokens)
-                                .flatten(),
-                            exclude: reasoning.exclude,
-                        },
-                        &mut output[written..],
-                    )?;
-                    return match status {
-                        EncoderStatus::ComponentFinished { written: count } => {
-                            self.field = None;
-                            self.reasoning_written = true;
-                            Ok(EncoderStatus::ComponentFinished {
-                                written: written + count,
-                            })
-                        }
-                        EncoderStatus::NeedOutput { written: count } => {
-                            Ok(EncoderStatus::NeedOutput {
-                                written: written + count,
-                            })
-                        }
-                        EncoderStatus::Finished { .. } => Err(RequestEncodeError::InvalidState),
-                    };
+        if !self.started {
+            let mut opening = JsonToken::ObjectStart(None);
+            match self.json.next(Some(&mut opening), output)? {
+                EncoderStatus::NeedOutput { written } => {
+                    return Ok(EncoderStatus::NeedOutput { written });
                 }
-                let key = self.field.ok_or(RequestEncodeError::InvalidState)?.key();
-                let status =
-                    self.json
-                        .serialize_next(key, &Request(component), &mut output[written..])?;
-                return match status {
-                    EncoderStatus::ComponentFinished { written: count } => {
-                        self.field = None;
-                        Ok(EncoderStatus::ComponentFinished {
-                            written: written + count,
-                        })
-                    }
-                    EncoderStatus::NeedOutput { written: count } => Ok(EncoderStatus::NeedOutput {
-                        written: written + count,
-                    }),
-                    _ => Err(RequestEncodeError::InvalidState),
-                };
-            } else if !self.reasoning_written
-                && (self.reasoning.is_some() || self.reasoning_effort.is_some())
-            {
-                let reasoning = self.reasoning.unwrap_or_default();
-                let status = self.json.serialize_next(
-                    Some("reasoning"),
-                    &ConfiguredReasoning {
-                        enabled: reasoning.enabled,
-                        effort: self.reasoning_effort,
-                        max_tokens: self
-                            .reasoning_effort
-                            .is_none()
-                            .then_some(reasoning.max_tokens)
-                            .flatten(),
-                        exclude: reasoning.exclude,
-                    },
-                    &mut output[written..],
-                )?;
-                match status {
-                    EncoderStatus::NeedOutput { written: count } => {
-                        return Ok(EncoderStatus::NeedOutput {
-                            written: written + count,
-                        });
-                    }
-                    EncoderStatus::ComponentFinished { written: count } => {
-                        written += count;
-                        self.reasoning_written = true;
-                        continue;
-                    }
-                    EncoderStatus::Finished { .. } => return Err(RequestEncodeError::InvalidState),
+                EncoderStatus::ComponentFinished { written: count } => {
+                    written = count;
+                    self.started = true;
                 }
-            } else if !self.closed {
-                JsonToken::ObjectEnd
-            } else {
-                return match self.json.next(None, &mut output[written..])? {
-                    EncoderStatus::Finished { written: count } => {
-                        self.finished = true;
-                        Ok(EncoderStatus::Finished {
-                            written: written + count,
-                        })
-                    }
-                    _ => Err(RequestEncodeError::InvalidState),
-                };
-            };
-            match self.json.next(Some(&mut token), &mut output[written..])? {
+                EncoderStatus::Finished { .. } => return Err(RequestEncodeError::InvalidState),
+            }
+        }
+        if self.messages_open && self.field != Some(Field::Messages) {
+            let mut closing = JsonToken::ArrayEnd;
+            match self.json.next(Some(&mut closing), &mut output[written..])? {
                 EncoderStatus::NeedOutput { written: count } => {
                     return Ok(EncoderStatus::NeedOutput {
                         written: written + count,
                     });
                 }
-                EncoderStatus::ComponentFinished { written: count } => written += count,
+                EncoderStatus::ComponentFinished { written: count } => {
+                    written += count;
+                    self.messages_open = false;
+                    self.messages_closed = true;
+                }
                 EncoderStatus::Finished { .. } => return Err(RequestEncodeError::InvalidState),
             }
-            if !self.started {
-                self.started = true;
-            } else if self.messages_open && !message {
-                self.messages_open = false;
-                self.messages_closed = true;
-            } else if message && !self.messages_open {
-                self.messages_open = true;
-                self.has_messages = true;
-            } else {
-                self.closed = true;
+        }
+        Ok(EncoderStatus::ComponentFinished { written })
+    }
+
+    fn encode_token(
+        &mut self,
+        token: &mut JsonToken<'_>,
+        output: &mut [u8],
+    ) -> Result<EncoderStatus, RequestEncodeError> {
+        let written = match self.prepare_output(output)? {
+            EncoderStatus::ComponentFinished { written } => written,
+            status => return Ok(status),
+        };
+        match self.json.next(Some(token), &mut output[written..])? {
+            EncoderStatus::NeedOutput { written: count } => Ok(EncoderStatus::NeedOutput {
+                written: written + count,
+            }),
+            EncoderStatus::ComponentFinished { written: count } => {
+                Ok(EncoderStatus::ComponentFinished {
+                    written: written + count,
+                })
+            }
+            EncoderStatus::Finished { .. } => Err(RequestEncodeError::InvalidState),
+        }
+    }
+
+    fn encode_message<S: serde::Serialize + AsRef<str>>(
+        &mut self,
+        component: &TextRequestComponent<S>,
+        output: &mut [u8],
+    ) -> Result<EncoderStatus, RequestEncodeError> {
+        if self.messages_closed {
+            return Err(RequestEncodeError::InvalidState);
+        }
+        let mut written = 0;
+        if !self.messages_open {
+            let mut opening = JsonToken::ArrayStart(Some("messages"));
+            match self.encode_token(&mut opening, output)? {
+                EncoderStatus::NeedOutput { written } => {
+                    return Ok(EncoderStatus::NeedOutput { written });
+                }
+                EncoderStatus::ComponentFinished { written: count } => {
+                    written = count;
+                    self.messages_open = true;
+                }
+                EncoderStatus::Finished { .. } => return Err(RequestEncodeError::InvalidState),
             }
         }
+        match self
+            .json
+            .serialize_next(None, &Request(component), &mut output[written..])?
+        {
+            EncoderStatus::NeedOutput { written: count } => Ok(EncoderStatus::NeedOutput {
+                written: written + count,
+            }),
+            EncoderStatus::ComponentFinished { written: count } => {
+                self.has_messages = true;
+                Ok(EncoderStatus::ComponentFinished {
+                    written: written + count,
+                })
+            }
+            EncoderStatus::Finished { .. } => Err(RequestEncodeError::InvalidState),
+        }
+    }
+
+    fn encode_value<T: serde::Serialize + ?Sized>(
+        &mut self,
+        key: Option<&str>,
+        value: &T,
+        output: &mut [u8],
+    ) -> Result<EncoderStatus, RequestEncodeError> {
+        let written = match self.prepare_output(output)? {
+            EncoderStatus::ComponentFinished { written } => written,
+            status => return Ok(status),
+        };
+        match self
+            .json
+            .serialize_next(key, value, &mut output[written..])?
+        {
+            EncoderStatus::NeedOutput { written: count } => Ok(EncoderStatus::NeedOutput {
+                written: written + count,
+            }),
+            EncoderStatus::ComponentFinished { written: count } => {
+                Ok(EncoderStatus::ComponentFinished {
+                    written: written + count,
+                })
+            }
+            EncoderStatus::Finished { .. } => Err(RequestEncodeError::InvalidState),
+        }
+    }
+
+    fn configured_reasoning(&self) -> ConfiguredReasoning {
+        let reasoning = self.reasoning.unwrap_or_default();
+        ConfiguredReasoning {
+            enabled: reasoning.enabled,
+            effort: self.reasoning_effort,
+            max_tokens: self
+                .reasoning_effort
+                .is_none()
+                .then_some(reasoning.max_tokens)
+                .flatten(),
+            exclude: reasoning.exclude,
+        }
+    }
+
+    fn complete_component(
+        &mut self,
+        result: Result<EncoderStatus, RequestEncodeError>,
+    ) -> Result<EncoderStatus, RequestEncodeError> {
+        match &result {
+            Ok(EncoderStatus::ComponentFinished { .. }) => {
+                self.has_model |= self.field == Some(Field::Model);
+                self.reasoning_written |= self.field == Some(Field::Reasoning);
+                self.field = None;
+            }
+            Err(_) => self.failed = true,
+            _ => {}
+        }
+        result
+    }
+
+    fn finalize(&mut self, output: &mut [u8]) -> Result<EncoderStatus, RequestEncodeError> {
+        if self.field.is_some() || !self.has_model || !self.has_messages {
+            return Err(RequestEncodeError::Incomplete);
+        }
+        self.finalizing = true;
+        let mut written = match self.prepare_output(output)? {
+            EncoderStatus::ComponentFinished { written } => written,
+            status => return Ok(status),
+        };
+        if !self.reasoning_written && self.reasoning_effort.is_some() {
+            let value = self.configured_reasoning();
+            match self
+                .json
+                .serialize_next(Some("reasoning"), &value, &mut output[written..])?
+            {
+                EncoderStatus::NeedOutput { written: count } => {
+                    return Ok(EncoderStatus::NeedOutput {
+                        written: written + count,
+                    });
+                }
+                EncoderStatus::ComponentFinished { written: count } => {
+                    written += count;
+                    self.reasoning_written = true;
+                }
+                EncoderStatus::Finished { .. } => return Err(RequestEncodeError::InvalidState),
+            }
+        }
+        if !self.closed {
+            let mut closing = JsonToken::ObjectEnd;
+            match self.json.next(Some(&mut closing), &mut output[written..])? {
+                EncoderStatus::NeedOutput { written: count } => {
+                    return Ok(EncoderStatus::NeedOutput {
+                        written: written + count,
+                    });
+                }
+                EncoderStatus::ComponentFinished { written: count } => {
+                    written += count;
+                    self.closed = true;
+                }
+                EncoderStatus::Finished { .. } => return Err(RequestEncodeError::InvalidState),
+            }
+        }
+        match self.json.next(None, &mut output[written..])? {
+            EncoderStatus::Finished { written: count } => {
+                self.finished = true;
+                Ok(EncoderStatus::Finished {
+                    written: written + count,
+                })
+            }
+            _ => Err(RequestEncodeError::InvalidState),
+        }
+    }
+
+    pub fn finish(self) -> Result<(), RequestEncodeError> {
+        <Self as Encoder<TextRequestComponent>>::finish(self)
     }
 }
 
@@ -297,11 +278,113 @@ impl<S: serde::Serialize + AsRef<str>> Encoder<TextRequestComponent<S>>
         component: Option<&mut TextRequestComponent<S>>,
         output: &mut [u8],
     ) -> Result<EncoderStatus, Self::Error> {
-        let result = self.encode(component, output);
-        if result.is_err() {
-            self.failed = true;
+        use crate::llm::text::component::{Stop, ToolChoice};
+        use TextRequestComponent as C;
+
+        if self.failed || (self.finalizing && component.is_some()) {
+            return Err(RequestEncodeError::InvalidState);
         }
-        result
+        if self.finished {
+            return Ok(EncoderStatus::Finished { written: 0 });
+        }
+        if let Some(component) = component.as_deref() {
+            let field = Field::from(component);
+            if self.field.is_some_and(|pending| pending != field) {
+                self.failed = true;
+                return Err(RequestEncodeError::InvalidState);
+            }
+            if self.field.is_none() {
+                match component {
+                    C::Model(value) if self.has_model || value.as_ref().is_empty() => {
+                        self.failed = true;
+                        return Err(RequestEncodeError::InvalidState);
+                    }
+                    C::MaxTokens(0) => {
+                        self.failed = true;
+                        return Err(RequestEncodeError::InvalidState);
+                    }
+                    C::TopP(value) if !value.is_finite() || !(0.0..=1.0).contains(value) => {
+                        self.failed = true;
+                        return Err(RequestEncodeError::InvalidState);
+                    }
+                    _ => {}
+                }
+            }
+            self.field = Some(field);
+        }
+
+        let mut token = match component.as_deref() {
+            Some(C::Model(value)) => JsonToken::ValueString(Some("model"), value.as_ref()),
+            Some(component @ C::Message(_)) => {
+                let result = self.encode_message(component, output);
+                return self.complete_component(result);
+            }
+            Some(component @ C::Tools(_)) => {
+                let result = self.encode_value(Some("tools"), &Request(component), output);
+                return self.complete_component(result);
+            }
+            Some(component @ C::ToolChoice(choice)) => JsonToken::ValueString(
+                Some("tool_choice"),
+                match choice {
+                    ToolChoice::Auto => "auto",
+                    ToolChoice::None => "none",
+                    ToolChoice::Required => "required",
+                    ToolChoice::Function(_) => {
+                        let result =
+                            self.encode_value(Some("tool_choice"), &Request(component), output);
+                        return self.complete_component(result);
+                    }
+                },
+            ),
+            Some(C::ParallelToolCalls(value)) => {
+                JsonToken::ValueBoolean(Some("parallel_tool_calls"), *value)
+            }
+            Some(C::MaxTokens(value)) => {
+                JsonToken::ValueNumber(Some("max_tokens"), (*value).into())
+            }
+            Some(C::Reasoning(value)) => {
+                let mut value = *value;
+                value.effort = None;
+                if ReasoningWire::validate(&value).is_err() {
+                    self.failed = true;
+                    return Err(RequestEncodeError::InvalidState);
+                }
+                self.reasoning = Some(value);
+                let value = self.configured_reasoning();
+                let result = self.encode_value(Some("reasoning"), &value, output);
+                return self.complete_component(result);
+            }
+            Some(C::TopP(value)) => JsonToken::ValueNumber(
+                Some("top_p"),
+                serde_json::Number::from_f64(*value).ok_or(RequestEncodeError::InvalidState)?,
+            ),
+            Some(C::TopK(value)) => JsonToken::ValueNumber(Some("top_k"), (*value).into()),
+            Some(C::Stop(Stop::Text(value))) => {
+                JsonToken::ValueString(Some("stop"), value.as_ref())
+            }
+            Some(C::Stop(Stop::Null)) => JsonToken::ValueNull(Some("stop")),
+            Some(
+                component @ (C::Stop(Stop::Array(_) | Stop::ArrayView(_))
+                | C::ResponseFormat(_)
+                | C::Provider(_)
+                | C::StreamOptions(Some(_))),
+            ) => {
+                let key = self.field.ok_or(RequestEncodeError::InvalidState)?.key();
+                let result = self.encode_value(key, &Request(component), output);
+                return self.complete_component(result);
+            }
+            Some(C::Stream(value)) => JsonToken::ValueBoolean(Some("stream"), *value),
+            Some(C::StreamOptions(None)) => JsonToken::ValueNull(Some("stream_options")),
+            None => {
+                let result = self.finalize(output);
+                if result.is_err() {
+                    self.failed = true;
+                }
+                return result;
+            }
+        };
+        let result = self.encode_token(&mut token, output);
+        self.complete_component(result)
     }
 
     fn finish(self) -> Result<(), Self::Error> {
@@ -339,7 +422,7 @@ impl<S> From<&TextRequestComponent<S>> for Field {
         match component {
             C::Model(_) => Self::Model,
             C::Message(_) => Self::Messages,
-            C::ToolsStarted | C::Tool(_) | C::ToolsEnded => Self::Tools,
+            C::Tools(_) => Self::Tools,
             C::ToolChoice(_) => Self::ToolChoice,
             C::ParallelToolCalls(_) => Self::ParallelToolCalls,
             C::MaxTokens(_) => Self::MaxTokens,
@@ -360,7 +443,7 @@ impl Field {
         Some(match self {
             Self::Messages => return None,
             Self::Model => "model",
-            Self::Tools => return None,
+            Self::Tools => "tools",
             Self::ToolChoice => "tool_choice",
             Self::ParallelToolCalls => "parallel_tool_calls",
             Self::MaxTokens => "max_tokens",

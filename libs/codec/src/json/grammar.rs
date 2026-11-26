@@ -26,7 +26,16 @@ pub(super) struct Grammar {
 
 impl Default for Grammar {
     fn default() -> Self {
-        Self::with_capacity(super::INTERNAL_BUFFER_BYTES)
+        let bytes = 4096;
+        Self {
+            stack: [Position::ObjectFirst; 64],
+            depth: 0,
+            root: false,
+            key_bytes: String::with_capacity(bytes),
+            keys: Vec::with_capacity(bytes.div_ceil(std::mem::size_of::<std::ops::Range<usize>>())),
+            key_starts: [0; 64],
+            byte_starts: [0; 64],
+        }
     }
 }
 
@@ -38,18 +47,6 @@ impl Grammar {
         self.keys.clear();
         self.key_starts.fill(0);
         self.byte_starts.fill(0);
-    }
-
-    pub(super) fn with_capacity(bytes: usize) -> Self {
-        Self {
-            stack: [Position::ObjectFirst; 64],
-            depth: 0,
-            root: false,
-            key_bytes: String::with_capacity(bytes),
-            keys: Vec::with_capacity(bytes.div_ceil(std::mem::size_of::<std::ops::Range<usize>>())),
-            key_starts: [0; 64],
-            byte_starts: [0; 64],
-        }
     }
 }
 

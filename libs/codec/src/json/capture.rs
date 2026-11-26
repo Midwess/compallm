@@ -17,14 +17,17 @@ pub(super) struct Entry {
     borrowed: bool,
 }
 
-impl Capture {
-    pub(super) fn with_capacity(bytes: usize) -> Self {
+impl Default for Capture {
+    fn default() -> Self {
+        let bytes = 4096;
         Self {
             entries: Vec::with_capacity(bytes / std::mem::size_of::<Entry>()),
             text: String::with_capacity(bytes),
         }
     }
+}
 
+impl Capture {
     pub(super) fn clear(&mut self) {
         self.entries.clear();
         self.text.clear();
@@ -303,7 +306,26 @@ impl<'de> Deserializer<'de> for &mut TokenDeserializer<'_, 'de> {
         name: &'static str,
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
-        if name == super::value::JSON_VALUE || name == super::value::JSON_ARGUMENT {
+        if name == "codec::json::collection" {
+            if !matches!(self.peek()?.token, Token::ArrayStart) {
+                return Err(serde::de::Error::custom("expected collection array"));
+            }
+            let source = self.raw()?;
+            return visitor.visit_seq(ValueSequence {
+                decoder: self,
+                source: Some(source),
+                finished: false,
+            });
+        }
+        if name == super::view::JSON_ARRAY_VIEW {
+            if !matches!(self.peek()?.token, Token::ArrayStart) {
+                return Err(serde::de::Error::custom("expected JSON array"));
+            }
+            let source = self.raw()?;
+            self.position = self.end()?;
+            return visitor.visit_borrowed_str(source);
+        }
+        if name == super::view::JSON_VIEW || name == super::value::JSON_ARGUMENT {
             let entry = self.peek()?;
             if let Token::String(range) = &entry.token {
                 self.position += 1;
@@ -312,10 +334,50 @@ impl<'de> Deserializer<'de> for &mut TokenDeserializer<'_, 'de> {
                         "embedded source must outlive its parser",
                     ));
                 };
-                return self.embedded(text, visitor, name == super::value::JSON_ARGUMENT);
+                let parser = self
+                    .inner
+                    .as_deref_mut()
+                    .ok_or_else(|| serde::de::Error::custom("missing embedded JSON parser"))?;
+                match parser.capture_value(text) {
+                    Ok(_) if name == super::value::JSON_ARGUMENT => {
+                        return visitor.visit_newtype_struct(
+                            serde::de::value::BorrowedStrDeserializer::<Self::Error>::new(text),
+                        );
+                    }
+                    Ok(capture)
+                        if matches!(
+                            capture.entries.first().map(|entry| &entry.token),
+                            Some(Token::ObjectStart)
+                        ) =>
+                    {
+                        return visitor.visit_borrowed_str(text);
+                    }
+                    Err(_) if name == super::value::JSON_ARGUMENT => {
+                        return visitor.visit_borrowed_str(text);
+                    }
+                    _ => return Err(serde::de::Error::custom("expected valid JSON object")),
+                }
             }
             if name == super::value::JSON_ARGUMENT {
                 return Err(serde::de::Error::custom("expected argument string"));
+            }
+            if !matches!(entry.token, Token::ObjectStart) {
+                return Err(serde::de::Error::custom("expected JSON object"));
+            }
+            let source = self.raw()?;
+            self.position = self.end()?;
+            return visitor.visit_borrowed_str(source);
+        }
+        if name == super::value::JSON_VALUE {
+            let entry = self.peek()?;
+            if let Token::String(range) = &entry.token {
+                self.position += 1;
+                let TokenText::Borrowed(text) = self.text(entry, range.clone()) else {
+                    return Err(serde::de::Error::custom(
+                        "embedded source must outlive its parser",
+                    ));
+                };
+                return self.embedded(text, visitor, false);
             }
             let source = self.raw()?;
             return visitor.visit_seq(ValueSequence {

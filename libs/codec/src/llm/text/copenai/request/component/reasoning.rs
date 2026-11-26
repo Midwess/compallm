@@ -5,7 +5,7 @@ use serde_with::{DeserializeAs, SerializeAs, serde_as};
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Reasoning", deny_unknown_fields)]
-pub(crate) struct ReasoningWire {
+pub(in crate::llm::text::copenai::request) struct ReasoningWire {
     #[serde(skip_serializing_if = "Option::is_none")]
     enabled: Option<bool>,
     #[serde_as(as = "Option<EffortWire>")]

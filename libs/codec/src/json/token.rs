@@ -26,7 +26,13 @@ pub(super) struct TokenDecoder {
 
 impl Default for TokenDecoder {
     fn default() -> Self {
-        Self::with_capacity(super::INTERNAL_BUFFER_BYTES)
+        let bytes = 4096;
+        Self {
+            state: JsonState::Idle,
+            bytes: Vec::with_capacity(bytes),
+            decoded: Vec::with_capacity(bytes),
+            escaped_string: false,
+        }
     }
 }
 
@@ -178,15 +184,6 @@ impl TokenDecoder {
         self.bytes.clear();
         self.decoded.clear();
         self.escaped_string = false;
-    }
-
-    pub(super) fn with_capacity(bytes: usize) -> Self {
-        Self {
-            state: JsonState::Idle,
-            bytes: Vec::with_capacity(bytes),
-            decoded: Vec::with_capacity(bytes),
-            escaped_string: false,
-        }
     }
 
     pub(super) fn buffered_string(&self) -> Result<&str, JsonDecodeError> {

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
     content = "json_schema",
     rename_all = "snake_case"
 )]
-pub(crate) enum ResponseFormatWire<S: AsRef<str> + Serialize> {
+pub(in crate::llm::text::copenai::request) enum ResponseFormatWire<S: AsRef<str> + Serialize> {
     Text,
     JsonObject,
     JsonSchema(#[serde(with = "JsonSchemaWire")] JsonSchema<S>),
@@ -23,12 +23,12 @@ struct JsonSchemaWire<S> {
     description: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     strict: Option<bool>,
-    schema: crate::json::JsonValue<S>,
+    schema: crate::json::JsonView<S>,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct FormatInput<'a> {
+pub(in crate::llm::text::copenai::request) struct FormatInput<'a> {
     #[serde(rename = "type")]
     kind: FormatKind,
     #[serde(default, borrow, deserialize_with = "deserialize::present")]
@@ -52,7 +52,7 @@ struct JsonSchemaInput<'a> {
     description: Option<&'a str>,
     strict: Option<bool>,
     #[serde(borrow)]
-    schema: crate::json::JsonValue<&'a str>,
+    schema: crate::json::JsonView<&'a str>,
 }
 
 impl<'a> TryFrom<FormatInput<'a>> for ResponseFormat<&'a str> {

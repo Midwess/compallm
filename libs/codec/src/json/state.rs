@@ -22,20 +22,17 @@ pub(super) struct ParseState {
 
 impl Default for ParseState {
     fn default() -> Self {
-        Self::with_capacity(super::INTERNAL_BUFFER_BYTES)
-    }
-}
-
-impl ParseState {
-    pub(super) fn with_capacity(bytes: usize) -> Self {
+        let bytes = 4096;
         Self {
             bytes: Vec::with_capacity(bytes),
-            capture: super::capture::Capture::with_capacity(bytes),
+            capture: super::capture::Capture::default(),
             depth: 0,
             active: false,
         }
     }
+}
 
+impl ParseState {
     pub(super) fn push(
         &mut self,
         token: JsonToken<'_>,
@@ -80,29 +77,6 @@ impl ParseState {
         self.capture.clear();
     }
 
-    pub(super) fn retain(&mut self, bytes: &[u8]) {
-        if self.bytes.is_empty() {
-            self.buffer(bytes);
-        }
-    }
-
-    pub(super) fn string_layout(&self) -> super::StringLayout {
-        super::StringLayout::new(&self.bytes, self.capture.text.as_bytes())
-    }
-
-    pub(super) fn resolve_retained(
-        &self,
-        reference: super::RetainedString,
-    ) -> Result<&str, JsonDecodeError> {
-        let bytes = match reference {
-            super::RetainedString::Capture(range) => self.bytes.get(range),
-            super::RetainedString::Decoded(range) => self.capture.text.as_bytes().get(range),
-            super::RetainedString::Literal(text) => return Ok(text),
-        }
-        .ok_or(JsonDecodeError::InvalidState)?;
-        std::str::from_utf8(bytes).map_err(|_| JsonDecodeError::InvalidState)
-    }
-
     pub(super) fn complete_capture(&mut self, bytes: &[u8]) {
         if !self.bytes.is_empty() {
             self.buffer(bytes);
@@ -111,7 +85,7 @@ impl ParseState {
     }
 
     pub(super) fn deserialize<'de, T: serde::Deserialize<'de>>(
-        &'de mut self,
+        &'de self,
         bytes: &'de [u8],
         inner: &mut super::decoder::JsonParser,
     ) -> Result<T, JsonDecodeError> {
@@ -128,5 +102,14 @@ impl ParseState {
 
     pub(super) fn captured_bytes(&self) -> usize {
         self.bytes.len()
+    }
+
+    pub(super) fn source<'a>(&'a self, input: &'a [u8]) -> Result<&'a str, JsonDecodeError> {
+        let bytes = if self.bytes.is_empty() {
+            input
+        } else {
+            &self.bytes
+        };
+        std::str::from_utf8(bytes).map_err(|_| JsonDecodeError::InvalidState)
     }
 }

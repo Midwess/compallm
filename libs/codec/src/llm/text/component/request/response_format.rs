@@ -10,7 +10,7 @@ pub struct JsonSchema<S = String> {
     pub name: S,
     pub description: Option<S>,
     pub strict: Option<bool>,
-    pub schema: crate::json::JsonValue<S>,
+    pub schema: crate::json::JsonView<S>,
 }
 
 impl<S> ResponseFormat<S> {

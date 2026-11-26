@@ -47,7 +47,7 @@ impl Default for JsonEncoder {
             phase: 0,
             position: 0,
             escape_position: 0,
-            serialized: Vec::with_capacity(super::INTERNAL_BUFFER_BYTES),
+            serialized: Vec::with_capacity(4096),
             serialized_position: 0,
             serializing: false,
         }

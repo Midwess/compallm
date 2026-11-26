@@ -4,7 +4,7 @@ use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::SerializeAs;
 
-pub(crate) struct ToolChoiceWire;
+pub(in crate::llm::text::copenai::request) struct ToolChoiceWire;
 impl<T: AsRef<str>> SerializeAs<ToolChoice<T>> for ToolChoiceWire {
     fn serialize_as<S: Serializer>(
         value: &ToolChoice<T>,
@@ -44,7 +44,7 @@ impl<'a, T: AsRef<str>> From<&'a ToolChoice<T>> for ChoiceOutput<'a> {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct FunctionChoice<'a> {
+pub(in crate::llm::text::copenai::request) struct FunctionChoice<'a> {
     #[serde(rename = "type", with = "ToolTypeWire")]
     kind: ToolType,
     #[serde(borrow)]

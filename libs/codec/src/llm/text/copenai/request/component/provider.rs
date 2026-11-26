@@ -4,7 +4,7 @@ use serde_with::DeserializeAs;
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Provider", deny_unknown_fields)]
-pub(crate) enum ProviderWire {
+pub(in crate::llm::text::copenai::request) enum ProviderWire {
     #[serde(rename = "require_parameters", alias = "require_parameter")]
     RequireParameter(bool),
 }

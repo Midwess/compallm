@@ -1,5 +1,5 @@
-mod scalar;
-pub(crate) use scalar::ScalarText;
+mod collection;
+pub use collection::Collection;
 mod message;
 mod provider;
 mod reasoning;
@@ -26,9 +26,7 @@ pub enum TextRequestComponent<S = String> {
     /// One conversation message, including text, tool calls/results, or reasoning history.
     Message(Message<S>),
     /// Declares the functions the model may request the caller to execute.
-    ToolsStarted,
-    Tool(ToolDefinition<S>),
-    ToolsEnded,
+    Tools(Collection<ToolDefinition<S>, S>),
     /// Controls whether the model may, must, or must not call a tool, or selects one function.
     ToolChoice(ToolChoice<S>),
     /// Controls whether the model may request multiple tool calls in one turn.
@@ -58,7 +56,15 @@ impl<S> TextRequestComponent<S> {
         match self {
             Self::Model(value) => TextRequestComponent::Model(convert(value)),
             Self::Message(value) => TextRequestComponent::Message(value.map_text(&mut convert)),
-            Self::Tool(value) => TextRequestComponent::Tool(value.map_text(&mut convert)),
+            Self::Tools(values) => TextRequestComponent::Tools(match values {
+                Collection::Owned(values) => Collection::Owned(
+                    values
+                        .into_iter()
+                        .map(|value| value.map_text(&mut convert))
+                        .collect(),
+                ),
+                Collection::View(view) => Collection::View(view.map_text(&mut convert)),
+            }),
             Self::ToolChoice(value) => {
                 TextRequestComponent::ToolChoice(value.map_text(&mut convert))
             }
@@ -74,8 +80,6 @@ impl<S> TextRequestComponent<S> {
             Self::Provider(value) => TextRequestComponent::Provider(value),
             Self::Stream(value) => TextRequestComponent::Stream(value),
             Self::StreamOptions(value) => TextRequestComponent::StreamOptions(value),
-            Self::ToolsStarted => TextRequestComponent::ToolsStarted,
-            Self::ToolsEnded => TextRequestComponent::ToolsEnded,
         }
     }
 }

@@ -1,6 +1,19 @@
 use serde::{Serialize, Serializer};
 use serde_json::value::RawValue;
 
+/// Emits already validated JSON through serde_json's raw-value representation.
+/// Callers must ensure the text is valid JSON; this function does not validate it.
+pub fn serialize_validated_raw<S: Serializer>(
+    value: &str,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    use serde::ser::SerializeStruct;
+
+    let mut raw = serializer.serialize_struct("$serde_json::private::RawValue", 1)?;
+    raw.serialize_field("$serde_json::private::RawValue", value)?;
+    raw.end()
+}
+
 /// Validates stored JSON text and emits it as a JSON value rather than a quoted string.
 pub fn serialize_raw<T: AsRef<str>, S: Serializer>(
     value: &T,

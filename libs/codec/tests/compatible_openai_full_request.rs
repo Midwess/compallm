@@ -206,6 +206,8 @@ const REQUEST: &str = r#"{
 fn measures_full_request_decode_encode_allocations() {
     measure_full_request_allocations::<16>();
     measure_full_request_allocations::<{ 16 * 1024 }>();
+    measure_full_request_allocations::<{ 32 * 1024 }>();
+    measure_full_request_allocations::<{ 64 * 1024 }>();
 }
 
 fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {
@@ -228,7 +230,7 @@ fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {
     let mut decoding = AllocationCount::default();
     let mut encoding = AllocationCount::default();
     let mut pending_decode = AllocationCount::default();
-    let mut per_component = [(AllocationCount::default(), AllocationCount::default()); 20];
+    let mut per_component = [(AllocationCount::default(), AllocationCount::default()); 18];
 
     for chunk in REQUEST.as_bytes().chunks(BUFFER_SIZE) {
         let mut input = chunk;
@@ -301,9 +303,10 @@ fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {
     let total = measurement.snapshot();
     drop(measurement);
 
-    assert_eq!(per_component[4].0.allocations, 4);
-    assert_eq!(per_component[7].0.allocations, 2);
-    assert_eq!(per_component[16].0.allocations, 2);
+    assert_eq!(per_component[4].0.allocations, 0);
+    assert_eq!(per_component[6].0.allocations, 0);
+    assert_eq!(per_component[14].0.allocations, 0);
+    assert_eq!(decoding.allocations, 0);
     assert_eq!(decoding.reallocations, 0);
     assert_eq!(encoding.allocations + encoding.reallocations, 0);
     assert_eq!(
@@ -370,19 +373,12 @@ fn decodes_full_request_with_16_byte_input_buffer() {
     let TextRequestComponent::Message(assistant) = &components[4] else {
         panic!("expected assistant message");
     };
-    let calls = assistant.tool_calls.as_ref().expect("assistant calls");
-    assert!(
-        matches!(&calls[0].function.arguments, codec::json::JsonArgument::Text(text) if text == arguments[0])
-    );
-    for (call, source) in calls[1..].iter().zip(&arguments[1..]) {
-        let codec::json::JsonArgument::Value(value) = &call.function.arguments else {
-            panic!("expected decoded argument tokens");
-        };
-        assert_eq!(value.as_ref(), *source);
-        assert_eq!(
-            serde_json::to_value(value).expect("argument tokens"),
-            serde_json::from_str::<serde_json::Value>(source).expect("argument JSON")
-        );
+    let Collection::View(calls) = assistant.tool_calls.as_ref().expect("assistant calls") else {
+        panic!("expected borrowed collection view");
+    };
+    for (call, source) in calls.borrowed().items().unwrap().zip(arguments) {
+        let call: serde_json::Value = serde_json::from_str(call.as_str()).unwrap();
+        assert_eq!(call["function"]["arguments"], source);
     }
 }
 
@@ -417,6 +413,12 @@ fn decode_request(request: &[u8]) -> Vec<TextRequestComponent> {
 }
 
 fn request_components() -> Vec<TextRequestComponent> {
+    #[derive(serde::Deserialize)]
+    struct RawStops<'a> {
+        #[serde(borrow)]
+        stop: &'a serde_json::value::RawValue,
+    }
+    let raw_stops = serde_json::from_str::<RawStops<'_>>(REQUEST).unwrap();
     let message = |role, content: &str| Message {
         role,
         content: Some(Content::Text(content.into())),
@@ -427,55 +429,60 @@ fn request_components() -> Vec<TextRequestComponent> {
         reasoning_details: None,
     };
     let mut assistant = message(Role::Assistant, "Let me check the weather for you.");
-    assistant.tool_calls = Some(vec![ToolCall {
-        id: "call_abc123".into(),
-        kind: ToolType::Function,
-        function: FunctionCall {
-            name: "get_weather".into(),
-            arguments: r#"{"location": "Boston, MA"}"#.to_owned().into(),
-        },
-    }]);
+    assistant.tool_calls = Some(
+        vec![ToolCall {
+            id: "call_abc123".into(),
+            kind: ToolType::Function,
+            function: FunctionCall {
+                name: "get_weather".into(),
+                arguments: r#"{"location": "Boston, MA"}"#.to_owned().into(),
+            },
+        }]
+        .into(),
+    );
     assistant.reasoning = Some("Thinking process summary...".into());
     assistant.reasoning_content = Some("Detailed thinking content...".into());
-    assistant.reasoning_details = Some(vec![
-        ReasoningDetail {
-            content: ReasoningDetailContent::Summary {
-                summary: "Step 1: Parse user location. Step 2: Call weather tool.".into(),
+    assistant.reasoning_details = Some(
+        vec![
+            ReasoningDetail {
+                content: ReasoningDetailContent::Summary {
+                    summary: "Step 1: Parse user location. Step 2: Call weather tool.".into(),
+                },
+                id: Some("detail_01".into()),
+                format: Some("text".into()),
+                index: Some(0),
             },
-            id: Some("detail_01".into()),
-            format: Some("text".into()),
-            index: Some(0),
-        },
-        ReasoningDetail {
-            content: ReasoningDetailContent::Text {
-                text: "Internal token reasoning block.".into(),
-                signature: Some("sig_xyz789".into()),
+            ReasoningDetail {
+                content: ReasoningDetailContent::Text {
+                    text: "Internal token reasoning block.".into(),
+                    signature: Some("sig_xyz789".into()),
+                },
+                id: None,
+                format: None,
+                index: None,
             },
-            id: None,
-            format: None,
-            index: None,
-        },
-        ReasoningDetail {
-            content: ReasoningDetailContent::Encrypted {
-                data: "base64_encoded_encrypted_reasoning_data_here==".into(),
+            ReasoningDetail {
+                content: ReasoningDetailContent::Encrypted {
+                    data: "base64_encoded_encrypted_reasoning_data_here==".into(),
+                },
+                id: None,
+                format: None,
+                index: None,
             },
-            id: None,
-            format: None,
-            index: None,
-        },
-    ]);
+        ]
+        .into(),
+    );
     let mut result = message(Role::Tool, r#"{"temperature": 72, "condition": "Sunny"}"#);
     result.tool_call_id = Some("call_abc123".into());
 
-    vec![
+    let mut components = vec![
         TextRequestComponent::Model("gpt-4o".into()),
         TextRequestComponent::Message(message(Role::System, "You are a helpful assistant.")),
         TextRequestComponent::Message(message(Role::User, "Can you check the weather and analyze the reasoning?")),
         TextRequestComponent::Message(message(Role::System, "Use Fahrenheit for temperatures in the weather response.")),
         TextRequestComponent::Message(assistant),
         TextRequestComponent::Message(result),
-        TextRequestComponent::ToolsStarted,
-        TextRequestComponent::Tool(ToolDefinition {
+        TextRequestComponent::Tools(vec![ToolDefinition {
             kind: ToolType::Function,
             function: FunctionDefinition {
                 name: "get_weather".into(),
@@ -483,8 +490,7 @@ fn request_components() -> Vec<TextRequestComponent> {
                 parameters: Some(r#"{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}"#.to_owned().try_into().expect("tool schema")),
                 strict: Some(true),
             },
-        }),
-        TextRequestComponent::ToolsEnded,
+        }].into()),
         TextRequestComponent::ToolChoice(ToolChoice::Auto),
         TextRequestComponent::ParallelToolCalls(true),
         TextRequestComponent::MaxTokens(1500),
@@ -496,7 +502,7 @@ fn request_components() -> Vec<TextRequestComponent> {
         }),
         TextRequestComponent::TopP(1.0),
         TextRequestComponent::TopK(50),
-        TextRequestComponent::Stop(Stop::Array(vec!["<|endoftext|>".into(), "User:".into()])),
+        TextRequestComponent::Stop(Stop::ArrayView(raw_stops.stop.get().to_owned().try_into().unwrap())),
         TextRequestComponent::ResponseFormat(ResponseFormat::JsonSchema(JsonSchema {
             name: "weather_response".into(),
             description: Some("Schema for weather output".into()),
@@ -506,7 +512,46 @@ fn request_components() -> Vec<TextRequestComponent> {
         TextRequestComponent::Provider(Provider::RequireParameter(true)),
         TextRequestComponent::Stream(true),
         TextRequestComponent::StreamOptions(Some(StreamOptions { include_usage: Some(true) })),
-    ]
+    ];
+    #[derive(serde::Deserialize)]
+    struct RawRequest<'a> {
+        #[serde(borrow)]
+        messages: Vec<RawMessage<'a>>,
+        #[serde(borrow)]
+        tools: &'a serde_json::value::RawValue,
+    }
+    #[derive(serde::Deserialize)]
+    struct RawMessage<'a> {
+        #[serde(borrow)]
+        tool_calls: Option<&'a serde_json::value::RawValue>,
+        #[serde(borrow)]
+        reasoning_details: Option<&'a serde_json::value::RawValue>,
+    }
+    let raw: RawRequest<'_> = serde_json::from_str(REQUEST).unwrap();
+    if let TextRequestComponent::Message(message) = &mut components[4] {
+        message.tool_calls = Some(Collection::View(
+            raw.messages[3]
+                .tool_calls
+                .unwrap()
+                .get()
+                .to_owned()
+                .try_into()
+                .unwrap(),
+        ));
+        message.reasoning_details = Some(Collection::View(
+            raw.messages[3]
+                .reasoning_details
+                .unwrap()
+                .get()
+                .to_owned()
+                .try_into()
+                .unwrap(),
+        ));
+    }
+    components[6] = TextRequestComponent::Tools(Collection::View(
+        raw.tools.get().to_owned().try_into().unwrap(),
+    ));
+    components
 }
 
 #[test]

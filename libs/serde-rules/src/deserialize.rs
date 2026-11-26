@@ -1,6 +1,23 @@
 use serde::{Deserialize, Deserializer};
 use serde_json::value::RawValue;
 
+pub fn validate_sequence<'de, T: serde::Deserialize<'de>, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<(), D::Error> {
+    struct Items<T>(std::marker::PhantomData<T>);
+    impl<'de, T: serde::Deserialize<'de>> serde::de::Visitor<'de> for Items<T> {
+        type Value = ();
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("a sequence of valid items")
+        }
+        fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut sequence: A) -> Result<(), A::Error> {
+            while sequence.next_element::<T>()?.is_some() {}
+            Ok(())
+        }
+    }
+    deserializer.deserialize_seq(Items::<T>(std::marker::PhantomData))
+}
+
 /// Deserializes a string-like value and rejects empty text without trimming it.
 pub fn nonempty<'de, D: Deserializer<'de>, S: Deserialize<'de> + AsRef<str>>(
     deserializer: D,

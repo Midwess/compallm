@@ -1,3 +1,4 @@
+use super::CollectionWire;
 use super::tools::ToolTypeWire;
 use crate::llm::text::component::*;
 use compallm_serde_rules::borrowed;
@@ -7,7 +8,7 @@ use serde_with::{SerializeAs, serde_as};
 #[serde_as]
 #[derive(Serialize)]
 #[serde(remote = "Message", deny_unknown_fields)]
-pub(crate) struct MessageWire<T: Serialize + AsRef<str>> {
+pub(in crate::llm::text::copenai::request) struct MessageWire<T: Serialize + AsRef<str>> {
     #[serde(with = "RoleWire")]
     role: Role,
     #[serde(
@@ -16,23 +17,23 @@ pub(crate) struct MessageWire<T: Serialize + AsRef<str>> {
         skip_serializing_if = "Option::is_none"
     )]
     content: Option<Content<T>>,
-    #[serde_as(as = "Option<Vec<ToolCallWire<T>>>")]
+    #[serde_as(as = "Option<CollectionWire<ToolCallWire<T>>>")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    tool_calls: Option<Vec<ToolCall<T>>>,
+    tool_calls: Option<Collection<ToolCall<T>, T>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_call_id: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
     reasoning: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
     reasoning_content: Option<T>,
-    #[serde_as(as = "Option<Vec<ReasoningWire<T>>>")]
+    #[serde_as(as = "Option<CollectionWire<ReasoningWire<T>>>")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    reasoning_details: Option<Vec<ReasoningDetail<T>>>,
+    reasoning_details: Option<Collection<ReasoningDetail<T>, T>>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Role", rename_all = "snake_case")]
-pub(crate) enum RoleWire {
+pub(in crate::llm::text::copenai::request) enum RoleWire {
     System,
     Developer,
     User,
@@ -139,14 +140,14 @@ impl<T: Serialize> SerializeAs<ReasoningDetail<T>> for ReasoningWire<T> {
 #[serde_as]
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct MessageInput<'a> {
+pub(in crate::llm::text::copenai::request) struct MessageInput<'a> {
     #[serde(with = "RoleWire")]
     role: Role,
     #[serde(default, borrow, deserialize_with = "ContentVisitor::deserialize")]
     content: Option<Content<&'a str>>,
     #[serde(default, borrow)]
-    #[serde_as(as = "Option<Vec<serde_with::FromInto<ToolCallInput<'a>>>>")]
-    tool_calls: Option<Vec<ToolCall<&'a str>>>,
+    #[serde_as(as = "Option<CollectionWire<serde_with::FromInto<ToolCallInput<'a>>>>")]
+    tool_calls: Option<Collection<ToolCall<&'a str>, &'a str>>,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
     tool_call_id: Option<&'a str>,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
@@ -154,8 +155,8 @@ pub(crate) struct MessageInput<'a> {
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
     reasoning_content: Option<&'a str>,
     #[serde(default, borrow)]
-    #[serde_as(as = "Option<Vec<serde_with::TryFromInto<ReasoningInput<'a>>>>")]
-    reasoning_details: Option<Vec<ReasoningDetail<&'a str>>>,
+    #[serde_as(as = "Option<CollectionWire<serde_with::TryFromInto<ReasoningInput<'a>>>>")]
+    reasoning_details: Option<Collection<ReasoningDetail<&'a str>, &'a str>>,
 }
 
 impl<'a> TryFrom<MessageInput<'a>> for Message<&'a str> {
@@ -199,13 +200,13 @@ impl<'a> TryFrom<MessageInput<'a>> for Message<&'a str> {
 }
 
 impl ContentVisitor {
-    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
+    pub(in crate::llm::text::copenai::request) fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Option<Content<&'de str>>, D::Error> {
         deserializer.deserialize_any(ContentVisitor).map(Some)
     }
 }
-pub(crate) struct ContentVisitor;
+pub(in crate::llm::text::copenai::request) struct ContentVisitor;
 impl<'de> serde::de::Visitor<'de> for ContentVisitor {
     type Value = Content<&'de str>;
     fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -245,7 +246,7 @@ impl<'a> From<TextPart<'a>> for ObjectMessage<&'a str> {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct ToolCallInput<'a> {
+pub(in crate::llm::text::copenai::request) struct ToolCallInput<'a> {
     #[serde(borrow, deserialize_with = "borrowed::nonempty")]
     id: &'a str,
     #[serde(rename = "type", with = "ToolTypeWire")]

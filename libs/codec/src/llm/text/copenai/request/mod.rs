@@ -1,4 +1,4 @@
-pub mod component;
+mod component;
 pub mod decoder;
 pub mod encoder;
 

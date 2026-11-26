@@ -1,14 +1,14 @@
-use super::ToolType;
+use super::{Collection, ToolType};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Message<S = String> {
     pub role: Role,
     pub content: Option<Content<S>>,
-    pub tool_calls: Option<Vec<ToolCall<S>>>,
+    pub tool_calls: Option<Collection<ToolCall<S>, S>>,
     pub tool_call_id: Option<S>,
     pub reasoning: Option<S>,
     pub reasoning_content: Option<S>,
-    pub reasoning_details: Option<Vec<ReasoningDetail<S>>>,
+    pub reasoning_details: Option<Collection<ReasoningDetail<S>, S>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -66,52 +66,58 @@ impl<S> Message<S> {
         Message {
             role: self.role,
             content: self.content.map(|value| value.map_text(&mut convert)),
-            tool_calls: self.tool_calls.map(|calls| {
-                calls
-                    .into_iter()
-                    .map(|call| ToolCall {
-                        id: convert(call.id),
-                        kind: call.kind,
-                        function: FunctionCall {
-                            name: convert(call.function.name),
-                            arguments: call.function.arguments.map_text(&mut convert),
-                        },
-                    })
-                    .collect()
+            tool_calls: self.tool_calls.map(|calls| match calls {
+                Collection::View(view) => Collection::View(view.map_text(&mut convert)),
+                Collection::Owned(calls) => Collection::Owned(
+                    calls
+                        .into_iter()
+                        .map(|call| ToolCall {
+                            id: convert(call.id),
+                            kind: call.kind,
+                            function: FunctionCall {
+                                name: convert(call.function.name),
+                                arguments: call.function.arguments.map_text(&mut convert),
+                            },
+                        })
+                        .collect(),
+                ),
             }),
             tool_call_id: self.tool_call_id.map(&mut convert),
             reasoning: self.reasoning.map(&mut convert),
             reasoning_content: self.reasoning_content.map(&mut convert),
-            reasoning_details: self.reasoning_details.map(|details| {
-                details
-                    .into_iter()
-                    .map(|detail| {
-                        let content = match detail.content {
-                            ReasoningDetailContent::Summary { summary } => {
-                                ReasoningDetailContent::Summary {
-                                    summary: convert(summary),
+            reasoning_details: self.reasoning_details.map(|details| match details {
+                Collection::View(view) => Collection::View(view.map_text(&mut convert)),
+                Collection::Owned(details) => Collection::Owned(
+                    details
+                        .into_iter()
+                        .map(|detail| {
+                            let content = match detail.content {
+                                ReasoningDetailContent::Summary { summary } => {
+                                    ReasoningDetailContent::Summary {
+                                        summary: convert(summary),
+                                    }
                                 }
-                            }
-                            ReasoningDetailContent::Text { text, signature } => {
-                                ReasoningDetailContent::Text {
-                                    text: convert(text),
-                                    signature: signature.map(&mut convert),
+                                ReasoningDetailContent::Text { text, signature } => {
+                                    ReasoningDetailContent::Text {
+                                        text: convert(text),
+                                        signature: signature.map(&mut convert),
+                                    }
                                 }
-                            }
-                            ReasoningDetailContent::Encrypted { data } => {
-                                ReasoningDetailContent::Encrypted {
-                                    data: convert(data),
+                                ReasoningDetailContent::Encrypted { data } => {
+                                    ReasoningDetailContent::Encrypted {
+                                        data: convert(data),
+                                    }
                                 }
+                            };
+                            ReasoningDetail {
+                                content,
+                                id: detail.id.map(&mut convert),
+                                format: detail.format.map(&mut convert),
+                                index: detail.index,
                             }
-                        };
-                        ReasoningDetail {
-                            content,
-                            id: detail.id.map(&mut convert),
-                            format: detail.format.map(&mut convert),
-                            index: detail.index,
-                        }
-                    })
-                    .collect()
+                        })
+                        .collect(),
+                ),
             }),
         }
     }

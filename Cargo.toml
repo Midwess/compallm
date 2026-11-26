@@ -27,7 +27,6 @@ cookie = { version = "0.18", default-features = false }
 tower = { version = "0.5", default-features = false }
 tower-http = { version = "0.6", default-features = false }
 sec = { path = "sec" }
-jsonwebtoken = { version = "10", default-features = false }
 validify = { version = "2", default-features = false }
 futures-util = { version = "0.3", default-features = false }
 compallm-core = { path = "libs/core", default-features = false }
@@ -62,7 +61,6 @@ serde_json = { version = "1", default-features = false }
 tokio = { version = "1", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = { version = "0.3", default-features = false }
-serial_test = { version = "3.2", default-features = false }
 heck = { version = "0.5", default-features = false }
 pluralizer = { version = "0.5", default-features = false }
 syn = { version = "2", default-features = false }

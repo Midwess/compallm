@@ -1,61 +1,36 @@
 use crate::llm::text::component::Stop;
-use compallm_serde_rules::borrowed::Text;
 use serde::{Deserialize, Deserializer, Serialize, de::Error};
 
 #[derive(Serialize)]
 #[serde(remote = "Stop", untagged)]
-pub(crate) enum StopWire<S> {
+pub(in crate::llm::text::copenai::request) enum StopWire<S: AsRef<str>> {
     Null,
     Text(S),
     Array(Vec<S>),
+    ArrayView(crate::json::JsonView<S>),
 }
 
-pub(crate) struct Stops<'a>(pub Stop<&'a str>);
+pub(in crate::llm::text::copenai::request) struct Stops<'a>(pub Stop<&'a str>);
 
 impl<'de> Deserialize<'de> for Stops<'de> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct Visitor;
-        impl<'de> serde::de::Visitor<'de> for Visitor {
-            type Value = Stops<'de>;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("null, a stop string, or an array of stop strings")
-            }
-
-            fn visit_unit<E: Error>(self) -> Result<Self::Value, E> {
-                Ok(Stops(Stop::Null))
-            }
-
-            fn visit_borrowed_str<E: Error>(self, value: &'de str) -> Result<Self::Value, E> {
-                Ok(Stops(Stop::Text(value)))
-            }
-
-            fn visit_seq<A: serde::de::SeqAccess<'de>>(
-                self,
-                mut sequence: A,
-            ) -> Result<Self::Value, A::Error> {
-                let mut values = Vec::new();
-                while let Some(Text(value)) = sequence.next_element::<Text<'de>>()? {
-                    if values.len() == 4 {
-                        return Err(A::Error::custom("invalid stop sequences"));
-                    }
-                    values.push(value);
-                }
-                Ok(Stops(Stop::Array(values)))
+        let view = crate::json::JsonView::deserialize_array(deserializer)?;
+        let mut count = 0;
+        let mut bytes = 0;
+        let mut scratch = [0; 4096];
+        for value in view
+            .items()
+            .ok_or_else(|| D::Error::custom("expected stop array"))?
+        {
+            count += 1;
+            let text = value
+                .decode_string(&mut scratch)
+                .map_err(D::Error::custom)?;
+            bytes += text.len();
+            if count > 4 || text.is_empty() || bytes > 4096 {
+                return Err(D::Error::custom("invalid stop sequences"));
             }
         }
-        let value = deserializer.deserialize_any(Visitor)?;
-        let valid = match &value.0 {
-            Stop::Null => true,
-            Stop::Text(text) => !text.is_empty() && text.len() <= 4096,
-            Stop::Array(texts) => {
-                texts.iter().all(|text| !text.is_empty())
-                    && texts.iter().map(|text| text.len()).sum::<usize>() <= 4096
-            }
-        };
-        if !valid {
-            return Err(D::Error::custom("invalid stop sequences"));
-        }
-        Ok(value)
+        Ok(Stops(Stop::ArrayView(view)))
     }
 }

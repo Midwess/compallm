@@ -8,7 +8,7 @@ pub struct ToolDefinition<S = String> {
 pub struct FunctionDefinition<S = String> {
     pub name: S,
     pub description: Option<S>,
-    pub parameters: Option<crate::json::JsonValue<S>>,
+    pub parameters: Option<crate::json::JsonView<S>>,
     pub strict: Option<bool>,
 }
 

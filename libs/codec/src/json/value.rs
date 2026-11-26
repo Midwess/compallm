@@ -54,8 +54,7 @@ impl<S> JsonValue<S> {
         tokens: impl Iterator<Item = Token>,
         text: String,
     ) -> Self {
-        let mut retained =
-            Vec::with_capacity(super::INTERNAL_BUFFER_BYTES / std::mem::size_of::<Token>());
+        let mut retained = Vec::with_capacity(4096 / std::mem::size_of::<Token>());
         retained.extend(tokens);
         Self {
             source,
@@ -124,9 +123,8 @@ impl<'de> Visitor<'de> for SchemaVisitor {
         let source = seq
             .next_element::<&str>()?
             .ok_or_else(|| serde::de::Error::custom("missing JSON source"))?;
-        let mut tokens =
-            Vec::with_capacity(super::INTERNAL_BUFFER_BYTES / std::mem::size_of::<Token>());
-        let mut text = String::with_capacity(super::INTERNAL_BUFFER_BYTES);
+        let mut tokens = Vec::with_capacity(4096 / std::mem::size_of::<Token>());
+        let mut text = String::with_capacity(4096);
         seq.next_element_seed(Seed(&mut tokens, &mut text, 0))?
             .ok_or_else(|| serde::de::Error::custom("missing JSON tokens"))?;
         if self.object && !matches!(tokens.first(), Some(Token::ObjectStart)) {
@@ -157,7 +155,7 @@ impl<S: AsRef<str>> std::ops::Deref for JsonValue<S> {
 /// Tool arguments retain their exact text for string-valued protocols.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JsonArgument<S = String> {
-    Value(JsonValue<S>),
+    Value(super::JsonView<S>),
     Text(S),
 }
 
@@ -180,37 +178,31 @@ impl<'de> Visitor<'de> for ArgumentVisitor {
         Ok(JsonArgument::Text(text))
     }
 
-    fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> Result<Self::Value, A::Error> {
-        SchemaVisitor { object: false }
-            .visit_seq(seq)
-            .map(JsonArgument::Value)
+    fn visit_newtype_struct<D: Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<Self::Value, D::Error> {
+        let source = <&'de str>::deserialize(deserializer)?;
+        Ok(JsonArgument::Value(super::JsonView::from_validated(source)))
     }
 }
 
 impl<'a> From<&'a str> for JsonArgument<&'a str> {
     fn from(text: &'a str) -> Self {
-        JsonValue::<&'a str>::try_from(text)
-            .map(Self::Value)
-            .unwrap_or(Self::Text(text))
+        if super::JsonDecoder::validate_value(text).is_ok() {
+            Self::Value(super::JsonView::from_validated(text))
+        } else {
+            Self::Text(text)
+        }
     }
 }
 
 impl From<String> for JsonArgument {
     fn from(text: String) -> Self {
-        match super::JsonDecoder::decode_value(&text) {
-            Ok(value) => {
-                let JsonValue {
-                    tokens,
-                    text: strings,
-                    ..
-                } = value;
-                Self::Value(JsonValue {
-                    source: text,
-                    tokens,
-                    text: strings,
-                })
-            }
-            Err(_) => Self::Text(text),
+        if super::JsonDecoder::validate_value(&text).is_ok() {
+            Self::Value(super::JsonView::from_validated(text))
+        } else {
+            Self::Text(text)
         }
     }
 }
@@ -239,25 +231,7 @@ impl<S: AsRef<str>> Serialize for JsonArgument<S> {
     }
 }
 
-impl<S: AsRef<str>> JsonArgument<S> {
-    pub(crate) fn serialize_value<T: Serializer>(&self, serializer: T) -> Result<T::Ok, T::Error> {
-        match self {
-            Self::Value(value) => value.serialize(serializer),
-            Self::Text(_) => Err(serde::ser::Error::custom("tool input must be valid JSON")),
-        }
-    }
-}
-
-impl<S> JsonValue<S> {
-    pub(crate) fn present<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<Option<Self>, D::Error>
-    where
-        Self: Deserialize<'de>,
-    {
-        Self::deserialize(deserializer).map(Some)
-    }
-}
+impl<S: AsRef<str>> JsonArgument<S> {}
 
 struct Seed<'a>(&'a mut Vec<Token>, &'a mut String, usize);
 

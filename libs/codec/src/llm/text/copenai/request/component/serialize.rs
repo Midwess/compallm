@@ -1,6 +1,6 @@
 use super::{
-    MessageWire, ProviderWire, ReasoningWire, ResponseFormatWire, StopWire, StreamOptionsWire,
-    ToolChoiceWire, ToolWire,
+    CollectionWire, MessageWire, ProviderWire, ReasoningWire, ResponseFormatWire, StopWire,
+    StreamOptionsWire, ToolChoiceWire, ToolWire,
 };
 use crate::llm::text::component::*;
 use serde::Serialize;
@@ -18,9 +18,7 @@ pub(in crate::llm::text::copenai::request) struct Request<'a, S: Serialize + AsR
 enum RequestWire<S: AsRef<str>> {
     Model(S),
     Message(#[serde(with = "MessageWire")] Message<S>),
-    ToolsStarted,
-    Tool(#[serde_as(as = "ToolWire<S>")] ToolDefinition<S>),
-    ToolsEnded,
+    Tools(#[serde_as(as = "CollectionWire<ToolWire<S>>")] Collection<ToolDefinition<S>, S>),
     ToolChoice(#[serde_as(as = "ToolChoiceWire")] ToolChoice<S>),
     ParallelToolCalls(bool),
     MaxTokens(u32),

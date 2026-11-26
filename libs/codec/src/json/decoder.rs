@@ -9,7 +9,10 @@ pub struct JsonDecoder {
     reader: JsonReader,
     parse: ParseState,
     container_start: Option<bool>,
-    inner: JsonParser,
+    inner: std::cell::RefCell<JsonParser>,
+    current: Option<super::component::ReadyToken>,
+    current_source: Option<(usize, usize)>,
+    current_value: Option<std::ops::Range<usize>>,
 }
 
 #[derive(Debug, Default)]
@@ -34,31 +37,82 @@ enum Prepared {
 }
 
 impl JsonDecoder {
-    pub(crate) fn string_layout(&self) -> super::StringLayout {
-        self.parse.string_layout()
-    }
-
-    pub(crate) fn resolve_retained(
-        &self,
-        reference: super::RetainedString,
-    ) -> Result<&str, JsonDecodeError> {
-        self.parse.resolve_retained(reference)
-    }
-
-    pub(crate) fn resolve_string<'a>(
-        &'a self,
-        source: &'a [u8],
-        reference: super::StringReference,
-    ) -> Result<&'a str, JsonDecodeError> {
-        match reference {
-            super::StringReference::Input(range) => {
-                std::str::from_utf8(source.get(range).ok_or(JsonDecodeError::InvalidState)?)
-                    .map_err(|_| JsonDecodeError::InvalidState)
+    pub fn advance(
+        &mut self,
+        input: &mut &[u8],
+        eof: bool,
+    ) -> Result<DecoderStatus<()>, JsonDecodeError> {
+        self.current = None;
+        self.current_source = None;
+        self.current_value = None;
+        self.container_start = None;
+        if self.parse.active {
+            return Err(JsonDecodeError::InvalidState);
+        }
+        let source = *input;
+        match self.reader.next(input, eof)? {
+            DecoderStatus::Component(token) => {
+                self.container_start = match token {
+                    Event::ObjectStart(_) => Some(false),
+                    Event::ArrayStart(_) => Some(true),
+                    _ => None,
+                };
+                self.current = Some(super::component::ReadyToken::new(token, source));
+                self.current_source = Some((source.as_ptr() as usize, source.len()));
+                Ok(DecoderStatus::Component(()))
             }
-            super::StringReference::Buffered => self.reader.tokens.buffered_string(),
+            DecoderStatus::NeedInput => Ok(DecoderStatus::NeedInput),
+            DecoderStatus::Finished => Ok(DecoderStatus::Finished),
         }
     }
 
+    pub fn current<'a>(&'a self, source: &'a [u8]) -> Result<Event<'a>, JsonDecodeError> {
+        use super::component::ReadyToken;
+        if self.current_source != Some((source.as_ptr() as usize, source.len())) {
+            return Err(JsonDecodeError::InvalidState);
+        }
+        let key = |reference: &Option<super::StringReference>| {
+            reference
+                .as_ref()
+                .map(|reference| match reference {
+                    super::StringReference::Input(range) => source
+                        .get(range.clone())
+                        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+                        .ok_or(JsonDecodeError::InvalidState),
+                    super::StringReference::Buffered => self
+                        .reader
+                        .grammar
+                        .key()
+                        .ok_or(JsonDecodeError::InvalidState),
+                })
+                .transpose()
+        };
+        Ok(
+            match self.current.as_ref().ok_or(JsonDecodeError::InvalidState)? {
+                ReadyToken::ObjectStart(reference) => Event::ObjectStart(key(reference)?),
+                ReadyToken::ObjectEnd => Event::ObjectEnd,
+                ReadyToken::ArrayStart(reference) => Event::ArrayStart(key(reference)?),
+                ReadyToken::ArrayEnd => Event::ArrayEnd,
+                ReadyToken::String(reference, value) => {
+                    let value = match value {
+                        super::StringReference::Input(range) => source
+                            .get(range.clone())
+                            .and_then(|bytes| std::str::from_utf8(bytes).ok())
+                            .ok_or(JsonDecodeError::InvalidState)?,
+                        super::StringReference::Buffered => self.reader.tokens.buffered_string()?,
+                    };
+                    Event::ValueString(key(reference)?, value)
+                }
+                ReadyToken::Number(reference, value) => {
+                    Event::ValueNumber(key(reference)?, value.clone())
+                }
+                ReadyToken::Boolean(reference, value) => {
+                    Event::ValueBoolean(key(reference)?, *value)
+                }
+                ReadyToken::Null(reference) => Event::ValueNull(key(reference)?),
+            },
+        )
+    }
     pub(super) fn container_start(&self) -> Result<bool, JsonDecodeError> {
         self.container_start.ok_or(JsonDecodeError::InvalidState)
     }
@@ -90,68 +144,96 @@ impl JsonDecoder {
         Self::default()
     }
 
-    pub fn with_capacity(buffer_bytes: usize) -> Self {
-        let bytes = if buffer_bytes == 0 {
-            super::INTERNAL_BUFFER_BYTES
-        } else {
-            buffer_bytes
-        };
-        Self {
-            reader: JsonReader {
-                tokens: TokenDecoder::with_capacity(bytes),
-                grammar: Grammar::with_capacity(bytes),
-                failed: false,
-                key_input: None,
-            },
-            parse: ParseState::with_capacity(bytes),
-            container_start: None,
-            inner: JsonParser::with_capacity(bytes),
+    pub fn advance_value(
+        &mut self,
+        input: &mut &[u8],
+        eof: bool,
+    ) -> Result<DecoderStatus<()>, JsonDecodeError> {
+        let source = *input;
+        match self.capture_next(input, eof)? {
+            DecoderStatus::Component(range) => {
+                self.set_current_value(source, range);
+                Ok(DecoderStatus::Component(()))
+            }
+            DecoderStatus::NeedInput => Ok(DecoderStatus::NeedInput),
+            DecoderStatus::Finished => Ok(DecoderStatus::Finished),
         }
     }
 
-    pub fn parse_next<'de, 'input: 'de, T: serde::Deserialize<'de>>(
+    pub(super) fn set_current_value(&mut self, source: &[u8], range: std::ops::Range<usize>) {
+        self.current_source = Some((source.as_ptr() as usize, source.len()));
+        self.current_value = Some(range);
+    }
+
+    pub fn deserialize_current<'de, T: serde::Deserialize<'de>>(
+        &'de self,
+        source: &'de [u8],
+    ) -> Result<T, JsonDecodeError> {
+        if self.current_source != Some((source.as_ptr() as usize, source.len())) {
+            return Err(JsonDecodeError::InvalidState);
+        }
+        let range = self
+            .current_value
+            .as_ref()
+            .ok_or(JsonDecodeError::InvalidState)?;
+        let bytes = source
+            .get(range.clone())
+            .ok_or(JsonDecodeError::InvalidState)?;
+        let mut inner = self
+            .inner
+            .try_borrow_mut()
+            .map_err(|_| JsonDecodeError::InvalidState)?;
+        self.parse.deserialize(bytes, &mut inner)
+    }
+
+    pub fn view_current<'a>(
+        &'a self,
+        source: &'a [u8],
+    ) -> Result<super::JsonView<&'a str>, JsonDecodeError> {
+        if self.current_source != Some((source.as_ptr() as usize, source.len())) {
+            return Err(JsonDecodeError::InvalidState);
+        }
+        let range = self
+            .current_value
+            .as_ref()
+            .ok_or(JsonDecodeError::InvalidState)?;
+        let bytes = source
+            .get(range.clone())
+            .ok_or(JsonDecodeError::InvalidState)?;
+        self.parse.source(bytes).map(super::JsonView::new)
+    }
+
+    pub fn deserialize_next<'de, 'input: 'de, T: serde::Deserialize<'de>>(
         &'de mut self,
         input: &mut &'input [u8],
         eof: bool,
     ) -> Result<DecoderStatus<T>, JsonDecodeError> {
         let source = *input;
-        match self.capture_next(input, eof)? {
-            DecoderStatus::Component(range) => self
-                .deserialize_captured(source, range)
+        match self.advance_value(input, eof)? {
+            DecoderStatus::Component(()) => self
+                .deserialize_current(source)
                 .map(DecoderStatus::Component),
             DecoderStatus::NeedInput => Ok(DecoderStatus::NeedInput),
             DecoderStatus::Finished => Ok(DecoderStatus::Finished),
         }
     }
 
-    pub(crate) fn retain_captured(
-        &mut self,
-        source: &[u8],
-        range: std::ops::Range<usize>,
-    ) -> Result<(), JsonDecodeError> {
-        self.parse
-            .retain(source.get(range).ok_or(JsonDecodeError::InvalidState)?);
-        Ok(())
-    }
-
-    pub(crate) fn deserialize_captured<'de, T: serde::Deserialize<'de>>(
-        &'de mut self,
-        source: &'de [u8],
-        range: std::ops::Range<usize>,
-    ) -> Result<T, JsonDecodeError> {
-        let bytes = source.get(range).ok_or(JsonDecodeError::InvalidState)?;
-        self.parse
-            .deserialize(bytes, &mut self.inner)
-            .inspect_err(|_| self.reader.failed = true)
-    }
-
-    pub(crate) fn capture_next(
+    pub(super) fn capture_next(
         &mut self,
         input: &mut &[u8],
         eof: bool,
     ) -> Result<DecoderStatus<std::ops::Range<usize>>, JsonDecodeError> {
         self.container_start = None;
+        self.current = None;
+        self.current_source = None;
+        self.current_value = None;
         JsonParser::capture(&mut self.reader, &mut self.parse, input, eof)
+    }
+
+    pub(super) fn validate_value(source: &str) -> Result<(), JsonDecodeError> {
+        let mut parser = JsonParser::default();
+        parser.capture_value(source)?;
+        Ok(())
     }
 
     pub(super) fn decode_value(source: &str) -> Result<super::JsonValue<&str>, JsonDecodeError> {
@@ -162,18 +244,6 @@ impl JsonDecoder {
 }
 
 impl JsonParser {
-    fn with_capacity(bytes: usize) -> Self {
-        Self {
-            reader: JsonReader {
-                tokens: TokenDecoder::with_capacity(bytes),
-                grammar: Grammar::with_capacity(bytes),
-                failed: false,
-                key_input: None,
-            },
-            parse: ParseState::with_capacity(bytes),
-        }
-    }
-
     pub(super) fn capture_value(
         &mut self,
         source: &str,
@@ -307,17 +377,12 @@ impl Decoder for JsonDecoder {
         input: &mut &'input [u8],
         eof: bool,
     ) -> Result<DecoderStatus<Event<'a>>, JsonDecodeError> {
-        if self.parse.active {
-            return Err(JsonDecodeError::InvalidState);
+        let source = *input;
+        match self.advance(input, eof)? {
+            DecoderStatus::Component(()) => self.current(source).map(DecoderStatus::Component),
+            DecoderStatus::NeedInput => Ok(DecoderStatus::NeedInput),
+            DecoderStatus::Finished => Ok(DecoderStatus::Finished),
         }
-        self.container_start = None;
-        let status = self.reader.next(input, eof)?;
-        self.container_start = match status {
-            DecoderStatus::Component(Event::ObjectStart(_)) => Some(false),
-            DecoderStatus::Component(Event::ArrayStart(_)) => Some(true),
-            _ => None,
-        };
-        Ok(status)
     }
 
     fn finish(self) -> Result<(), JsonDecodeError> {

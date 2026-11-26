@@ -5,16 +5,7 @@ use crate::json::StringReference;
 use crate::json::{JsonContainer, JsonDecoder, JsonToken};
 use crate::llm::text::component::request::ScalarText;
 use crate::llm::text::component::*;
-use std::borrow::Cow;
 use std::collections::VecDeque;
-
-fn map_status<T, U>(status: DecoderStatus<T>, map: impl FnOnce(T) -> U) -> DecoderStatus<U> {
-    match status {
-        DecoderStatus::Component(value) => DecoderStatus::Component(map(value)),
-        DecoderStatus::NeedInput => DecoderStatus::NeedInput,
-        DecoderStatus::Finished => DecoderStatus::Finished,
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 enum Field {
@@ -33,7 +24,7 @@ pub struct AnthropicRequestDecoder {
     field: Option<Field>,
     pending_parallel: Option<bool>,
     pending_messages: VecDeque<Message<RetainedString>>,
-    pending_format: bool,
+    pending_format: Option<crate::json::JsonValue<RetainedString>>,
     pending_system: bool,
     failed: bool,
     started: bool,
@@ -44,13 +35,24 @@ pub struct AnthropicRequestDecoder {
 }
 
 impl AnthropicRequestDecoder {
+    fn map_status<T, U>(status: DecoderStatus<T>, map: impl FnOnce(T) -> U) -> DecoderStatus<U> {
+        match status {
+            DecoderStatus::Component(value) => DecoderStatus::Component(map(value)),
+            DecoderStatus::NeedInput => DecoderStatus::NeedInput,
+            DecoderStatus::Finished => DecoderStatus::Finished,
+        }
+    }
+
     pub fn new(json: JsonDecoder) -> Self {
         Self {
             json: Some(JsonContainer::new(json)),
             field: None,
             pending_parallel: None,
-            pending_messages: VecDeque::new(),
-            pending_format: false,
+            pending_messages: VecDeque::with_capacity(
+                crate::json::INTERNAL_BUFFER_BYTES
+                    .div_ceil(std::mem::size_of::<Message<RetainedString>>()),
+            ),
+            pending_format: None,
             pending_system: false,
             failed: false,
             started: false,
@@ -64,7 +66,7 @@ impl AnthropicRequestDecoder {
     fn scalar<'s>(
         &mut self,
         token: JsonToken<'_>,
-    ) -> Result<Option<TextRequestComponent<Cow<'s, str>>>, DecoderError> {
+    ) -> Result<Option<TextRequestComponent<&'s str>>, DecoderError> {
         let component = match token {
             JsonToken::ValueNumber(Some("max_tokens"), value) => {
                 let value = value
@@ -94,7 +96,7 @@ impl AnthropicRequestDecoder {
         Ok(Some(component))
     }
 
-    fn message_component(&mut self) -> Result<TextRequestComponent<Cow<'_, str>>, DecoderError> {
+    fn message_component(&mut self) -> Result<TextRequestComponent<&'_ str>, DecoderError> {
         if self.pending_system {
             let json = self.json.as_mut().ok_or(DecoderError::InvalidState)?;
             self.pending_system = false;
@@ -110,72 +112,91 @@ impl AnthropicRequestDecoder {
             .deserialize_captured::<MessagesInput<'_>>(&[], 0..0)
             .map_err(DecoderError::from)
             .inspect_err(|_| self.failed = true)?;
+        let messages = match value {
+            MessagesInput::Single(message) => return Ok(TextRequestComponent::Message(message)),
+            MessagesInput::Multiple(messages) => messages,
+        };
+        let mut messages = messages.into_iter();
+        let first = messages.next().ok_or(DecoderError::InvalidState)?;
         let mut invalid = false;
-        self.pending_messages
-            .extend(value.0.into_iter().map(|message| {
-                message.map_text(|text| {
-                    layout
-                        .locate(&text)
-                        .or_else(|| {
-                            (text == "anthropic").then_some(RetainedString::Literal("anthropic"))
-                        })
-                        .unwrap_or_else(|| {
-                            invalid = true;
-                            RetainedString::Literal("")
-                        })
-                })
-            }));
+        self.pending_messages.extend(messages.map(|message| {
+            message.map_text(|text| {
+                layout
+                    .locate(text)
+                    .or_else(|| {
+                        (text == "anthropic").then_some(RetainedString::Literal("anthropic"))
+                    })
+                    .unwrap_or_else(|| {
+                        invalid = true;
+                        RetainedString::Literal("")
+                    })
+            })
+        }));
         if invalid {
             self.failed = true;
             return Err(DecoderError::InvalidState);
         }
-        self.queued_message()
+        Ok(TextRequestComponent::Message(first))
     }
 
-    fn queued_message(&mut self) -> Result<TextRequestComponent<Cow<'_, str>>, DecoderError> {
+    fn queued_message(&mut self) -> Result<TextRequestComponent<&'_ str>, DecoderError> {
         let message = self
             .pending_messages
             .pop_front()
             .ok_or(DecoderError::InvalidState)?;
         let json = self.json.as_ref().ok_or(DecoderError::InvalidState)?;
+        Self::resolve_message(json, message).inspect_err(|_| self.failed = true)
+    }
+
+    fn resolve_message(
+        json: &JsonContainer,
+        message: Message<RetainedString>,
+    ) -> Result<TextRequestComponent<&str>, DecoderError> {
         let mut invalid = false;
         let message = message.map_text(|reference| match json.resolve_retained(reference) {
-            Ok(text) => Cow::Borrowed(text),
+            Ok(text) => text,
             Err(_) => {
                 invalid = true;
-                Cow::Borrowed("")
+                ""
+            }
+        });
+        if invalid {
+            return Err(DecoderError::InvalidState);
+        }
+        Ok(TextRequestComponent::Message(message))
+    }
+
+    fn output_format(&mut self) -> Result<TextRequestComponent<&'_ str>, DecoderError> {
+        let format = self
+            .pending_format
+            .take()
+            .ok_or(DecoderError::InvalidState)?;
+        let json = self.json.as_ref().ok_or(DecoderError::InvalidState)?;
+        let mut invalid = false;
+        let schema = format.map_text(|reference| match json.resolve_retained(reference) {
+            Ok(text) => text,
+            Err(_) => {
+                invalid = true;
+                ""
             }
         });
         if invalid {
             self.failed = true;
             return Err(DecoderError::InvalidState);
         }
-        Ok(TextRequestComponent::Message(message))
-    }
-
-    fn output_format(&mut self) -> Result<TextRequestComponent<Cow<'_, str>>, DecoderError> {
-        self.pending_format = false;
-        let value = self
-            .json
-            .as_mut()
-            .ok_or(DecoderError::InvalidState)?
-            .deserialize_captured::<OutputConfigInput<'_>>(&[], 0..0)
-            .map_err(DecoderError::from)
-            .inspect_err(|_| self.failed = true)?;
-        let format = value.format.ok_or(DecoderError::InvalidState)?;
         Ok(TextRequestComponent::ResponseFormat(
             ResponseFormat::JsonSchema(JsonSchema {
-                name: Cow::Borrowed("response"),
+                name: "response",
                 description: None,
                 strict: Some(true),
-                schema: format.schema,
+                schema,
             }),
         ))
     }
 }
 
 impl Decoder for AnthropicRequestDecoder {
-    type Component<'a> = TextRequestComponent<Cow<'a, str>>;
+    type Component<'a> = TextRequestComponent<&'a str>;
     type Error = DecoderError;
 
     fn next<'a, 'input: 'a>(
@@ -192,7 +213,7 @@ impl Decoder for AnthropicRequestDecoder {
         if self.pending_system {
             return self.message_component().map(DecoderStatus::Component);
         }
-        if self.pending_format {
+        if self.pending_format.is_some() {
             return self.output_format().map(DecoderStatus::Component);
         }
         if let Some(parallel) = self.pending_parallel.take() {
@@ -225,8 +246,12 @@ impl Decoder for AnthropicRequestDecoder {
                     }
                 }
                 if matches!(field, Field::OutputConfig) {
+                    let source = *input;
                     match json.capture_next(input, eof) {
-                        Ok(DecoderStatus::Component(_)) => {
+                        Ok(DecoderStatus::Component(range)) => {
+                            if let Err(error) = json.retain_captured(source, range) {
+                                break Err(error.into());
+                            }
                             captured_config = true;
                             self.field = None;
                             break Ok(DecoderStatus::NeedInput);
@@ -285,9 +310,9 @@ impl Decoder for AnthropicRequestDecoder {
                     Field::Messages | Field::System => unreachable!(),
                     Field::Tools => unreachable!(),
                     Field::ToolChoice => unreachable!(),
-                    Field::Thinking => json
-                        .parse_next::<ThinkingInput>(input, eof)
-                        .map(|s| map_status(s, |v| TextRequestComponent::Reasoning(v.into()))),
+                    Field::Thinking => json.parse_next::<ThinkingInput>(input, eof).map(|s| {
+                        Self::map_status(s, |v| TextRequestComponent::Reasoning(v.into()))
+                    }),
                     Field::Stop => unreachable!(),
                     Field::OutputConfig => unreachable!(),
                 };
@@ -402,6 +427,12 @@ impl Decoder for AnthropicRequestDecoder {
         self.json = Some(json);
         self.failed = result.is_err();
         if captured_config {
+            let layout = self
+                .json
+                .as_ref()
+                .ok_or(DecoderError::InvalidState)?
+                .string_layout()
+                .map_err(DecoderError::from)?;
             let value = self
                 .json
                 .as_mut()
@@ -409,7 +440,19 @@ impl Decoder for AnthropicRequestDecoder {
                 .deserialize_captured::<OutputConfigInput<'_>>(&[], 0..0)
                 .map_err(DecoderError::from)
                 .inspect_err(|_| self.failed = true)?;
-            self.pending_format = value.format.is_some();
+            let mut invalid = false;
+            self.pending_format = value.format.map(|format| {
+                format.schema.map_text(|text| {
+                    layout.locate(text).unwrap_or_else(|| {
+                        invalid = true;
+                        RetainedString::Literal("")
+                    })
+                })
+            });
+            if invalid {
+                self.failed = true;
+                return Err(DecoderError::InvalidState);
+            }
             if let Some(effort) = value.effort {
                 return Ok(DecoderStatus::Component(TextRequestComponent::Reasoning(
                     Reasoning {
@@ -418,7 +461,7 @@ impl Decoder for AnthropicRequestDecoder {
                     },
                 )));
             }
-            if self.pending_format {
+            if self.pending_format.is_some() {
                 return self.output_format().map(DecoderStatus::Component);
             }
             return self.next(input, eof);
@@ -491,7 +534,7 @@ impl Decoder for AnthropicRequestDecoder {
         if !self.closed
             || self.pending_parallel.is_some()
             || !self.pending_messages.is_empty()
-            || self.pending_format
+            || self.pending_format.is_some()
             || self.pending_system
         {
             return Err(DecoderError::IncompleteInput);

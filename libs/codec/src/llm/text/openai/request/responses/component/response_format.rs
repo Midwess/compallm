@@ -1,7 +1,6 @@
 use crate::llm::text::component::*;
 use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -15,12 +14,12 @@ pub(in crate::llm::text::openai::request::responses) struct Text<'a> {
 pub(in crate::llm::text::openai::request::responses) struct FormatInput<'a> {
     #[serde(rename = "type")]
     kind: FormatKind,
-    #[serde(default, borrow, deserialize_with = "borrowed::optional_schema")]
-    schema: Option<Cow<'a, str>>,
+    #[serde(default, borrow)]
+    schema: Option<crate::json::JsonValue<&'a str>>,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
-    name: Option<Cow<'a, str>>,
+    name: Option<&'a str>,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
-    description: Option<Cow<'a, str>>,
+    description: Option<&'a str>,
     #[serde(default)]
     strict: Option<bool>,
 }
@@ -33,7 +32,7 @@ pub(in crate::llm::text::openai::request::responses) enum FormatKind {
     JsonSchema,
 }
 
-impl<'a> TryFrom<FormatInput<'a>> for ResponseFormat<Cow<'a, str>> {
+impl<'a> TryFrom<FormatInput<'a>> for ResponseFormat<&'a str> {
     type Error = &'static str;
 
     fn try_from(value: FormatInput<'a>) -> Result<Self, Self::Error> {
@@ -70,14 +69,14 @@ impl<'a> TryFrom<FormatInput<'a>> for ResponseFormat<Cow<'a, str>> {
 
 /// Encoded Responses text configuration.
 #[derive(Serialize)]
-pub(in crate::llm::text::openai::request::responses) struct TextOutput<'a> {
-    pub(in crate::llm::text::openai::request::responses) format: FormatOutput<'a>,
+pub(in crate::llm::text::openai::request::responses) struct TextOutput<'a, S: AsRef<str>> {
+    pub(in crate::llm::text::openai::request::responses) format: FormatOutput<'a, S>,
 }
 
 /// Encoded Responses response format.
 #[derive(Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub(in crate::llm::text::openai::request::responses) enum FormatOutput<'a> {
+pub(in crate::llm::text::openai::request::responses) enum FormatOutput<'a, S: AsRef<str>> {
     Text,
     JsonObject,
     JsonSchema {
@@ -86,12 +85,11 @@ pub(in crate::llm::text::openai::request::responses) enum FormatOutput<'a> {
         description: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
         strict: Option<bool>,
-        #[serde(serialize_with = "compallm_serde_rules::serialize::serialize_raw")]
-        schema: &'a str,
+        schema: &'a crate::json::JsonValue<S>,
     },
 }
 
-impl<'a, S: AsRef<str>> From<&'a ResponseFormat<S>> for FormatOutput<'a> {
+impl<'a, S: AsRef<str>> From<&'a ResponseFormat<S>> for FormatOutput<'a, S> {
     fn from(format: &'a ResponseFormat<S>) -> Self {
         match format {
             ResponseFormat::Text => Self::Text,
@@ -100,7 +98,7 @@ impl<'a, S: AsRef<str>> From<&'a ResponseFormat<S>> for FormatOutput<'a> {
                 name: schema.name.as_ref(),
                 description: schema.description.as_ref().map(AsRef::as_ref),
                 strict: schema.strict,
-                schema: schema.schema.as_ref(),
+                schema: &schema.schema,
             },
         }
     }

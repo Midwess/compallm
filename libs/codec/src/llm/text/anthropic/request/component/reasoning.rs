@@ -21,13 +21,15 @@ impl From<&Reasoning> for Thinking {
     }
 }
 
-pub(crate) fn effort(effort: ReasoningEffort) -> Option<&'static str> {
-    match effort {
-        ReasoningEffort::Low => Some("low"),
-        ReasoningEffort::Medium => Some("medium"),
-        ReasoningEffort::High => Some("high"),
-        ReasoningEffort::Max => Some("max"),
-        _ => None,
+impl Thinking {
+    pub(crate) fn effort(effort: ReasoningEffort) -> Option<&'static str> {
+        match effort {
+            ReasoningEffort::Low => Some("low"),
+            ReasoningEffort::Medium => Some("medium"),
+            ReasoningEffort::High => Some("high"),
+            ReasoningEffort::Max => Some("max"),
+            _ => None,
+        }
     }
 }
 #[derive(Deserialize)]

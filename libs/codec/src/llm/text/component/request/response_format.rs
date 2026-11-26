@@ -10,7 +10,7 @@ pub struct JsonSchema<S = String> {
     pub name: S,
     pub description: Option<S>,
     pub strict: Option<bool>,
-    pub schema: S,
+    pub schema: crate::json::JsonValue<S>,
 }
 
 impl<S> ResponseFormat<S> {
@@ -22,7 +22,7 @@ impl<S> ResponseFormat<S> {
                 name: convert(value.name),
                 description: value.description.map(&mut convert),
                 strict: value.strict,
-                schema: convert(value.schema),
+                schema: value.schema.map_text(&mut convert),
             }),
         }
     }

@@ -9,9 +9,9 @@ mod tool_choice;
 mod tools;
 
 pub(super) use message::MessageWire;
-pub(crate) use message::{MessageInput, RoleWire, ToolCallInput, content};
+pub(crate) use message::{ContentVisitor, MessageInput, RoleWire, ToolCallInput};
 pub(super) use provider::ProviderWire;
-pub(super) use reasoning::{ConfiguredReasoning, ReasoningWire, validate as validate_reasoning};
+pub(super) use reasoning::{ConfiguredReasoning, ReasoningWire};
 pub(crate) use response_format::FormatInput;
 pub(super) use response_format::ResponseFormatWire;
 pub(super) use serde_with::de::DeserializeAsWrap as Input;

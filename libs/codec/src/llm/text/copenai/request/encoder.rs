@@ -1,4 +1,4 @@
-use super::component::{ConfiguredReasoning, Request, validate_reasoning};
+use super::component::{ConfiguredReasoning, ReasoningWire, Request};
 use crate::encoder::{Encoder, EncoderStatus};
 use crate::json::{JsonEncodeError, JsonEncoder, JsonToken};
 use crate::llm::text::component::TextRequestComponent;
@@ -124,7 +124,7 @@ impl CompatibleOpenAIRequestEncoder {
             if let TextRequestComponent::Reasoning(value) = component {
                 let mut value = *value;
                 value.effort = None;
-                validate_reasoning(&value).map_err(|_| RequestEncodeError::InvalidState)?;
+                ReasoningWire::validate(&value).map_err(|_| RequestEncodeError::InvalidState)?;
                 self.reasoning = Some(value);
             }
             self.field = Some(Field::from(component));

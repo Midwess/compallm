@@ -301,6 +301,15 @@ fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {
     let total = measurement.snapshot();
     drop(measurement);
 
+    assert_eq!(per_component[4].0.allocations, 4);
+    assert_eq!(per_component[7].0.allocations, 2);
+    assert_eq!(per_component[16].0.allocations, 2);
+    assert_eq!(decoding.reallocations, 0);
+    assert_eq!(encoding.allocations + encoding.reallocations, 0);
+    assert_eq!(
+        encoder_finalization.allocations + encoder_finalization.reallocations,
+        0
+    );
     assert!(decoder_finished);
     let expected = request_components();
     assert_eq!(component_count, expected.len());
@@ -338,6 +347,43 @@ fn decodes_full_request_with_16_byte_input_buffer() {
     assert_eq!(decode_request(REQUEST.as_bytes()), request_components());
     let alias = REQUEST.replacen("\"max_tokens\": 1500", "\"max_completion_tokens\": 1500", 1);
     assert_eq!(decode_request(alias.as_bytes()), request_components());
+    let mut request: serde_json::Value = serde_json::from_str(REQUEST).expect("request fixture");
+    let arguments = [
+        r#"{"unterminated":"#,
+        r#"{"location":"Boston","note":"quote: \" crab: \ud83e\udd80"}"#,
+        r#"[1,true,null,{"value":"reset"}]"#,
+    ];
+    request["messages"][3]["tool_calls"] = serde_json::Value::Array(
+        arguments
+            .iter()
+            .enumerate()
+            .map(|(index, arguments)| {
+                serde_json::json!({
+                    "id": format!("call_{index}"),
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": arguments}
+                })
+            })
+            .collect(),
+    );
+    let components = decode_request(&serde_json::to_vec(&request).expect("mixed argument request"));
+    let TextRequestComponent::Message(assistant) = &components[4] else {
+        panic!("expected assistant message");
+    };
+    let calls = assistant.tool_calls.as_ref().expect("assistant calls");
+    assert!(
+        matches!(&calls[0].function.arguments, codec::json::JsonArgument::Text(text) if text == arguments[0])
+    );
+    for (call, source) in calls[1..].iter().zip(&arguments[1..]) {
+        let codec::json::JsonArgument::Value(value) = &call.function.arguments else {
+            panic!("expected decoded argument tokens");
+        };
+        assert_eq!(value.as_ref(), *source);
+        assert_eq!(
+            serde_json::to_value(value).expect("argument tokens"),
+            serde_json::from_str::<serde_json::Value>(source).expect("argument JSON")
+        );
+    }
 }
 
 fn decode_request(request: &[u8]) -> Vec<TextRequestComponent> {
@@ -386,7 +432,7 @@ fn request_components() -> Vec<TextRequestComponent> {
         kind: ToolType::Function,
         function: FunctionCall {
             name: "get_weather".into(),
-            arguments: r#"{"location": "Boston, MA"}"#.into(),
+            arguments: r#"{"location": "Boston, MA"}"#.to_owned().into(),
         },
     }]);
     assistant.reasoning = Some("Thinking process summary...".into());
@@ -434,7 +480,7 @@ fn request_components() -> Vec<TextRequestComponent> {
             function: FunctionDefinition {
                 name: "get_weather".into(),
                 description: Some("Get the current weather for a given location.".into()),
-                parameters: Some(r#"{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}"#.into()),
+                parameters: Some(r#"{"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}"#.to_owned().try_into().expect("tool schema")),
                 strict: Some(true),
             },
         }),
@@ -455,7 +501,7 @@ fn request_components() -> Vec<TextRequestComponent> {
             name: "weather_response".into(),
             description: Some("Schema for weather output".into()),
             strict: Some(true),
-            schema: r#"{"type": "object", "properties": {"temp": {"type": "number"}}, "required": ["temp"]}"#.into(),
+            schema: r#"{"type": "object", "properties": {"temp": {"type": "number"}}, "required": ["temp"]}"#.to_owned().try_into().expect("response schema"),
         })),
         TextRequestComponent::Provider(Provider::RequireParameter(true)),
         TextRequestComponent::Stream(true),

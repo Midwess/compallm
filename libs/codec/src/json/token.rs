@@ -26,7 +26,7 @@ pub(super) struct TokenDecoder {
 
 impl Default for TokenDecoder {
     fn default() -> Self {
-        Self::with_capacity(16 * 1024)
+        Self::with_capacity(super::INTERNAL_BUFFER_BYTES)
     }
 }
 
@@ -173,6 +173,13 @@ impl Decoder for TokenDecoder {
 }
 
 impl TokenDecoder {
+    pub(super) fn reset(&mut self) {
+        self.state = JsonState::Idle;
+        self.bytes.clear();
+        self.decoded.clear();
+        self.escaped_string = false;
+    }
+
     pub(super) fn with_capacity(bytes: usize) -> Self {
         Self {
             state: JsonState::Idle,

@@ -3,12 +3,11 @@ use crate::llm::text::component::*;
 use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{SerializeAs, serde_as};
-use std::borrow::Cow;
 
 #[serde_as]
 #[derive(Serialize)]
 #[serde(remote = "Message", deny_unknown_fields)]
-pub(crate) struct MessageWire<T: Serialize> {
+pub(crate) struct MessageWire<T: Serialize + AsRef<str>> {
     #[serde(with = "RoleWire")]
     role: Role,
     #[serde(
@@ -79,7 +78,7 @@ impl<T: Serialize> SerializeAs<ObjectMessage<T>> for ObjectMessageWire<T> {
 
 #[derive(Serialize)]
 #[serde(remote = "ToolCall", deny_unknown_fields)]
-struct ToolCallWire<T: Serialize> {
+struct ToolCallWire<T: Serialize + AsRef<str>> {
     id: T,
     #[serde(rename = "type", with = "ToolTypeWire")]
     kind: ToolType,
@@ -87,7 +86,7 @@ struct ToolCallWire<T: Serialize> {
     function: FunctionCall<T>,
 }
 
-impl<T: Serialize> SerializeAs<ToolCall<T>> for ToolCallWire<T> {
+impl<T: Serialize + AsRef<str>> SerializeAs<ToolCall<T>> for ToolCallWire<T> {
     fn serialize_as<S: Serializer>(value: &ToolCall<T>, serializer: S) -> Result<S::Ok, S::Error> {
         Self::serialize(value, serializer)
     }
@@ -95,9 +94,9 @@ impl<T: Serialize> SerializeAs<ToolCall<T>> for ToolCallWire<T> {
 
 #[derive(Serialize)]
 #[serde(remote = "FunctionCall", deny_unknown_fields)]
-struct FunctionCallWire<T: Serialize> {
+struct FunctionCallWire<T: Serialize + AsRef<str>> {
     name: T,
-    arguments: T,
+    arguments: crate::json::JsonArgument<T>,
 }
 
 #[derive(Serialize)]
@@ -143,23 +142,23 @@ impl<T: Serialize> SerializeAs<ReasoningDetail<T>> for ReasoningWire<T> {
 pub(crate) struct MessageInput<'a> {
     #[serde(with = "RoleWire")]
     role: Role,
-    #[serde(default, borrow, deserialize_with = "content")]
-    content: Option<Content<Cow<'a, str>>>,
+    #[serde(default, borrow, deserialize_with = "ContentVisitor::deserialize")]
+    content: Option<Content<&'a str>>,
     #[serde(default, borrow)]
     #[serde_as(as = "Option<Vec<serde_with::FromInto<ToolCallInput<'a>>>>")]
-    tool_calls: Option<Vec<ToolCall<Cow<'a, str>>>>,
+    tool_calls: Option<Vec<ToolCall<&'a str>>>,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
-    tool_call_id: Option<Cow<'a, str>>,
+    tool_call_id: Option<&'a str>,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
-    reasoning: Option<Cow<'a, str>>,
+    reasoning: Option<&'a str>,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
-    reasoning_content: Option<Cow<'a, str>>,
+    reasoning_content: Option<&'a str>,
     #[serde(default, borrow)]
     #[serde_as(as = "Option<Vec<serde_with::TryFromInto<ReasoningInput<'a>>>>")]
-    reasoning_details: Option<Vec<ReasoningDetail<Cow<'a, str>>>>,
+    reasoning_details: Option<Vec<ReasoningDetail<&'a str>>>,
 }
 
-impl<'a> TryFrom<MessageInput<'a>> for Message<Cow<'a, str>> {
+impl<'a> TryFrom<MessageInput<'a>> for Message<&'a str> {
     type Error = &'static str;
     fn try_from(value: MessageInput<'a>) -> Result<Self, Self::Error> {
         let value = Self {
@@ -199,14 +198,16 @@ impl<'a> TryFrom<MessageInput<'a>> for Message<Cow<'a, str>> {
     }
 }
 
-pub(crate) fn content<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<Content<Cow<'de, str>>>, D::Error> {
-    deserializer.deserialize_any(ContentVisitor).map(Some)
+impl ContentVisitor {
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<Content<&'de str>>, D::Error> {
+        deserializer.deserialize_any(ContentVisitor).map(Some)
+    }
 }
-struct ContentVisitor;
+pub(crate) struct ContentVisitor;
 impl<'de> serde::de::Visitor<'de> for ContentVisitor {
-    type Value = Content<Cow<'de, str>>;
+    type Value = Content<&'de str>;
     fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("null, text, a text object, or an array of text objects")
     }
@@ -214,7 +215,7 @@ impl<'de> serde::de::Visitor<'de> for ContentVisitor {
         Ok(Content::Null)
     }
     fn visit_borrowed_str<E: serde::de::Error>(self, v: &'de str) -> Result<Self::Value, E> {
-        Ok(Content::Text(Cow::Borrowed(v)))
+        Ok(Content::Text(v))
     }
 
     fn visit_map<A: serde::de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
@@ -234,10 +235,10 @@ impl<'de> serde::de::Visitor<'de> for ContentVisitor {
 enum TextPart<'a> {
     Text {
         #[serde(borrow)]
-        text: Cow<'a, str>,
+        text: &'a str,
     },
 }
-impl<'a> From<TextPart<'a>> for ObjectMessage<Cow<'a, str>> {
+impl<'a> From<TextPart<'a>> for ObjectMessage<&'a str> {
     fn from(TextPart::Text { text }: TextPart<'a>) -> Self {
         Self::Text { text }
     }
@@ -246,7 +247,7 @@ impl<'a> From<TextPart<'a>> for ObjectMessage<Cow<'a, str>> {
 #[serde(deny_unknown_fields)]
 pub(crate) struct ToolCallInput<'a> {
     #[serde(borrow, deserialize_with = "borrowed::nonempty")]
-    id: Cow<'a, str>,
+    id: &'a str,
     #[serde(rename = "type", with = "ToolTypeWire")]
     kind: ToolType,
     #[serde(borrow)]
@@ -256,11 +257,11 @@ pub(crate) struct ToolCallInput<'a> {
 #[serde(deny_unknown_fields)]
 struct FunctionCallInput<'a> {
     #[serde(borrow, deserialize_with = "borrowed::nonempty")]
-    name: Cow<'a, str>,
+    name: &'a str,
     #[serde(borrow)]
-    arguments: Cow<'a, str>,
+    arguments: crate::json::JsonArgument<&'a str>,
 }
-impl<'a> From<ToolCallInput<'a>> for ToolCall<Cow<'a, str>> {
+impl<'a> From<ToolCallInput<'a>> for ToolCall<&'a str> {
     fn from(v: ToolCallInput<'a>) -> Self {
         Self {
             id: v.id,
@@ -282,29 +283,29 @@ struct ReasoningInput<'a> {
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    summary: Option<Cow<'a, str>>,
+    summary: Option<&'a str>,
     #[serde(
         default,
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    text: Option<Cow<'a, str>>,
+    text: Option<&'a str>,
     #[serde(
         default,
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    data: Option<Cow<'a, str>>,
+    data: Option<&'a str>,
     #[serde(
         default,
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_optional_text"
     )]
-    signature: Option<Option<Cow<'a, str>>>,
+    signature: Option<Option<&'a str>>,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
-    id: Option<Cow<'a, str>>,
+    id: Option<&'a str>,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
-    format: Option<Cow<'a, str>>,
+    format: Option<&'a str>,
     index: Option<u32>,
 }
 
@@ -317,7 +318,7 @@ enum ReasoningKind {
     #[serde(rename = "reasoning.encrypted", alias = "encrypted")]
     Encrypted,
 }
-impl<'a> TryFrom<ReasoningInput<'a>> for ReasoningDetail<Cow<'a, str>> {
+impl<'a> TryFrom<ReasoningInput<'a>> for ReasoningDetail<&'a str> {
     type Error = &'static str;
     fn try_from(v: ReasoningInput<'a>) -> Result<Self, Self::Error> {
         let content = match v.kind {

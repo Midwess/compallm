@@ -5,7 +5,6 @@ use crate::json::{JsonContainer, JsonDecoder, JsonToken};
 use crate::llm::text::component::request::ScalarText;
 use crate::llm::text::component::*;
 use serde_with::de::DeserializeAsWrap as Input;
-use std::borrow::Cow;
 
 #[derive(Debug, Clone, Copy)]
 enum Field {
@@ -46,7 +45,7 @@ impl OpenAICompletionRequestDecoder {
     fn proceed_scalar<'s>(
         &mut self,
         token: JsonToken<'_>,
-    ) -> Result<Option<TextRequestComponent<Cow<'s, str>>>, DecoderError> {
+    ) -> Result<Option<TextRequestComponent<&'s str>>, DecoderError> {
         use TextRequestComponent as C;
         let component = match token {
             JsonToken::ValueBoolean(Some("stream"), value) => C::Stream(value),
@@ -102,7 +101,7 @@ impl OpenAICompletionRequestDecoder {
 }
 
 impl Decoder for OpenAICompletionRequestDecoder {
-    type Component<'a> = TextRequestComponent<Cow<'a, str>>;
+    type Component<'a> = TextRequestComponent<&'a str>;
     type Error = DecoderError;
 
     fn next<'a, 'input: 'a>(

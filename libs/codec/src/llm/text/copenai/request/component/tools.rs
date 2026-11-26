@@ -1,9 +1,7 @@
 use crate::llm::text::component::{FunctionDefinition, ToolDefinition, ToolType};
-use compallm_serde_rules::borrowed::{nonempty, optional_schema, optional_text};
-use compallm_serde_rules::{deserialize, serialize};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_with::{DeserializeAs, SerializeAs};
-use std::borrow::Cow;
+use compallm_serde_rules::borrowed::{nonempty, optional_text};
+use serde::{Deserialize, Serialize, Serializer};
+use serde_with::SerializeAs;
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "ToolType", rename_all = "snake_case")]
@@ -11,14 +9,11 @@ pub(super) enum ToolTypeWire {
     Function,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[serde(
     remote = "ToolDefinition",
     deny_unknown_fields,
-    bound(
-        deserialize = "T: Deserialize<'de> + AsRef<str> + From<String>",
-        serialize = "T: Serialize + AsRef<str>"
-    )
+    bound(serialize = "T: Serialize + AsRef<str>")
 )]
 pub(crate) struct ToolWire<T = String> {
     #[serde(rename = "type", with = "ToolTypeWire")]
@@ -36,33 +31,18 @@ impl<T: Serialize + AsRef<str>> SerializeAs<ToolDefinition<T>> for ToolWire<T> {
     }
 }
 
-impl<'de> DeserializeAs<'de, ToolDefinition> for ToolWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<ToolDefinition, D::Error> {
-        Self::deserialize(deserializer)
-    }
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[serde(
     remote = "FunctionDefinition",
     deny_unknown_fields,
-    bound(
-        deserialize = "T: Deserialize<'de> + AsRef<str> + From<String>",
-        serialize = "T: Serialize + AsRef<str>"
-    )
+    bound(serialize = "T: Serialize + AsRef<str>")
 )]
 struct FunctionDefinitionWire<T = String> {
-    #[serde(deserialize_with = "deserialize::nonempty")]
     name: T,
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<T>,
-    #[serde(
-        default,
-        deserialize_with = "deserialize::optional_schema",
-        serialize_with = "serialize::optional_raw",
-        skip_serializing_if = "Option::is_none"
-    )]
-    parameters: Option<T>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    parameters: Option<crate::json::JsonValue<T>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     strict: Option<bool>,
 }
@@ -86,15 +66,15 @@ enum FunctionType {
 #[serde(deny_unknown_fields)]
 struct Function<'a> {
     #[serde(borrow, deserialize_with = "nonempty")]
-    name: Cow<'a, str>,
+    name: &'a str,
     #[serde(default, borrow, deserialize_with = "optional_text")]
-    description: Option<Cow<'a, str>>,
-    #[serde(default, borrow, deserialize_with = "optional_schema")]
-    parameters: Option<Cow<'a, str>>,
+    description: Option<&'a str>,
+    #[serde(default, borrow)]
+    parameters: Option<crate::json::JsonValue<&'a str>>,
     strict: Option<bool>,
 }
 
-impl<'a> From<ChatTool<'a>> for ToolDefinition<Cow<'a, str>> {
+impl<'a> From<ChatTool<'a>> for ToolDefinition<&'a str> {
     fn from(value: ChatTool<'a>) -> Self {
         let FunctionType::Function = value.kind;
         Self {

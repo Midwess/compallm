@@ -196,7 +196,7 @@ fn translate(
     let mut encoder = AnthropicRequestEncoder::new(JsonEncoder::new(), configuration);
     let mut output = vec![0; output_size];
     let mut encoded = Vec::new();
-    let mut encode_component = |component: &mut TextRequestComponent<std::borrow::Cow<'_, str>>| loop {
+    let mut encode_component = |component: &mut TextRequestComponent<&'_ str>| loop {
         match encoder
             .next(Some(component), &mut output)
             .expect("encode decoded component")
@@ -368,7 +368,7 @@ fn measures_anthropic_request_encoding_allocations() {
     ));
     encoder.finish().expect("finish encoder");
     let allocations = ALLOCATIONS.with(|count| count.replace(None).expect("measurement"));
-    assert_eq!(allocations, 2, "unexpected Anthropic encoding allocations");
+    assert_eq!(allocations, 1, "unexpected Anthropic encoding allocations");
 }
 
 #[test]
@@ -378,10 +378,25 @@ fn measures_compatible_to_anthropic_allocations() {
 }
 
 fn measure_compatible_to_anthropic_allocations<const BUFFER_SIZE: usize>() {
+    measure_anthropic_allocations::<BUFFER_SIZE, _>(
+        COMPATIBLE_REQUEST,
+        CompatibleOpenAIRequestDecoder::new,
+    );
+}
+
+fn measure_anthropic_allocations<const BUFFER_SIZE: usize, D>(
+    request: &str,
+    make_decoder: impl FnOnce(JsonDecoder) -> D,
+) -> usize
+where
+    D: for<'a> Decoder<Component<'a> = TextRequestComponent<&'a str>> + 'static,
+    D::Error: std::fmt::Debug,
+{
     let mut input_buffer = [0_u8; BUFFER_SIZE];
     let mut output = [0_u8; BUFFER_SIZE];
     ALLOCATIONS.with(|count| count.set(Some(0)));
-    let mut decoder = CompatibleOpenAIRequestDecoder::new(JsonDecoder::new());
+    let mut decoder = make_decoder(JsonDecoder::new());
+    let decoder_construction = ALLOCATIONS.with(|count| count.get().expect("measurement"));
     let mut encoder = AnthropicRequestEncoder::new(
         JsonEncoder::new(),
         AnthropicRequestEncoderConfiguration::default(),
@@ -392,7 +407,7 @@ fn measure_compatible_to_anthropic_allocations<const BUFFER_SIZE: usize>() {
     let mut pending_decode_allocations = 0;
     let mut rows = [None; 32];
 
-    for chunk in COMPATIBLE_REQUEST.as_bytes().chunks(BUFFER_SIZE) {
+    for chunk in request.as_bytes().chunks(BUFFER_SIZE) {
         input_buffer[..chunk.len()].copy_from_slice(chunk);
         let mut input = &input_buffer[..chunk.len()];
         loop {
@@ -484,14 +499,23 @@ fn measure_compatible_to_anthropic_allocations<const BUFFER_SIZE: usize>() {
     );
     println!("| # | Component | Decode | Encode |");
     println!("|---:|---|---:|---:|");
-    println!("| - | construction | - | {construction_allocations} |");
+    println!(
+        "| - | construction | {decoder_construction} | {} |",
+        construction_allocations - decoder_construction
+    );
     for (index, row) in rows[..components].iter().enumerate() {
         let (component, decode, encode) = row.expect("component allocation row");
+        assert_eq!(encode, 0);
         println!("| {} | {component} | {decode} | {encode} |", index + 1);
     }
     println!("| - | trailing/finalization | {pending_decode_allocations} | - |");
     assert!(components > 0);
     assert!(encoded_bytes > 0);
+    rows[..components]
+        .iter()
+        .map(|row| row.expect("allocation row").1)
+        .sum::<usize>()
+        + pending_decode_allocations
 }
 
 fn component_name<S>(component: &TextRequestComponent<S>) -> &'static str {
@@ -517,6 +541,14 @@ fn component_name<S>(component: &TextRequestComponent<S>) -> &'static str {
 
 #[test]
 fn decodes_and_reencodes_anthropic_request_across_buffer_sizes() {
+    assert_eq!(
+        measure_anthropic_allocations::<16, _>(REQUEST, AnthropicRequestDecoder::new),
+        13
+    );
+    assert_eq!(
+        measure_anthropic_allocations::<{ 16 * 1024 }, _>(REQUEST, AnthropicRequestDecoder::new),
+        13
+    );
     for input_size in [16 * 1024, 16, 1] {
         for output_size in [16 * 1024, 16, 1] {
             let value = round_trip_anthropic(REQUEST, input_size, output_size);
@@ -610,5 +642,31 @@ fn preserves_late_system_message_and_defaults_tokens_with_adaptive_effort() {
             ),
             expected
         );
+    }
+}
+
+#[test]
+fn preserves_multiple_tool_results_before_advancing_to_the_next_message() {
+    let request = r#"{
+        "model": "claude-opus-4-8",
+        "max_tokens": 32,
+        "messages": [
+            {"role":"user","content":[
+                {"type":"tool_result","tool_use_id":"call_first","content":"first\n\uD83E\uDD80"},
+                {"type":"tool_result","tool_use_id":"call_second","content":"second\"result"}
+            ]},
+            {"role":"user","content":"after the results"}
+        ]
+    }"#;
+    let expected = json!([
+        {"role":"user","content":[{"type":"tool_result","tool_use_id":"call_first","content":[{"type":"text","text":"first\n\u{1f980}"}]}]},
+        {"role":"user","content":[{"type":"tool_result","tool_use_id":"call_second","content":[{"type":"text","text":"second\"result"}]}]},
+        {"role":"user","content":[{"type":"text","text":"after the results"}]}
+    ]);
+    for input_size in [1, 16, 16 * 1024] {
+        for output_size in [1, 16, 16 * 1024] {
+            let value = round_trip_anthropic(request, input_size, output_size);
+            assert_eq!(value["messages"], expected);
+        }
     }
 }

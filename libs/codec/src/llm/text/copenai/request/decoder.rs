@@ -6,7 +6,6 @@ use crate::llm::text::component::request::ScalarText;
 use crate::llm::text::component::{
     Provider, Reasoning, Stop, StreamOptions, TextRequestComponent, ToolChoice,
 };
-use std::borrow::Cow;
 type RequestJson = JsonContainer;
 
 struct DecodedField<T, A, S>(DecoderStatus<Input<T, A>>, fn(T) -> TextRequestComponent<S>);
@@ -62,7 +61,7 @@ impl CompatibleOpenAIRequestDecoder {
     fn proceed_scalar<'s>(
         &mut self,
         token: JsonToken<'_>,
-    ) -> Result<Option<TextRequestComponent<Cow<'s, str>>>, DecoderError> {
+    ) -> Result<Option<TextRequestComponent<&'s str>>, DecoderError> {
         use TextRequestComponent as C;
         let component = match token {
             JsonToken::ValueBoolean(Some("stream"), value) => C::Stream(value),
@@ -120,7 +119,7 @@ impl CompatibleOpenAIRequestDecoder {
 }
 
 impl Decoder for CompatibleOpenAIRequestDecoder {
-    type Component<'a> = TextRequestComponent<Cow<'a, str>>;
+    type Component<'a> = TextRequestComponent<&'a str>;
     type Error = DecoderError;
 
     fn next<'a, 'input: 'a>(

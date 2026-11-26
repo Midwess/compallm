@@ -1,6 +1,5 @@
 use crate::llm::text::component::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, ser::SerializeSeq};
-use std::borrow::Cow;
 
 #[derive(Serialize)]
 #[serde(tag = "type", rename_all = "snake_case", bound(serialize = ""))]
@@ -15,8 +14,8 @@ pub(crate) enum Block<'a, T: AsRef<str>> {
     ToolUse {
         id: &'a str,
         name: &'a str,
-        #[serde(serialize_with = "compallm_serde_rules::serialize::serialize_raw")]
-        input: &'a str,
+        #[serde(serialize_with = "crate::json::JsonArgument::serialize_value")]
+        input: &'a crate::json::JsonArgument<T>,
     },
     ToolResult {
         tool_use_id: &'a str,
@@ -54,8 +53,10 @@ impl<T: AsRef<str>> Serialize for ContentBlocks<'_, T> {
     }
 }
 
-pub(crate) fn system<T: AsRef<str>>(message: &Message<T>) -> ContentBlocks<'_, T> {
-    ContentBlocks(message.content.as_ref())
+impl<'a, T: AsRef<str>> From<&'a Message<T>> for ContentBlocks<'a, T> {
+    fn from(message: &'a Message<T>) -> Self {
+        Self(message.content.as_ref())
+    }
 }
 
 #[derive(Serialize)]
@@ -159,7 +160,7 @@ impl<T: AsRef<str>> Serialize for MessageBlocks<'_, T> {
                 sequence.serialize_element(&Block::<T>::ToolUse {
                     id: call.id.as_ref(),
                     name: call.function.name.as_ref(),
-                    input: call.function.arguments.as_ref(),
+                    input: &call.function.arguments,
                 })?;
             }
         }
@@ -184,28 +185,28 @@ enum MessageRole {
 }
 
 enum MessageContent<'a> {
-    Text(Cow<'a, str>),
+    Text(&'a str),
     Blocks(Vec<BlockInput<'a>>),
 }
 
 enum BlockInput<'a> {
     Text {
-        text: Cow<'a, str>,
+        text: &'a str,
     },
     Thinking {
-        thinking: Cow<'a, str>,
-        signature: Cow<'a, str>,
+        thinking: &'a str,
+        signature: &'a str,
     },
     RedactedThinking {
-        data: Cow<'a, str>,
+        data: &'a str,
     },
     ToolUse {
-        id: Cow<'a, str>,
-        name: Cow<'a, str>,
-        input: Cow<'a, str>,
+        id: &'a str,
+        name: &'a str,
+        input: crate::json::JsonValue<&'a str>,
     },
     ToolResult {
-        tool_use_id: Cow<'a, str>,
+        tool_use_id: &'a str,
         content: ToolResultContent<'a>,
     },
 }
@@ -213,7 +214,7 @@ enum BlockInput<'a> {
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum ToolResultContent<'a> {
-    Text(#[serde(borrow)] Cow<'a, str>),
+    Text(#[serde(borrow)] &'a str),
     Blocks(#[serde(borrow)] Vec<TextBlockInput<'a>>),
 }
 
@@ -222,11 +223,11 @@ enum ToolResultContent<'a> {
 enum TextBlockInput<'a> {
     Text {
         #[serde(borrow)]
-        text: Cow<'a, str>,
+        text: &'a str,
     },
 }
 
-impl<'a> TryFrom<MessageInput<'a>> for Vec<Message<Cow<'a, str>>> {
+impl<'a> TryFrom<MessageInput<'a>> for MessagesInput<'a> {
     type Error = &'static str;
 
     fn try_from(value: MessageInput<'a>) -> Result<Self, Self::Error> {
@@ -247,7 +248,7 @@ impl<'a> TryFrom<MessageInput<'a>> for Vec<Message<Cow<'a, str>>> {
         if let MessageContent::Text(text) = value.content {
             let mut message = empty();
             message.content = Some(Content::Text(text));
-            return Ok(vec![message]);
+            return Ok(Self::Single(message));
         }
         let MessageContent::Blocks(blocks) = value.content else {
             unreachable!()
@@ -256,7 +257,7 @@ impl<'a> TryFrom<MessageInput<'a>> for Vec<Message<Cow<'a, str>>> {
         let mut text = Vec::new();
         let mut calls = Vec::new();
         let mut reasoning = Vec::new();
-        let mut results = Vec::new();
+        let mut results: Option<Self> = None;
         for block in blocks {
             match block {
                 BlockInput::Text { text: value } => text.push(ObjectMessage::Text { text: value }),
@@ -275,7 +276,7 @@ impl<'a> TryFrom<MessageInput<'a>> for Vec<Message<Cow<'a, str>>> {
                 BlockInput::RedactedThinking { data } => reasoning.push(ReasoningDetail {
                     content: ReasoningDetailContent::Encrypted { data },
                     id: None,
-                    format: Some(Cow::Borrowed("anthropic")),
+                    format: Some("anthropic"),
                     index: None,
                 }),
                 BlockInput::ToolUse { id, name, input } => calls.push(ToolCall {
@@ -283,7 +284,7 @@ impl<'a> TryFrom<MessageInput<'a>> for Vec<Message<Cow<'a, str>>> {
                     kind: ToolType::Function,
                     function: FunctionCall {
                         name,
-                        arguments: input,
+                        arguments: crate::json::JsonArgument::Value(input),
                     },
                 }),
                 BlockInput::ToolResult {
@@ -301,7 +302,7 @@ impl<'a> TryFrom<MessageInput<'a>> for Vec<Message<Cow<'a, str>>> {
                                 .collect(),
                         ),
                     };
-                    results.push(Message {
+                    let result = Message {
                         role: Role::Tool,
                         content: Some(content),
                         tool_calls: None,
@@ -309,11 +310,19 @@ impl<'a> TryFrom<MessageInput<'a>> for Vec<Message<Cow<'a, str>>> {
                         reasoning: None,
                         reasoning_content: None,
                         reasoning_details: None,
+                    };
+                    results = Some(match results {
+                        None => Self::Single(result),
+                        Some(Self::Single(first)) => Self::Multiple(vec![first, result]),
+                        Some(Self::Multiple(mut messages)) => {
+                            messages.push(result);
+                            Self::Multiple(messages)
+                        }
                     });
                 }
             }
         }
-        if !results.is_empty() {
+        if let Some(results) = results {
             if role != Role::User || !text.is_empty() || !calls.is_empty() || !reasoning.is_empty()
             {
                 return Err("mixed tool results are not representable");
@@ -338,34 +347,35 @@ impl<'a> TryFrom<MessageInput<'a>> for Vec<Message<Cow<'a, str>>> {
         {
             return Err("empty message content");
         }
-        Ok(vec![message])
+        Ok(Self::Single(message))
     }
 }
 
-pub(crate) struct MessagesInput<'a>(pub Vec<Message<Cow<'a, str>>>);
+pub(crate) enum MessagesInput<'a> {
+    Single(Message<&'a str>),
+    Multiple(Vec<Message<&'a str>>),
+}
 impl<'de> Deserialize<'de> for MessagesInput<'de> {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         MessageInput::deserialize(d)?
             .try_into()
-            .map(Self)
             .map_err(serde::de::Error::custom)
     }
 }
-pub(crate) struct SystemInput<'a>(pub Message<Cow<'a, str>>);
+pub(crate) struct SystemInput<'a>(pub Message<&'a str>);
 impl<'de> Deserialize<'de> for SystemInput<'de> {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let content = MessageContent::deserialize(d)?;
-        let messages: Vec<Message<Cow<'de, str>>> = MessageInput {
+        let messages: MessagesInput<'de> = MessageInput {
             role: MessageRole::System,
             content,
         }
         .try_into()
         .map_err(serde::de::Error::custom)?;
-        messages
-            .into_iter()
-            .next()
-            .map(Self)
-            .ok_or_else(|| serde::de::Error::custom("empty system"))
+        match messages {
+            MessagesInput::Single(message) => Ok(Self(message)),
+            MessagesInput::Multiple(_) => Err(serde::de::Error::custom("multiple system messages")),
+        }
     }
 }
 
@@ -379,49 +389,45 @@ struct BlockFields<'a> {
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    text: Option<Cow<'a, str>>,
+    text: Option<&'a str>,
     #[serde(
         default,
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    thinking: Option<Cow<'a, str>>,
+    thinking: Option<&'a str>,
     #[serde(
         default,
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    signature: Option<Cow<'a, str>>,
+    signature: Option<&'a str>,
     #[serde(
         default,
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    data: Option<Cow<'a, str>>,
+    data: Option<&'a str>,
     #[serde(
         default,
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    id: Option<Cow<'a, str>>,
+    id: Option<&'a str>,
     #[serde(
         default,
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    name: Option<Cow<'a, str>>,
-    #[serde(
-        default,
-        borrow,
-        deserialize_with = "compallm_serde_rules::borrowed::present_schema"
-    )]
-    input: Option<Cow<'a, str>>,
+    name: Option<&'a str>,
+    #[serde(default, borrow, deserialize_with = "crate::json::JsonValue::present")]
+    input: Option<crate::json::JsonValue<&'a str>>,
     #[serde(
         default,
         borrow,
         deserialize_with = "compallm_serde_rules::borrowed::present_text"
     )]
-    tool_use_id: Option<Cow<'a, str>>,
+    tool_use_id: Option<&'a str>,
     #[serde(default, borrow)]
     content: Option<ToolResultContent<'a>>,
 }
@@ -526,7 +532,7 @@ impl<'de> Deserialize<'de> for MessageContent<'de> {
                 self,
                 v: &'de str,
             ) -> Result<Self::Value, E> {
-                Ok(MessageContent::Text(Cow::Borrowed(v)))
+                Ok(MessageContent::Text(v))
             }
 
             fn visit_seq<A: serde::de::SeqAccess<'de>>(

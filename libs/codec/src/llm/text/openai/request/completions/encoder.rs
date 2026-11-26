@@ -1,6 +1,6 @@
 use super::component::{
-    MessageOutput, ResponseFormatOutput, StopOutput, StreamOptionsOutput, ToolChoiceOutput,
-    ToolOutput, effort,
+    EffortInput, MessageOutput, ResponseFormatOutput, StopOutput, StreamOptionsOutput,
+    ToolChoiceOutput, ToolOutput,
 };
 use crate::encoder::{Encoder, EncoderStatus};
 use crate::json::{JsonEncodeError, JsonEncoder, JsonToken};
@@ -135,7 +135,10 @@ impl OpenAICompletionRequestEncoder {
                     Field::MaxTokens
                 }
                 C::Reasoning(reasoning) => {
-                    let effort = self.reasoning_effort.or(reasoning.effort).and_then(effort);
+                    let effort = self
+                        .reasoning_effort
+                        .or(reasoning.effort)
+                        .and_then(EffortInput::output);
                     match effort {
                         Some(value) => {
                             self.effort = Some(value);

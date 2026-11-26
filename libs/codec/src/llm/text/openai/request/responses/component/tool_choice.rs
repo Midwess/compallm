@@ -2,16 +2,15 @@ use super::tools::FunctionType;
 use crate::llm::text::component::*;
 use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(in crate::llm::text::openai::request::responses) struct FunctionChoice<'a> {
     #[serde(rename = "type")]
     kind: FunctionType,
     #[serde(borrow, deserialize_with = "borrowed::nonempty")]
-    name: Cow<'a, str>,
+    name: &'a str,
 }
-impl<'a> From<FunctionChoice<'a>> for ToolChoice<Cow<'a, str>> {
+impl<'a> From<FunctionChoice<'a>> for ToolChoice<&'a str> {
     fn from(v: FunctionChoice<'a>) -> Self {
         let FunctionType::Function = v.kind;
         Self::Function(v.name)

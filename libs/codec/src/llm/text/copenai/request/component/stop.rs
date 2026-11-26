@@ -1,7 +1,6 @@
 use crate::llm::text::component::Stop;
 use compallm_serde_rules::borrowed::Text;
 use serde::{Deserialize, Deserializer, Serialize, de::Error};
-use std::borrow::Cow;
 
 #[derive(Serialize)]
 #[serde(remote = "Stop", untagged)]
@@ -11,7 +10,7 @@ pub(crate) enum StopWire<S> {
     Array(Vec<S>),
 }
 
-pub(crate) struct Stops<'a>(pub Stop<Cow<'a, str>>);
+pub(crate) struct Stops<'a>(pub Stop<&'a str>);
 
 impl<'de> Deserialize<'de> for Stops<'de> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -28,7 +27,7 @@ impl<'de> Deserialize<'de> for Stops<'de> {
             }
 
             fn visit_borrowed_str<E: Error>(self, value: &'de str) -> Result<Self::Value, E> {
-                Ok(Stops(Stop::Text(Cow::Borrowed(value))))
+                Ok(Stops(Stop::Text(value)))
             }
 
             fn visit_seq<A: serde::de::SeqAccess<'de>>(

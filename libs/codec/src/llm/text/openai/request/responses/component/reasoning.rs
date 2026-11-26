@@ -37,15 +37,17 @@ impl From<ReasoningInput> for Reasoning {
     }
 }
 
-pub(in crate::llm::text::openai::request::responses) fn effort(
-    value: ReasoningEffort,
-) -> Option<&'static str> {
-    match value {
-        ReasoningEffort::Minimal => Some("minimal"),
-        ReasoningEffort::Low => Some("low"),
-        ReasoningEffort::Medium => Some("medium"),
-        ReasoningEffort::High => Some("high"),
-        _ => None,
+impl ReasoningOutput {
+    pub(in crate::llm::text::openai::request::responses) fn effort(
+        value: ReasoningEffort,
+    ) -> Option<&'static str> {
+        match value {
+            ReasoningEffort::Minimal => Some("minimal"),
+            ReasoningEffort::Low => Some("low"),
+            ReasoningEffort::Medium => Some("medium"),
+            ReasoningEffort::High => Some("high"),
+            _ => None,
+        }
     }
 }
 

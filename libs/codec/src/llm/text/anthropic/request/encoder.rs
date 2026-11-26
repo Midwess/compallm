@@ -66,7 +66,7 @@ impl AnthropicRequestEncoder {
             has_messages: false,
             has_model: false,
             max_tokens: 32768,
-            effort: configuration.reasoning_effort.and_then(effort),
+            effort: configuration.reasoning_effort.and_then(Thinking::effort),
             effort_written: false,
             active: None,
             finalizing: false,
@@ -221,10 +221,11 @@ impl AnthropicRequestEncoder {
                     (Some(Field::Model), C::Model(value)) => {
                         self.json.serialize_next(Some("model"), value, output)
                     }
-                    (Some(Field::System), C::Message(value)) => {
-                        self.json
-                            .serialize_next(Some("system"), &system(value), output)
-                    }
+                    (Some(Field::System), C::Message(value)) => self.json.serialize_next(
+                        Some("system"),
+                        &ContentBlocks::from(value),
+                        output,
+                    ),
                     (Some(Field::Messages), C::Message(value)) => {
                         self.json
                             .serialize_next(None, &MessageWire::from(value), output)
@@ -265,11 +266,11 @@ impl AnthropicRequestEncoder {
                         C::ResponseFormat(ResponseFormat::JsonSchema(schema)),
                     ) => self.json.serialize_next(
                         Some("output_config"),
-                        &OutputConfig {
+                        &OutputConfig::<S> {
                             effort: self.effort,
                             format: Some(Format {
                                 r#type: "json_schema",
-                                schema: schema.schema.as_ref(),
+                                schema: &schema.schema,
                             }),
                         },
                         output,
@@ -304,7 +305,7 @@ impl AnthropicRequestEncoder {
                 } else if self.effort.is_some() && !self.effort_written {
                     self.json.serialize_next(
                         Some("output_config"),
-                        &OutputConfig {
+                        &OutputConfig::<S> {
                             effort: self.effort,
                             format: None,
                         },

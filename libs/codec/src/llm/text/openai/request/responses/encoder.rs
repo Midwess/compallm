@@ -1,5 +1,5 @@
 use super::component::{
-    FormatOutput, ReasoningOutput, TextOutput, ToolChoiceOutput, ToolOutput, effort, input_item,
+    FormatOutput, InputItemWire, ReasoningOutput, TextOutput, ToolChoiceOutput, ToolOutput,
 };
 use crate::encoder::{Encoder, EncoderStatus};
 use crate::json::{JsonEncodeError, JsonEncoder, JsonToken};
@@ -131,7 +131,10 @@ impl OpenAIResponseRequestEncoder {
                     Field::MaxTokens
                 }
                 C::Reasoning(reasoning) => {
-                    let effort = self.reasoning_effort.or(reasoning.effort).and_then(effort);
+                    let effort = self
+                        .reasoning_effort
+                        .or(reasoning.effort)
+                        .and_then(ReasoningOutput::effort);
                     match effort {
                         Some(value) => {
                             self.effort = Some(value);
@@ -191,7 +194,7 @@ impl OpenAIResponseRequestEncoder {
                         self.json.serialize_next(Some("model"), value, output)
                     }
                     (Some(Field::Input), C::Message(value)) => {
-                        let item = input_item(value, self.item)
+                        let item = InputItemWire::from_message(value, self.item)
                             .map_err(|_| RequestEncodeError::InvalidState)?
                             .ok_or(RequestEncodeError::InvalidState)?;
                         self.json.serialize_next(None, &item, output)
@@ -246,7 +249,7 @@ impl OpenAIResponseRequestEncoder {
                         written += n;
                         if let (Some(Field::Input), C::Message(value)) = (self.active, component) {
                             self.item += 1;
-                            if input_item(value, self.item)
+                            if InputItemWire::from_message(value, self.item)
                                 .map_err(|_| RequestEncodeError::InvalidState)?
                                 .is_some()
                             {

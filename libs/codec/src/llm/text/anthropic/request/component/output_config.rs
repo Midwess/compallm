@@ -1,21 +1,18 @@
 use crate::llm::text::component::ReasoningEffort;
-use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 #[derive(Serialize)]
-pub(crate) struct OutputConfig<'a> {
+pub(crate) struct OutputConfig<'a, S: AsRef<str>> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub effort: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub format: Option<Format<'a>>,
+    pub format: Option<Format<'a, S>>,
 }
 
 #[derive(Serialize)]
-pub(crate) struct Format<'a> {
+pub(crate) struct Format<'a, S: AsRef<str>> {
     pub r#type: &'static str,
-    #[serde(serialize_with = "compallm_serde_rules::serialize::serialize_raw")]
-    pub schema: &'a str,
+    pub schema: &'a crate::json::JsonValue<S>,
 }
 
 #[derive(Deserialize)]
@@ -51,8 +48,8 @@ impl From<EffortInput> for ReasoningEffort {
 pub(crate) struct FormatInput<'a> {
     #[serde(rename = "type")]
     _kind: FormatKind,
-    #[serde(borrow, deserialize_with = "borrowed::schema")]
-    pub schema: Cow<'a, str>,
+    #[serde(borrow)]
+    pub schema: crate::json::JsonValue<&'a str>,
 }
 
 #[derive(Deserialize)]

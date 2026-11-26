@@ -8,7 +8,7 @@ pub struct ToolDefinition<S = String> {
 pub struct FunctionDefinition<S = String> {
     pub name: S,
     pub description: Option<S>,
-    pub parameters: Option<S>,
+    pub parameters: Option<crate::json::JsonValue<S>>,
     pub strict: Option<bool>,
 }
 
@@ -25,7 +25,9 @@ impl<S> ToolDefinition<S> {
             function: FunctionDefinition {
                 name: convert(function.name),
                 description: function.description.map(&mut convert),
-                parameters: function.parameters.map(convert),
+                parameters: function
+                    .parameters
+                    .map(|value| value.map_text(&mut convert)),
                 strict: function.strict,
             },
         }

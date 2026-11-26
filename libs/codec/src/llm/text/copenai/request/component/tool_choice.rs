@@ -3,7 +3,6 @@ use crate::llm::text::component::{ToolChoice, ToolType};
 use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_with::SerializeAs;
-use std::borrow::Cow;
 
 pub(crate) struct ToolChoiceWire;
 impl<T: AsRef<str>> SerializeAs<ToolChoice<T>> for ToolChoiceWire {
@@ -55,9 +54,9 @@ pub(crate) struct FunctionChoice<'a> {
 #[serde(deny_unknown_fields)]
 struct FunctionName<'a> {
     #[serde(borrow, deserialize_with = "borrowed::nonempty")]
-    name: Cow<'a, str>,
+    name: &'a str,
 }
-impl<'a> From<FunctionChoice<'a>> for ToolChoice<Cow<'a, str>> {
+impl<'a> From<FunctionChoice<'a>> for ToolChoice<&'a str> {
     fn from(v: FunctionChoice<'a>) -> Self {
         let ToolType::Function = v.kind;
         Self::Function(v.function.name)

@@ -1,5 +1,4 @@
 use super::{Content, Message, Role, Stop, TextRequestComponent};
-use std::borrow::Cow;
 
 #[derive(Clone, Copy)]
 pub(crate) enum ScalarText {
@@ -9,17 +8,17 @@ pub(crate) enum ScalarText {
     SystemMessage,
 }
 
-impl<'a> From<(ScalarText, &'a str)> for TextRequestComponent<Cow<'a, str>> {
+impl<'a> From<(ScalarText, &'a str)> for TextRequestComponent<&'a str> {
     fn from((kind, text): (ScalarText, &'a str)) -> Self {
         match kind {
-            ScalarText::Model => Self::Model(Cow::Borrowed(text)),
-            ScalarText::Stop => Self::Stop(Stop::Text(Cow::Borrowed(text))),
+            ScalarText::Model => Self::Model(text),
+            ScalarText::Stop => Self::Stop(Stop::Text(text)),
             ScalarText::UserMessage | ScalarText::SystemMessage => Self::Message(Message {
                 role: match kind {
                     ScalarText::SystemMessage => Role::System,
                     _ => Role::User,
                 },
-                content: Some(Content::Text(Cow::Borrowed(text))),
+                content: Some(Content::Text(text)),
                 tool_calls: None,
                 tool_call_id: None,
                 reasoning: None,

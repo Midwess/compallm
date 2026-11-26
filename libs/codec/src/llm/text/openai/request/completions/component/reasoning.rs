@@ -21,14 +21,16 @@ impl From<EffortInput> for ReasoningEffort {
     }
 }
 
-pub(in crate::llm::text::openai::request::completions) fn effort(
-    value: ReasoningEffort,
-) -> Option<&'static str> {
-    match value {
-        ReasoningEffort::Minimal => Some("minimal"),
-        ReasoningEffort::Low => Some("low"),
-        ReasoningEffort::Medium => Some("medium"),
-        ReasoningEffort::High => Some("high"),
-        _ => None,
+impl EffortInput {
+    pub(in crate::llm::text::openai::request::completions) fn output(
+        value: ReasoningEffort,
+    ) -> Option<&'static str> {
+        match value {
+            ReasoningEffort::Minimal => Some("minimal"),
+            ReasoningEffort::Low => Some("low"),
+            ReasoningEffort::Medium => Some("medium"),
+            ReasoningEffort::High => Some("high"),
+            _ => None,
+        }
     }
 }

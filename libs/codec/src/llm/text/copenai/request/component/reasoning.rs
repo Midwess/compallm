@@ -61,16 +61,18 @@ impl<'de> DeserializeAs<'de, ReasoningEffort> for EffortWire {
 impl<'de> DeserializeAs<'de, Reasoning> for ReasoningWire {
     fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Reasoning, D::Error> {
         let value = Self::deserialize(deserializer)?;
-        validate(&value).map_err(serde::de::Error::custom)?;
+        Self::validate(&value).map_err(serde::de::Error::custom)?;
         Ok(value)
     }
 }
 
-pub(in crate::llm::text::copenai::request) fn validate(
-    value: &Reasoning,
-) -> Result<(), &'static str> {
-    if value.effort.is_some() && value.max_tokens.is_some() {
-        return Err("reasoning effort and token budget are mutually exclusive");
+impl ReasoningWire {
+    pub(in crate::llm::text::copenai::request) fn validate(
+        value: &Reasoning,
+    ) -> Result<(), &'static str> {
+        if value.effort.is_some() && value.max_tokens.is_some() {
+            return Err("reasoning effort and token budget are mutually exclusive");
+        }
+        Ok(())
     }
-    Ok(())
 }

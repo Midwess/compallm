@@ -4,7 +4,6 @@ use crate::json::StringReference;
 use crate::json::{JsonContainer, JsonDecoder, JsonToken};
 use crate::llm::text::component::request::ScalarText;
 use crate::llm::text::component::*;
-use std::borrow::Cow;
 
 #[derive(Debug, Clone, Copy)]
 enum Field {
@@ -42,7 +41,7 @@ impl OpenAIResponseRequestDecoder {
     fn scalar<'s>(
         &mut self,
         token: JsonToken<'_>,
-    ) -> Result<TextRequestComponent<Cow<'s, str>>, DecoderError> {
+    ) -> Result<TextRequestComponent<&'s str>, DecoderError> {
         Ok(match token {
             JsonToken::ValueBoolean(Some("stream"), value) => TextRequestComponent::Stream(value),
             JsonToken::ValueBoolean(Some("parallel_tool_calls"), value) => {
@@ -77,14 +76,14 @@ impl OpenAIResponseRequestDecoder {
 }
 
 impl Decoder for OpenAIResponseRequestDecoder {
-    type Component<'a> = TextRequestComponent<Cow<'a, str>>;
+    type Component<'a> = TextRequestComponent<&'a str>;
     type Error = DecoderError;
 
     fn next<'a, 'input: 'a>(
         &'a mut self,
         input: &mut &'input [u8],
         eof: bool,
-    ) -> Result<DecoderStatus<TextRequestComponent<Cow<'a, str>>>, DecoderError> {
+    ) -> Result<DecoderStatus<TextRequestComponent<&'a str>>, DecoderError> {
         if self.failed {
             return Err(DecoderError::InvalidState);
         }

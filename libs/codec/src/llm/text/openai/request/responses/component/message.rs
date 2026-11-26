@@ -1,30 +1,107 @@
 use crate::llm::text::component::*;
 use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize, Serializer, ser::SerializeMap};
-use std::borrow::Cow;
 
-#[derive(Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(in crate::llm::text::openai::request::responses) enum InputItem<'a> {
     Message {
         role: InputRole,
-        #[serde(borrow, deserialize_with = "borrowed::text")]
-        content: Cow<'a, str>,
+        content: &'a str,
     },
     FunctionCall {
-        #[serde(borrow, deserialize_with = "borrowed::text")]
-        call_id: Cow<'a, str>,
-        #[serde(borrow, deserialize_with = "borrowed::text")]
-        name: Cow<'a, str>,
-        #[serde(borrow, deserialize_with = "borrowed::text")]
-        arguments: Cow<'a, str>,
+        call_id: &'a str,
+        name: &'a str,
+        arguments: crate::json::JsonArgument<&'a str>,
     },
     FunctionCallOutput {
-        #[serde(borrow, deserialize_with = "borrowed::text")]
-        call_id: Cow<'a, str>,
-        #[serde(borrow, deserialize_with = "borrowed::text")]
-        output: Cow<'a, str>,
+        call_id: &'a str,
+        output: &'a str,
     },
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct InputFields<'a> {
+    #[serde(rename = "type")]
+    kind: InputKind,
+    #[serde(
+        default,
+        deserialize_with = "compallm_serde_rules::deserialize::present"
+    )]
+    role: Option<InputRole>,
+    #[serde(default, borrow, deserialize_with = "borrowed::present_text")]
+    content: Option<&'a str>,
+    #[serde(default, borrow, deserialize_with = "borrowed::present_text")]
+    call_id: Option<&'a str>,
+    #[serde(default, borrow, deserialize_with = "borrowed::present_text")]
+    name: Option<&'a str>,
+    #[serde(
+        default,
+        borrow,
+        deserialize_with = "compallm_serde_rules::deserialize::present"
+    )]
+    arguments: Option<crate::json::JsonArgument<&'a str>>,
+    #[serde(default, borrow, deserialize_with = "borrowed::present_text")]
+    output: Option<&'a str>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum InputKind {
+    Message,
+    FunctionCall,
+    FunctionCallOutput,
+}
+
+impl<'a> TryFrom<InputFields<'a>> for InputItem<'a> {
+    type Error = &'static str;
+
+    fn try_from(value: InputFields<'a>) -> Result<Self, Self::Error> {
+        let InputFields {
+            kind,
+            role,
+            content,
+            call_id,
+            name,
+            arguments,
+            output,
+        } = value;
+        match (kind, role, content, call_id, name, arguments, output) {
+            (InputKind::Message, Some(role), Some(content), None, None, None, None) => {
+                Ok(Self::Message { role, content })
+            }
+            (
+                InputKind::FunctionCall,
+                None,
+                None,
+                Some(call_id),
+                Some(name),
+                Some(arguments),
+                None,
+            ) => Ok(Self::FunctionCall {
+                call_id,
+                name,
+                arguments,
+            }),
+            (
+                InputKind::FunctionCallOutput,
+                None,
+                None,
+                Some(call_id),
+                None,
+                None,
+                Some(output),
+            ) => Ok(Self::FunctionCallOutput { call_id, output }),
+            _ => Err("invalid Responses input item"),
+        }
+    }
+}
+
+impl<'de: 'a, 'a> Deserialize<'de> for InputItem<'a> {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        InputFields::deserialize(deserializer)?
+            .try_into()
+            .map_err(serde::de::Error::custom)
+    }
 }
 
 #[derive(Deserialize)]
@@ -47,7 +124,7 @@ impl From<InputRole> for Role {
     }
 }
 
-impl<'a> From<InputItem<'a>> for Message<Cow<'a, str>> {
+impl<'a> From<InputItem<'a>> for Message<&'a str> {
     fn from(value: InputItem<'a>) -> Self {
         let mut message = Self {
             role: Role::User,
@@ -85,13 +162,15 @@ impl<'a> From<InputItem<'a>> for Message<Cow<'a, str>> {
     }
 }
 
-pub(in crate::llm::text::openai::request::responses) fn role(value: Role) -> &'static str {
-    match value {
-        Role::System => "system",
-        Role::Developer => "developer",
-        Role::User => "user",
-        Role::Assistant => "assistant",
-        Role::Tool => "tool",
+impl InputItemWire<'_> {
+    fn role(value: Role) -> &'static str {
+        match value {
+            Role::System => "system",
+            Role::Developer => "developer",
+            Role::User => "user",
+            Role::Assistant => "assistant",
+            Role::Tool => "tool",
+        }
     }
 }
 
@@ -112,54 +191,58 @@ pub(in crate::llm::text::openai::request::responses) enum InputItemWire<'a> {
     },
 }
 
-pub(in crate::llm::text::openai::request::responses) fn input_item<T: AsRef<str>>(
-    message: &Message<T>,
-    index: usize,
-) -> Result<Option<InputItemWire<'_>>, &'static str> {
-    if message.role == Role::Tool {
-        let call_id = message
-            .tool_call_id
-            .as_ref()
-            .map(AsRef::as_ref)
-            .ok_or("tool message requires a tool call identifier")?;
-        let output = match message.content.as_ref() {
-            Some(Content::Text(output)) => output.as_ref(),
-            _ => return Err("tool message requires text content"),
-        };
-        return Ok((index == 0).then_some(InputItemWire::FunctionCallOutput { call_id, output }));
-    }
-    let text = match message.content.as_ref() {
-        None | Some(Content::Null) => None,
-        Some(Content::Text(text) | Content::Object(ObjectMessage::Text { text })) => {
-            Some(text.as_ref())
+impl<'a> InputItemWire<'a> {
+    pub(in crate::llm::text::openai::request::responses) fn from_message<T: AsRef<str>>(
+        message: &'a Message<T>,
+        index: usize,
+    ) -> Result<Option<Self>, &'static str> {
+        if message.role == Role::Tool {
+            let call_id = message
+                .tool_call_id
+                .as_ref()
+                .map(AsRef::as_ref)
+                .ok_or("tool message requires a tool call identifier")?;
+            let output = match message.content.as_ref() {
+                Some(Content::Text(output)) => output.as_ref(),
+                _ => return Err("tool message requires text content"),
+            };
+            return Ok(
+                (index == 0).then_some(InputItemWire::FunctionCallOutput { call_id, output })
+            );
         }
-        Some(Content::Array(_)) => return Err("message content parts are not supported"),
-    };
-    if index == 0
-        && let Some(content) = text
-    {
-        return Ok(Some(InputItemWire::Message {
-            role: role(message.role),
-            content,
-        }));
+        let text = match message.content.as_ref() {
+            None | Some(Content::Null) => None,
+            Some(Content::Text(text) | Content::Object(ObjectMessage::Text { text })) => {
+                Some(text.as_ref())
+            }
+            Some(Content::Array(_)) => return Err("message content parts are not supported"),
+        };
+        if index == 0
+            && let Some(content) = text
+        {
+            return Ok(Some(InputItemWire::Message {
+                role: Self::role(message.role),
+                content,
+            }));
+        }
+        let call_index = index - usize::from(text.is_some());
+        if let Some(call) = message
+            .tool_calls
+            .as_deref()
+            .unwrap_or_default()
+            .get(call_index)
+        {
+            return Ok(Some(InputItemWire::FunctionCall {
+                call_id: call.id.as_ref(),
+                name: call.function.name.as_ref(),
+                arguments: call.function.arguments.as_ref(),
+            }));
+        }
+        if index == 0 {
+            return Err("message requires content or tool calls");
+        }
+        Ok(None)
     }
-    let call_index = index - usize::from(text.is_some());
-    if let Some(call) = message
-        .tool_calls
-        .as_deref()
-        .unwrap_or_default()
-        .get(call_index)
-    {
-        return Ok(Some(InputItemWire::FunctionCall {
-            call_id: call.id.as_ref(),
-            name: call.function.name.as_ref(),
-            arguments: call.function.arguments.as_ref(),
-        }));
-    }
-    if index == 0 {
-        return Err("message requires content or tool calls");
-    }
-    Ok(None)
 }
 
 impl Serialize for InputItemWire<'_> {

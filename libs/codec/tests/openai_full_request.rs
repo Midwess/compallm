@@ -215,6 +215,12 @@ fn round_trips_openai_completion_full_request() {
             OpenAICompletionRequestEncoder::new(JsonEncoder::new(), Default::default()),
             size,
         );
+        round_trip(
+            r#"{"model":"gpt-4o","messages":[{"role":"user","content":"line\nquote\"slash\\crab\uD83E\uDD80"}]}"#,
+            OpenAICompletionRequestDecoder::new(JsonDecoder::new()),
+            OpenAICompletionRequestEncoder::new(JsonEncoder::new(), Default::default()),
+            size,
+        );
     }
 }
 
@@ -499,7 +505,7 @@ fn stored_json(value: &str) -> Value {
 
 fn decode<D>(request: &[u8], mut decoder: D) -> Vec<TextRequestComponent>
 where
-    D: for<'a> Decoder<Component<'a> = TextRequestComponent<std::borrow::Cow<'a, str>>>,
+    D: for<'a> Decoder<Component<'a> = TextRequestComponent<&'a str>>,
     D::Error: Debug,
 {
     let mut components = Vec::new();
@@ -575,10 +581,10 @@ where
 
 fn round_trip<D, E>(request: &str, mut decoder: D, mut encoder: E, size: usize)
 where
-    D: for<'a> Decoder<Component<'a> = TextRequestComponent<std::borrow::Cow<'a, str>>>,
+    D: for<'a> Decoder<Component<'a> = TextRequestComponent<&'a str>>,
     D::Error: Debug,
-    E: for<'a> Encoder<TextRequestComponent<std::borrow::Cow<'a, str>>>,
-    for<'a> <E as Encoder<TextRequestComponent<std::borrow::Cow<'a, str>>>>::Error: Debug,
+    E: for<'a> Encoder<TextRequestComponent<&'a str>>,
+    for<'a> <E as Encoder<TextRequestComponent<&'a str>>>::Error: Debug,
 {
     let mut output = vec![0; size];
     let mut encoded = Vec::new();
@@ -645,10 +651,7 @@ where
     loop {
         let before = measurement.count();
         let status = encoder
-            .next(
-                None::<&mut TextRequestComponent<std::borrow::Cow<'_, str>>>,
-                &mut output,
-            )
+            .next(None::<&mut TextRequestComponent<&'_ str>>, &mut output)
             .expect("finalize encoding");
         encoder_finalization += measurement.count() - before;
         match status {
@@ -667,6 +670,7 @@ where
     encoder.finish().expect("finish encoding");
     encoder_finalization += measurement.count() - before;
     drop(measurement);
+    assert_eq!(encoding + encoder_finalization, 0);
     println!(
         "{size}-byte buffers: {component_count} components, {} encoded bytes",
         encoded.len()
@@ -717,4 +721,80 @@ fn measures_openai_response_request_allocations() {
         );
         round_trip(RESPONSE_REQUEST, decoder, encoder, size);
     }
+}
+
+#[test]
+fn translates_large_nested_schema_tokens_between_openai_formats() {
+    let schema = json!({
+        "type": "object",
+        "description": "long schema description ".repeat(512),
+        "properties": {"value": {"enum": [null, true, false, -3, 12, 1.25, "quote: \" slash: \\ line: \n"]}},
+        "required": ["value"]
+    });
+    let mut request: Value = serde_json::from_str(COMPLETION_REQUEST).expect("request fixture");
+    request["tools"][0]["function"]["parameters"] = schema.clone();
+    request["response_format"]["json_schema"]["schema"] = schema.clone();
+    request
+        .as_object_mut()
+        .expect("request object")
+        .remove("stop");
+    request
+        .as_object_mut()
+        .expect("request object")
+        .remove("stream_options");
+    let source = serde_json::to_vec(&request).expect("source JSON");
+    let components = decode(
+        &source,
+        OpenAICompletionRequestDecoder::new(JsonDecoder::new()),
+    );
+    let expected_schema: codec::json::JsonValue = serde_json::to_string(&schema)
+        .expect("owned schema source")
+        .try_into()
+        .expect("owned schema tokens");
+    let tool = components
+        .iter()
+        .find_map(|component| match component {
+            TextRequestComponent::Tool(tool) => Some(tool),
+            _ => None,
+        })
+        .expect("tool component");
+    assert_eq!(tool.function.parameters.as_ref(), Some(&expected_schema));
+    let responses = encode(
+        components,
+        OpenAIResponseRequestEncoder::new(JsonEncoder::new(), Default::default()),
+    );
+    let value: Value = serde_json::from_slice(&responses).expect("Responses JSON");
+    assert_eq!(value["tools"][0]["parameters"], schema);
+    assert_eq!(value["text"]["format"]["schema"], schema);
+    let components = decode(
+        &responses,
+        OpenAIResponseRequestDecoder::new(JsonDecoder::new()),
+    );
+    let completion = encode(
+        components,
+        OpenAICompletionRequestEncoder::new(JsonEncoder::new(), Default::default()),
+    );
+    let value: Value = serde_json::from_slice(&completion).expect("Chat JSON");
+    assert_eq!(value["tools"][0]["function"]["parameters"], schema);
+    assert_eq!(value["response_format"]["json_schema"]["schema"], schema);
+    assert_eq!(
+        value["messages"][4]["tool_calls"][0]["function"]["arguments"],
+        request["messages"][3]["tool_calls"][0]["function"]["arguments"]
+    );
+    request["tools"][0]["function"]["parameters"] =
+        Value::String(serde_json::to_string(&schema).expect("embedded tool schema"));
+    request["response_format"]["json_schema"]["schema"] =
+        Value::String(serde_json::to_string(&schema).expect("embedded output schema"));
+    let source = serde_json::to_vec(&request).expect("embedded schema request");
+    let components = decode(
+        &source,
+        CompatibleOpenAIRequestDecoder::new(JsonDecoder::new()),
+    );
+    let responses = encode(
+        components,
+        OpenAIResponseRequestEncoder::new(JsonEncoder::new(), Default::default()),
+    );
+    let value: Value = serde_json::from_slice(&responses).expect("embedded Responses JSON");
+    assert_eq!(value["tools"][0]["parameters"], schema);
+    assert_eq!(value["text"]["format"]["schema"], schema);
 }

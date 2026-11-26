@@ -34,7 +34,7 @@ pub struct ToolCall<S = String> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionCall<S = String> {
     pub name: S,
-    pub arguments: S,
+    pub arguments: crate::json::JsonArgument<S>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -74,7 +74,7 @@ impl<S> Message<S> {
                         kind: call.kind,
                         function: FunctionCall {
                             name: convert(call.function.name),
-                            arguments: convert(call.function.arguments),
+                            arguments: call.function.arguments.map_text(&mut convert),
                         },
                     })
                     .collect()

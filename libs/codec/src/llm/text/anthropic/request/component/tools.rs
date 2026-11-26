@@ -1,18 +1,35 @@
 use crate::llm::text::component::*;
 use compallm_serde_rules::borrowed;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 #[derive(Serialize)]
-pub(crate) struct ToolWire<'a> {
+pub(crate) struct ToolWire<'a, S: AsRef<str>> {
     name: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<&'a str>,
-    #[serde(serialize_with = "compallm_serde_rules::serialize::serialize_raw")]
-    input_schema: &'a str,
+    input_schema: InputSchema<'a, S>,
 }
 
-impl<'a, S: AsRef<str>> From<&'a ToolDefinition<S>> for ToolWire<'a> {
+enum InputSchema<'a, S> {
+    Supplied(&'a crate::json::JsonValue<S>),
+    Default,
+}
+
+impl<S: AsRef<str>> Serialize for InputSchema<'_, S> {
+    fn serialize<T: serde::Serializer>(&self, serializer: T) -> Result<T::Ok, T::Error> {
+        match self {
+            Self::Supplied(value) => value.serialize(serializer),
+            Self::Default => {
+                use serde::ser::SerializeMap;
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("type", "object")?;
+                map.end()
+            }
+        }
+    }
+}
+
+impl<'a, S: AsRef<str>> From<&'a ToolDefinition<S>> for ToolWire<'a, S> {
     fn from(tool: &'a ToolDefinition<S>) -> Self {
         Self {
             name: tool.function.name.as_ref(),
@@ -21,8 +38,8 @@ impl<'a, S: AsRef<str>> From<&'a ToolDefinition<S>> for ToolWire<'a> {
                 .function
                 .parameters
                 .as_ref()
-                .map(AsRef::as_ref)
-                .unwrap_or(r#"{"type":"object"}"#),
+                .map(InputSchema::Supplied)
+                .unwrap_or(InputSchema::Default),
         }
     }
 }
@@ -53,16 +70,16 @@ impl<'a, S: AsRef<str>> From<&'a ToolChoice<S>> for Choice<'a> {
 #[serde(deny_unknown_fields)]
 pub(crate) struct ToolInput<'a> {
     #[serde(borrow, deserialize_with = "borrowed::nonempty")]
-    name: Cow<'a, str>,
+    name: &'a str,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
-    description: Option<Cow<'a, str>>,
-    #[serde(borrow, deserialize_with = "borrowed::schema")]
-    input_schema: Cow<'a, str>,
+    description: Option<&'a str>,
+    #[serde(borrow)]
+    input_schema: crate::json::JsonValue<&'a str>,
     #[serde(default)]
     strict: Option<bool>,
 }
 
-impl<'a> From<ToolInput<'a>> for ToolDefinition<Cow<'a, str>> {
+impl<'a> From<ToolInput<'a>> for ToolDefinition<&'a str> {
     fn from(value: ToolInput<'a>) -> Self {
         Self {
             kind: ToolType::Function,
@@ -90,14 +107,14 @@ pub(crate) enum ChoiceInput<'a> {
     },
     Tool {
         #[serde(borrow, deserialize_with = "borrowed::text")]
-        name: Cow<'a, str>,
+        name: &'a str,
         #[serde(default)]
         disable_parallel_tool_use: Option<bool>,
     },
 }
 
 impl<'a> ChoiceInput<'a> {
-    pub(crate) fn into_components(self) -> (ToolChoice<Cow<'a, str>>, Option<bool>) {
+    pub(crate) fn into_components(self) -> (ToolChoice<&'a str>, Option<bool>) {
         match self {
             Self::Auto {
                 disable_parallel_tool_use,

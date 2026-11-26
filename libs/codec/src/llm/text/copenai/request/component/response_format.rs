@@ -1,7 +1,6 @@
 use crate::llm::text::component::{JsonSchema, ResponseFormat};
-use compallm_serde_rules::{borrowed, deserialize, serialize};
+use compallm_serde_rules::{borrowed, deserialize};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 #[derive(Serialize)]
 #[serde(
@@ -24,8 +23,7 @@ struct JsonSchemaWire<S> {
     description: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     strict: Option<bool>,
-    #[serde(serialize_with = "serialize::serialize_raw")]
-    schema: S,
+    schema: crate::json::JsonValue<S>,
 }
 
 #[derive(Deserialize)]
@@ -49,15 +47,15 @@ enum FormatKind {
 #[serde(deny_unknown_fields)]
 struct JsonSchemaInput<'a> {
     #[serde(borrow, deserialize_with = "borrowed::nonempty")]
-    name: Cow<'a, str>,
+    name: &'a str,
     #[serde(default, borrow, deserialize_with = "borrowed::optional_text")]
-    description: Option<Cow<'a, str>>,
+    description: Option<&'a str>,
     strict: Option<bool>,
-    #[serde(borrow, deserialize_with = "borrowed::schema")]
-    schema: Cow<'a, str>,
+    #[serde(borrow)]
+    schema: crate::json::JsonValue<&'a str>,
 }
 
-impl<'a> TryFrom<FormatInput<'a>> for ResponseFormat<Cow<'a, str>> {
+impl<'a> TryFrom<FormatInput<'a>> for ResponseFormat<&'a str> {
     type Error = &'static str;
     fn try_from(value: FormatInput<'a>) -> Result<Self, Self::Error> {
         match (value.kind, value.json_schema) {

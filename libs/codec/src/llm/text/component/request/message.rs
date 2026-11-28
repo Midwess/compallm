@@ -67,18 +67,12 @@ impl<S> Message<S> {
             role: self.role,
             content: self.content.map(|value| value.map_text(&mut convert)),
             tool_calls: self.tool_calls.map(|calls| match calls {
+                Collection::Single(call) => Collection::Single(call.map_text(&mut convert)),
                 Collection::View(view) => Collection::View(view.map_text(&mut convert)),
                 Collection::Owned(calls) => Collection::Owned(
                     calls
                         .into_iter()
-                        .map(|call| ToolCall {
-                            id: convert(call.id),
-                            kind: call.kind,
-                            function: FunctionCall {
-                                name: convert(call.function.name),
-                                arguments: call.function.arguments.map_text(&mut convert),
-                            },
-                        })
+                        .map(|call| call.map_text(&mut convert))
                         .collect(),
                 ),
             }),
@@ -86,36 +80,12 @@ impl<S> Message<S> {
             reasoning: self.reasoning.map(&mut convert),
             reasoning_content: self.reasoning_content.map(&mut convert),
             reasoning_details: self.reasoning_details.map(|details| match details {
+                Collection::Single(detail) => Collection::Single(detail.map_text(&mut convert)),
                 Collection::View(view) => Collection::View(view.map_text(&mut convert)),
                 Collection::Owned(details) => Collection::Owned(
                     details
                         .into_iter()
-                        .map(|detail| {
-                            let content = match detail.content {
-                                ReasoningDetailContent::Summary { summary } => {
-                                    ReasoningDetailContent::Summary {
-                                        summary: convert(summary),
-                                    }
-                                }
-                                ReasoningDetailContent::Text { text, signature } => {
-                                    ReasoningDetailContent::Text {
-                                        text: convert(text),
-                                        signature: signature.map(&mut convert),
-                                    }
-                                }
-                                ReasoningDetailContent::Encrypted { data } => {
-                                    ReasoningDetailContent::Encrypted {
-                                        data: convert(data),
-                                    }
-                                }
-                            };
-                            ReasoningDetail {
-                                content,
-                                id: detail.id.map(&mut convert),
-                                format: detail.format.map(&mut convert),
-                                index: detail.index,
-                            }
-                        })
+                        .map(|detail| detail.map_text(&mut convert))
                         .collect(),
                 ),
             }),
@@ -139,6 +109,41 @@ impl<S> Content<S> {
                     })
                     .collect(),
             ),
+        }
+    }
+}
+
+impl<S> ToolCall<S> {
+    pub fn map_text<T>(self, mut convert: impl FnMut(S) -> T) -> ToolCall<T> {
+        ToolCall {
+            id: convert(self.id),
+            kind: self.kind,
+            function: FunctionCall {
+                name: convert(self.function.name),
+                arguments: self.function.arguments.map_text(convert),
+            },
+        }
+    }
+}
+impl<S> ReasoningDetail<S> {
+    pub fn map_text<T>(self, mut convert: impl FnMut(S) -> T) -> ReasoningDetail<T> {
+        let content = match self.content {
+            ReasoningDetailContent::Summary { summary } => ReasoningDetailContent::Summary {
+                summary: convert(summary),
+            },
+            ReasoningDetailContent::Text { text, signature } => ReasoningDetailContent::Text {
+                text: convert(text),
+                signature: signature.map(&mut convert),
+            },
+            ReasoningDetailContent::Encrypted { data } => ReasoningDetailContent::Encrypted {
+                data: convert(data),
+            },
+        };
+        ReasoningDetail {
+            content,
+            id: self.id.map(&mut convert),
+            format: self.format.map(&mut convert),
+            index: self.index,
         }
     }
 }

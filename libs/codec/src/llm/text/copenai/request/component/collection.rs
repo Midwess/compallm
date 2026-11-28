@@ -12,6 +12,9 @@ impl<T, S: AsRef<str>, A: SerializeAs<T>> SerializeAs<Collection<T, S>> for Coll
         serializer: R,
     ) -> Result<R::Ok, R::Error> {
         match value {
+            Collection::Single(value) => {
+                <[A]>::serialize_as(std::slice::from_ref(value), serializer)
+            }
             Collection::Owned(values) => <Vec<A>>::serialize_as(values, serializer),
             Collection::View(view) => serde::Serialize::serialize(view, serializer),
         }

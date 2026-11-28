@@ -1,6 +1,7 @@
 """Profile the allocation fixture in an isolated Linux/GNU-linker debug build.
 
 Run: python3 libs/codec/tests/profile_request_copies.py [--release]
+Use --protocol openai_completion or --protocol openai_response for standard OpenAI.
 Requires Python 3, Cargo, and a C compiler (CC, default cc).
 
 Known payload writes and additional intercepted memcpy/memmove bytes are disjoint:
@@ -73,7 +74,7 @@ pub mod copy_measure {
 """
 
 
-def instrument(workspace):
+def instrument(workspace, protocol):
     def edit(relative, changes):
         path = workspace / relative
         text = path.read_text()
@@ -113,6 +114,20 @@ def instrument(workspace):
         ("self.output[self.written..self.written + count].copy_from_slice(&bytes[..count]);", known(6, "self.output[self.written..self.written + count].copy_from_slice(&bytes[..count]);", "count")),
         ("self.overflow.extend_from_slice(&bytes[count..]);", known(7, "self.overflow.extend_from_slice(&bytes[count..]);", "bytes.len() - count")),
     ])
+    if protocol != "copenai":
+        edit(f"libs/codec/tests/{protocol}_requests.rs", [
+            (("fn translate<const N: usize>() {" if protocol == "anthropic" else "fn roundtrip<const N: usize>() {"),
+             ("fn translate<const N: usize>() {" if protocol == "anthropic" else "fn roundtrip<const N: usize>() {") + " compallm_serde_rules::copy_measure::reset();"),
+            ("match decoder.next(&mut input, false).unwrap() {", "compallm_serde_rules::copy_measure::stage(1); let status = decoder.next(&mut input, false).unwrap(); compallm_serde_rules::copy_measure::stage(0); match status {"),
+            ("let status = encoder.next(Some(&mut component), &mut output).unwrap();", "compallm_serde_rules::copy_measure::stage(2); let status = encoder.next(Some(&mut component), &mut output).unwrap(); compallm_serde_rules::copy_measure::stage(0);"),
+            ("    assert!(matches!(\n        decoder.next", "    compallm_serde_rules::copy_measure::stage(1); assert!(matches!(\n        decoder.next"),
+            ("    decoder.finish().unwrap();", "    decoder.finish().unwrap(); compallm_serde_rules::copy_measure::stage(0);"),
+            ("        let status = encoder\n", "        compallm_serde_rules::copy_measure::stage(2); let status = encoder\n"),
+            ("        let (written, done) = match status {", "        compallm_serde_rules::copy_measure::stage(0); let (written, done) = match status {"),
+            ("    encoder.finish().unwrap();", "    compallm_serde_rules::copy_measure::stage(2); encoder.finish().unwrap(); compallm_serde_rules::copy_measure::stage(0);"),
+            ("    drop(measurement);", '    drop(measurement); println!("COPY_PROFILE buffer={} input={} output={} stats={:?}", N, REQUEST.len(), length, compallm_serde_rules::copy_measure::counts());'),
+        ])
+        return
     edit("libs/codec/tests/compatible_openai_full_request.rs", [
         ("fn measure_full_request_allocations<const BUFFER_SIZE: usize>() {", "fn measure_full_request_allocations<const BUFFER_SIZE: usize>() { compallm_serde_rules::copy_measure::reset();"),
         ('let status = decoder.next(&mut input, false).expect("decode component");', 'compallm_serde_rules::copy_measure::stage(1); let status = decoder.next(&mut input, false).expect("decode component"); compallm_serde_rules::copy_measure::stage(0);'),
@@ -147,7 +162,7 @@ def check_hooks(library):
     assert [hooks.codec_copy_count(1, kind) for kind in range(3)] == [0, 0, 0]
 
 
-def report(log):
+def report(log, expected_cases):
     rows = []
     for buffer, input_bytes, output_bytes, stats in re.findall(
         r"COPY_PROFILE buffer=(\d+) input=(\d+) output=(\d+) stats=(.*)", log
@@ -157,6 +172,7 @@ def report(log):
         decode = sum(known[:5])
         encode = sum(known[6:9])
         extra_decode, extra_encode = (sum(stage[:2]) for stage in bulk)
+        internal = decode + known[7] + extra_decode + extra_encode
         rows.append({
             "buffer": int(buffer), "input": input_bytes, "output": output_bytes,
             "known_decode": decode, "known_encode": encode,
@@ -164,18 +180,21 @@ def report(log):
             "decode_ratio": (decode + extra_decode) / input_bytes,
             "encode_ratio": (encode + extra_encode) / output_bytes,
             "combined_ratio": (decode + encode + extra_decode + extra_encode) / (input_bytes + output_bytes),
+            "internal_copy_bytes": internal,
+            "internal_copy_input_ratio": internal / input_bytes,
             "known_zero_fill": known[9],
             "extra_memset_decode": bulk[0][2], "extra_memset_encode": bulk[1][2],
             "known_categories": known, "bulk_categories": bulk,
         })
-    if len(rows) != 4:
-        raise RuntimeError(f"Expected four buffer cases, found {len(rows)}")
+    if len(rows) != expected_cases:
+        raise RuntimeError(f"Expected {expected_cases} buffer cases, found {len(rows)}")
     return rows
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--release", action="store_true", help="profile optimized code instead of the default debug build")
+    parser.add_argument("--protocol", choices=["copenai", "openai_completion", "openai_response", "anthropic"], default="copenai")
     args = parser.parse_args()
     if sys.platform != "linux":
         raise SystemExit("This optional profiler requires Linux and a GNU-compatible linker.")
@@ -192,7 +211,7 @@ def main():
         raise RuntimeError("Workspace members declaration changed")
     (workspace / "Cargo.toml").write_text(manifest)
     shutil.copy2(repository / "Cargo.lock", workspace / "Cargo.lock")
-    instrument(workspace)
+    instrument(workspace, args.protocol)
     library = workspace / "libcodec_copy_profile.so"
     subprocess.run(shlex.split(os.environ.get("CC", "cc")) + [
         "-shared", "-fPIC", "-O2", "-fno-builtin", "-Wl,-Bsymbolic-functions",
@@ -207,7 +226,8 @@ def main():
     # Preload only the test executable, not Cargo/rustc. Linker wrapping covers
     # static Rust dependencies; preloading also covers interposable shared calls.
     command = [
-        "cargo", "test", "-p", "codec", "--test", "compatible_openai_full_request",
+        "cargo", "test", "-p", "codec", "--test",
+        "compatible_openai_full_request" if args.protocol == "copenai" else f"{args.protocol}_requests",
         "--no-run", "--message-format=json",
     ]
     if args.release:
@@ -224,20 +244,25 @@ def main():
     if not executable:
         raise RuntimeError("Cargo did not report a test executable")
     env["LD_PRELOAD"] = str(library) + (":" + env["LD_PRELOAD"] if env.get("LD_PRELOAD") else "")
-    result = subprocess.run([executable, "measures_", "--nocapture", "--test-threads=1"],
+    test_filter = {"copenai": "measures_", "anthropic": "translates_borrowed_requests_without_processing_allocations"}.get(args.protocol, "roundtrips_with_zero_processing_allocations")
+    result = subprocess.run([executable, test_filter, "--nocapture", "--test-threads=1"],
                             cwd=workspace, env=env, capture_output=True, text=True)
     (workspace / "test.log").write_text(result.stdout + result.stderr)
     if result.returncode:
         raise RuntimeError(f"Test failed; see {workspace / 'test.log'}")
-    rows = report(result.stdout)
+    rows = report(result.stdout, 4 if args.protocol == "copenai" else 5)
     for row in rows:
         row["profile"] = "release" if args.release else "debug"
+        row["protocol"] = args.protocol
     (workspace / "results.json").write_text(json.dumps(rows, indent=2) + "\n")
     print(f"Profile: {'release' if args.release else 'debug'}; ratio denominator = input + output")
     print("buffer | input | output | known decode | extra bulk decode | known encode | extra bulk encode | combined ratio")
     for row in rows:
         print(f"{row['buffer']} | {row['input']} | {row['output']} | {row['known_decode']} | {row['extra_bulk_decode']} | {row['known_encode']} | {row['extra_bulk_encode']} | {row['combined_ratio']:.2%}")
     print("Extra bulk bytes include library/compiler metadata moves; inlined/hidden copies can be missed.")
+    print("buffer | internal copied bytes (excluding final output writes) | copied/input")
+    for row in rows:
+        print(f"{row['buffer']} | {row['internal_copy_bytes']} | {row['internal_copy_input_ratio']:.2f}x")
     print("Buffer initialization/memset bytes are separate in results.json. Harness copies and construction are excluded.")
     print(f"Artifacts: {workspace}")
 

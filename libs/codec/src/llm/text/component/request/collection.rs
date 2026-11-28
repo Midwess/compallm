@@ -3,6 +3,7 @@ use crate::json::JsonView;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Collection<T, S = String> {
     Owned(Vec<T>),
+    Single(T),
     View(JsonView<S>),
 }
 
@@ -10,6 +11,7 @@ impl<T, S: AsRef<str>> Collection<T, S> {
     pub fn is_empty(&self) -> bool {
         match self {
             Self::Owned(values) => values.is_empty(),
+            Self::Single(_) => false,
             Self::View(view) => view
                 .borrowed()
                 .items()
@@ -21,10 +23,11 @@ impl<T, S: AsRef<str>> Collection<T, S> {
 impl<T, S> Collection<T, S> {
     pub fn map<U, R>(
         self,
-        convert: impl FnMut(T) -> U,
+        mut convert: impl FnMut(T) -> U,
         text: impl FnMut(S) -> R,
     ) -> Collection<U, R> {
         match self {
+            Self::Single(value) => Collection::Single(convert(value)),
             Self::Owned(values) => Collection::Owned(values.into_iter().map(convert).collect()),
             Self::View(view) => Collection::View(view.map_text(text)),
         }

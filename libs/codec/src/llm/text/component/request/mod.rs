@@ -57,6 +57,7 @@ impl<S> TextRequestComponent<S> {
             Self::Model(value) => TextRequestComponent::Model(convert(value)),
             Self::Message(value) => TextRequestComponent::Message(value.map_text(&mut convert)),
             Self::Tools(values) => TextRequestComponent::Tools(match values {
+                Collection::Single(value) => Collection::Single(value.map_text(&mut convert)),
                 Collection::Owned(values) => Collection::Owned(
                     values
                         .into_iter()

@@ -3,10 +3,11 @@ use super::component::{
     StreamOptionsWire,
 };
 use crate::decoder::{Decoder, DecoderError, DecoderStatus};
-use crate::json::{JsonContainer, JsonDecoder, JsonToken};
+use crate::json::{JsonDecoder, JsonToken};
 use crate::llm::text::component::{
     Provider, Reasoning, Stop, StreamOptions, TextRequestComponent, ToolChoice,
 };
+use crate::llm::text::request::decoder::{CaptureMode, Ready, RequestStep, TextRequestDecoder};
 use serde_with::de::DeserializeAsWrap as Input;
 
 #[derive(Clone, Copy, Debug)]
@@ -21,41 +22,21 @@ enum Field {
     StreamOptions,
 }
 
-enum Ready {
-    Scalar,
-    Value(Field),
-}
-
-enum Action {
-    Start,
-    Close,
-    Scalar,
-    Enter(Field),
-}
-
 #[derive(Debug)]
 pub struct CompatibleOpenAIRequestDecoder {
-    json: JsonContainer,
-    field: Option<Field>,
+    request: TextRequestDecoder<Field>,
     have_token_limit: bool,
     have_model: bool,
     have_messages: bool,
-    started: bool,
-    closed: bool,
-    failed: bool,
 }
 
 impl CompatibleOpenAIRequestDecoder {
     pub fn new(json: JsonDecoder) -> Self {
         Self {
-            json: JsonContainer::new(json),
-            field: None,
+            request: TextRequestDecoder::new(json),
             have_token_limit: false,
             have_model: false,
             have_messages: false,
-            started: false,
-            closed: false,
-            failed: false,
         }
     }
 }
@@ -71,101 +52,63 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
     ) -> Result<DecoderStatus<Self::Component<'a>>, Self::Error> {
         use TextRequestComponent as C;
 
-        if self.failed {
-            return Err(DecoderError::InvalidState);
-        }
-        self.failed = true;
+        self.request.begin()?;
         let (ready, source) = loop {
-            let source = *input;
-            let status = if self.field.is_some() {
-                self.json.advance_value(input, eof)?
-            } else {
-                self.json.advance(input, eof)?
-            };
-            match status {
-                DecoderStatus::NeedInput => {
-                    self.failed = false;
+            let (step, source) = self.request.advance(input, eof)?;
+            match step {
+                RequestStep::NeedInput => {
+                    self.request.complete();
                     return Ok(DecoderStatus::NeedInput);
                 }
-                DecoderStatus::Component(()) => {
-                    if let Some(field) = self.field {
-                        break (Ready::Value(field), source);
-                    }
+                RequestStep::Finished => {
+                    self.request.complete();
+                    return Ok(DecoderStatus::Finished);
                 }
-                DecoderStatus::Finished => match self.field.take() {
-                    Some(Field::Messages) => continue,
-                    Some(_) => return Err(DecoderError::IncompleteInput),
-                    None => {
-                        if !self.closed {
-                            return Err(DecoderError::IncompleteInput);
-                        }
-                        self.failed = false;
-                        return Ok(DecoderStatus::Finished);
-                    }
-                },
-            }
-            let action = match self.json.current(source)? {
-                JsonToken::ObjectStart(None) if !self.started => Action::Start,
-                JsonToken::ObjectEnd if self.started && !self.closed => Action::Close,
-                JsonToken::ArrayStart(Some(key)) if self.started && !self.closed => {
-                    Action::Enter(match key {
-                        "messages" => Field::Messages,
-                        "tools" => Field::Tools,
-                        "stop" => Field::Stop,
-                        _ => return Err(DecoderError::Unsupported("request array")),
-                    })
-                }
-                JsonToken::ObjectStart(Some(key)) if self.started && !self.closed => {
-                    Action::Enter(match key {
-                        "provider" => Field::Provider,
-                        "reasoning" => Field::Reasoning,
-                        "response_format" => Field::ResponseFormat,
-                        "stream_options" => Field::StreamOptions,
-                        "tool_choice" => Field::ToolChoice,
-                        _ => return Err(DecoderError::Unsupported("request object")),
-                    })
-                }
-                token @ (JsonToken::ValueString(..)
-                | JsonToken::ValueNumber(..)
-                | JsonToken::ValueBoolean(..)
-                | JsonToken::ValueNull(..))
-                    if self.started && !self.closed =>
-                {
-                    if matches!(token, JsonToken::ValueNull(Some("top_p"))) {
-                        continue;
-                    }
-                    Action::Scalar
-                }
-                _ => return Err(DecoderError::InvalidInput("invalid request container")),
-            };
-            match action {
-                Action::Start => self.started = true,
-                Action::Close => {
+                RequestStep::Closed => {
                     if !self.have_model || !self.have_messages {
                         return Err(DecoderError::InvalidInput(
                             "model and messages are required",
                         ));
                     }
-                    self.closed = true;
                 }
-                Action::Scalar => break (Ready::Scalar, source),
-                Action::Enter(field) => {
-                    match field {
-                        Field::Messages => {
-                            self.json.enter()?.nonempty();
-                        }
-                        Field::Stop | Field::Tools => {
-                            self.json.enter_value()?;
-                        }
+                RequestStep::Value(field) => break (Ready::Value(field), source),
+                RequestStep::Token => {
+                    let field = match self.request.current(source)? {
+                        JsonToken::ArrayStart(Some(key)) => match key {
+                            "messages" => Field::Messages,
+                            "tools" => Field::Tools,
+                            "stop" => Field::Stop,
+                            _ => return Err(DecoderError::Unsupported("request array")),
+                        },
+                        JsonToken::ObjectStart(Some(key)) => match key {
+                            "provider" => Field::Provider,
+                            "reasoning" => Field::Reasoning,
+                            "response_format" => Field::ResponseFormat,
+                            "stream_options" => Field::StreamOptions,
+                            "tool_choice" => Field::ToolChoice,
+                            _ => return Err(DecoderError::Unsupported("request object")),
+                        },
                         _ => {
-                            self.json.enter()?;
+                            if matches!(
+                                self.request.current(source)?,
+                                JsonToken::ValueNull(Some("top_p"))
+                            ) {
+                                continue;
+                            }
+                            break (Ready::Scalar, source);
                         }
-                    }
-                    self.field = Some(field);
+                    };
+                    let mode = if matches!(field, Field::Messages) {
+                        CaptureMode::Items
+                    } else {
+                        CaptureMode::Value
+                    };
+                    self.request
+                        .enter(field, mode, matches!(field, Field::Messages))?;
                 }
             }
         };
-        let json = &self.json;
+        let json = &self.request;
         let component = match ready {
             Ready::Scalar => {
                 let component = match json.current(source)? {
@@ -226,56 +169,43 @@ impl Decoder for CompatibleOpenAIRequestDecoder {
                 }
                 component
             }
-            Ready::Value(field) => {
-                if !matches!(field, Field::Messages) {
-                    self.field = None;
+            Ready::Value(field) => match field {
+                Field::Messages => {
+                    let value = json.deserialize_current::<MessageInput<'_>>(source)?;
+                    let message = value.try_into().map_err(DecoderError::InvalidInput)?;
+                    self.have_messages = true;
+                    C::Message(message)
                 }
-                match field {
-                    Field::Messages => {
-                        let value = json.deserialize_current::<MessageInput<'_>>(source)?;
-                        let message = value.try_into().map_err(DecoderError::InvalidInput)?;
-                        self.have_messages = true;
-                        C::Message(message)
-                    }
-                    Field::Tools => C::Tools(json.deserialize_current::<ChatTools<'_>>(source)?.0),
-                    Field::Stop => C::Stop(json.deserialize_current::<Stops<'_>>(source)?.0),
-                    Field::ResponseFormat => C::ResponseFormat(
-                        json.deserialize_current::<FormatInput<'_>>(source)?
-                            .try_into()
-                            .map_err(DecoderError::InvalidInput)?,
-                    ),
-                    Field::ToolChoice => C::ToolChoice(
-                        json.deserialize_current::<FunctionChoice<'_>>(source)?
-                            .into(),
-                    ),
-                    Field::Provider => C::Provider(
-                        json.deserialize_current::<Input<Provider, ProviderWire>>(source)?
-                            .into_inner(),
-                    ),
-                    Field::Reasoning => C::Reasoning(
-                        json.deserialize_current::<Input<Reasoning, ReasoningWire>>(source)?
-                            .into_inner(),
-                    ),
-                    Field::StreamOptions => C::StreamOptions(Some(
-                        json.deserialize_current::<Input<StreamOptions, StreamOptionsWire>>(
-                            source,
-                        )?
+                Field::Tools => C::Tools(json.deserialize_current::<ChatTools<'_>>(source)?.0),
+                Field::Stop => C::Stop(json.deserialize_current::<Stops<'_>>(source)?.0),
+                Field::ResponseFormat => C::ResponseFormat(
+                    json.deserialize_current::<FormatInput<'_>>(source)?
+                        .try_into()
+                        .map_err(DecoderError::InvalidInput)?,
+                ),
+                Field::ToolChoice => C::ToolChoice(
+                    json.deserialize_current::<FunctionChoice<'_>>(source)?
+                        .into(),
+                ),
+                Field::Provider => C::Provider(
+                    json.deserialize_current::<Input<Provider, ProviderWire>>(source)?
                         .into_inner(),
-                    )),
-                }
-            }
+                ),
+                Field::Reasoning => C::Reasoning(
+                    json.deserialize_current::<Input<Reasoning, ReasoningWire>>(source)?
+                        .into_inner(),
+                ),
+                Field::StreamOptions => C::StreamOptions(Some(
+                    json.deserialize_current::<Input<StreamOptions, StreamOptionsWire>>(source)?
+                        .into_inner(),
+                )),
+            },
         };
-        self.failed = false;
+        self.request.complete();
         Ok(DecoderStatus::Component(component))
     }
 
     fn finish(self) -> Result<(), Self::Error> {
-        if self.failed {
-            return Err(DecoderError::InvalidState);
-        }
-        if !self.closed {
-            return Err(DecoderError::IncompleteInput);
-        }
-        self.json.finish().map_err(Into::into)
+        self.request.finish()
     }
 }

@@ -65,12 +65,18 @@ impl<'a> JsonView<&'a str> {
     }
 
     pub fn members(self) -> Option<ObjectMembers<'a>> {
+        if !self.validated {
+            super::JsonDecoder::validate_value(self.source).ok()?;
+        }
         Some(ObjectMembers {
             remaining: self.source.strip_prefix('{')?.strip_suffix('}')?,
         })
     }
 
     pub fn items(self) -> Option<ArrayItems<'a>> {
+        if !self.validated {
+            super::JsonDecoder::validate_value(self.source).ok()?;
+        }
         Some(ArrayItems {
             remaining: self.source.strip_prefix('[')?.strip_suffix(']')?,
         })

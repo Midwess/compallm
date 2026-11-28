@@ -1,30 +1,36 @@
 use crate::llm::text::component::Stop;
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::DeserializeAs;
+use serde::{Deserialize, Deserializer, Serialize, de::Error};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[serde(remote = "Stop", untagged)]
-pub(crate) enum StopWire {
+pub(in crate::llm::text::copenai::request) enum StopWire<S: AsRef<str>> {
     Null,
-    Text(String),
-    Array(Vec<String>),
+    Text(S),
+    Array(Vec<S>),
+    ArrayView(crate::json::JsonView<S>),
 }
 
-impl<'de> DeserializeAs<'de, Stop> for StopWire {
-    fn deserialize_as<D: Deserializer<'de>>(deserializer: D) -> Result<Stop, D::Error> {
-        let value = Self::deserialize(deserializer)?;
-        let valid = match &value {
-            Stop::Null => true,
-            Stop::Text(text) => !text.is_empty() && text.len() <= 4096,
-            Stop::Array(values) => {
-                values.len() <= 4
-                    && values.iter().all(|v| !v.is_empty())
-                    && values.iter().map(String::len).sum::<usize>() <= 4096
+pub(in crate::llm::text::copenai::request) struct Stops<'a>(pub Stop<&'a str>);
+
+impl<'de> Deserialize<'de> for Stops<'de> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let view = crate::json::JsonView::deserialize_array(deserializer)?;
+        let mut count = 0;
+        let mut bytes = 0;
+        let mut scratch = [0; 4096];
+        for value in view
+            .items()
+            .ok_or_else(|| D::Error::custom("expected stop array"))?
+        {
+            count += 1;
+            let text = value
+                .decode_string(&mut scratch)
+                .map_err(D::Error::custom)?;
+            bytes += text.len();
+            if count > 4 || text.is_empty() || bytes > 4096 {
+                return Err(D::Error::custom("invalid stop sequences"));
             }
-        };
-        if !valid {
-            return Err(serde::de::Error::custom("invalid stop sequences"));
         }
-        Ok(value)
+        Ok(Stops(Stop::ArrayView(view)))
     }
 }

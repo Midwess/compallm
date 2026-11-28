@@ -1,62 +1,55 @@
-use super::ToolType;
+use super::{Collection, ToolType};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Message {
+pub struct Message<S = String> {
     pub role: Role,
-    pub content: Option<Content>,
-    pub tool_calls: Option<Vec<ToolCall>>,
-    pub tool_call_id: Option<String>,
-    pub reasoning: Option<String>,
-    pub reasoning_content: Option<String>,
-    pub reasoning_details: Option<Vec<ReasoningDetail>>,
+    pub content: Option<Content<S>>,
+    pub tool_calls: Option<Collection<ToolCall<S>, S>>,
+    pub tool_call_id: Option<S>,
+    pub reasoning: Option<S>,
+    pub reasoning_content: Option<S>,
+    pub reasoning_details: Option<Collection<ReasoningDetail<S>, S>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Content {
+pub enum Content<S = String> {
     Null,
-    Text(String),
-    Object(ObjectMessage),
-    Array(Vec<ObjectMessage>),
+    Text(S),
+    Object(ObjectMessage<S>),
+    Array(Vec<ObjectMessage<S>>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ObjectMessage {
-    Text { text: String },
+pub enum ObjectMessage<S = String> {
+    Text { text: S },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ToolCall {
-    pub id: String,
+pub struct ToolCall<S = String> {
+    pub id: S,
     pub kind: ToolType,
-    pub function: FunctionCall,
+    pub function: FunctionCall<S>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FunctionCall {
-    pub name: String,
-    pub arguments: String,
+pub struct FunctionCall<S = String> {
+    pub name: S,
+    pub arguments: crate::json::JsonArgument<S>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ReasoningDetail {
-    pub content: ReasoningDetailContent,
-    pub id: Option<String>,
-    pub format: Option<String>,
+pub struct ReasoningDetail<S = String> {
+    pub content: ReasoningDetailContent<S>,
+    pub id: Option<S>,
+    pub format: Option<S>,
     pub index: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ReasoningDetailContent {
-    Summary {
-        summary: String,
-    },
-    Text {
-        text: String,
-        signature: Option<String>,
-    },
-    Encrypted {
-        data: String,
-    },
+pub enum ReasoningDetailContent<S = String> {
+    Summary { summary: S },
+    Text { text: S, signature: Option<S> },
+    Encrypted { data: S },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,4 +59,91 @@ pub enum Role {
     User,
     Assistant,
     Tool,
+}
+
+impl<S> Message<S> {
+    pub fn map_text<T>(self, mut convert: impl FnMut(S) -> T) -> Message<T> {
+        Message {
+            role: self.role,
+            content: self.content.map(|value| value.map_text(&mut convert)),
+            tool_calls: self.tool_calls.map(|calls| match calls {
+                Collection::Single(call) => Collection::Single(call.map_text(&mut convert)),
+                Collection::View(view) => Collection::View(view.map_text(&mut convert)),
+                Collection::Owned(calls) => Collection::Owned(
+                    calls
+                        .into_iter()
+                        .map(|call| call.map_text(&mut convert))
+                        .collect(),
+                ),
+            }),
+            tool_call_id: self.tool_call_id.map(&mut convert),
+            reasoning: self.reasoning.map(&mut convert),
+            reasoning_content: self.reasoning_content.map(&mut convert),
+            reasoning_details: self.reasoning_details.map(|details| match details {
+                Collection::Single(detail) => Collection::Single(detail.map_text(&mut convert)),
+                Collection::View(view) => Collection::View(view.map_text(&mut convert)),
+                Collection::Owned(details) => Collection::Owned(
+                    details
+                        .into_iter()
+                        .map(|detail| detail.map_text(&mut convert))
+                        .collect(),
+                ),
+            }),
+        }
+    }
+}
+
+impl<S> Content<S> {
+    pub fn map_text<T>(self, mut convert: impl FnMut(S) -> T) -> Content<T> {
+        match self {
+            Self::Null => Content::Null,
+            Self::Text(text) => Content::Text(convert(text)),
+            Self::Object(ObjectMessage::Text { text }) => Content::Object(ObjectMessage::Text {
+                text: convert(text),
+            }),
+            Self::Array(parts) => Content::Array(
+                parts
+                    .into_iter()
+                    .map(|ObjectMessage::Text { text }| ObjectMessage::Text {
+                        text: convert(text),
+                    })
+                    .collect(),
+            ),
+        }
+    }
+}
+
+impl<S> ToolCall<S> {
+    pub fn map_text<T>(self, mut convert: impl FnMut(S) -> T) -> ToolCall<T> {
+        ToolCall {
+            id: convert(self.id),
+            kind: self.kind,
+            function: FunctionCall {
+                name: convert(self.function.name),
+                arguments: self.function.arguments.map_text(convert),
+            },
+        }
+    }
+}
+impl<S> ReasoningDetail<S> {
+    pub fn map_text<T>(self, mut convert: impl FnMut(S) -> T) -> ReasoningDetail<T> {
+        let content = match self.content {
+            ReasoningDetailContent::Summary { summary } => ReasoningDetailContent::Summary {
+                summary: convert(summary),
+            },
+            ReasoningDetailContent::Text { text, signature } => ReasoningDetailContent::Text {
+                text: convert(text),
+                signature: signature.map(&mut convert),
+            },
+            ReasoningDetailContent::Encrypted { data } => ReasoningDetailContent::Encrypted {
+                data: convert(data),
+            },
+        };
+        ReasoningDetail {
+            content,
+            id: self.id.map(&mut convert),
+            format: self.format.map(&mut convert),
+            index: self.index,
+        }
+    }
 }

@@ -4,7 +4,7 @@ use serde_with::{DeserializeAs, SerializeAs};
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "StreamOptions", deny_unknown_fields)]
-pub(crate) struct StreamOptionsWire {
+pub(in crate::llm::text::copenai::request) struct StreamOptionsWire {
     #[serde(skip_serializing_if = "Option::is_none")]
     include_usage: Option<bool>,
 }

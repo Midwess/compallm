@@ -26,15 +26,27 @@ pub(super) struct Grammar {
 
 impl Default for Grammar {
     fn default() -> Self {
+        let bytes = 4096;
         Self {
             stack: [Position::ObjectFirst; 64],
             depth: 0,
             root: false,
-            key_bytes: String::with_capacity(64),
-            keys: Vec::with_capacity(16),
+            key_bytes: String::with_capacity(bytes),
+            keys: Vec::with_capacity(bytes.div_ceil(std::mem::size_of::<std::ops::Range<usize>>())),
             key_starts: [0; 64],
             byte_starts: [0; 64],
         }
+    }
+}
+
+impl Grammar {
+    pub(super) fn reset(&mut self) {
+        self.depth = 0;
+        self.root = false;
+        self.key_bytes.clear();
+        self.keys.clear();
+        self.key_starts.fill(0);
+        self.byte_starts.fill(0);
     }
 }
 

@@ -1,3 +1,4 @@
+mod capture;
 pub mod component;
 mod container;
 mod decoder;
@@ -6,9 +7,14 @@ mod error;
 mod grammar;
 mod state;
 mod token;
+mod value;
+mod view;
 
 pub use component::JsonToken;
+use component::StringReference;
 pub use container::JsonContainer;
 pub use decoder::JsonDecoder;
 pub use encoder::{JsonEncodeError, JsonEncoder};
 pub use error::JsonDecodeError;
+pub use value::{JsonArgument, JsonValue};
+pub use view::{ArrayItems, JsonView, ObjectMembers};

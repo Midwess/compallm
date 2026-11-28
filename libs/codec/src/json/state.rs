@@ -12,16 +12,41 @@ pub(super) enum JsonState {
     Failed,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(super) struct ParseState {
     bytes: Vec<u8>,
-    depth: usize,
+    pub(super) capture: super::capture::Capture,
+    pub(super) depth: usize,
     pub(super) active: bool,
 }
 
+impl Default for ParseState {
+    fn default() -> Self {
+        let bytes = 4096;
+        Self {
+            bytes: Vec::with_capacity(bytes),
+            capture: super::capture::Capture::default(),
+            depth: 0,
+            active: false,
+        }
+    }
+}
+
 impl ParseState {
-    pub(super) fn push(&mut self, token: JsonToken<'_>) -> Result<bool, JsonDecodeError> {
-        match token {
+    pub(super) fn push(
+        &mut self,
+        token: JsonToken<'_>,
+        end: usize,
+        input: &[u8],
+        offset: usize,
+    ) -> Result<bool, JsonDecodeError> {
+        let start = if matches!(token, JsonToken::ObjectStart(_) | JsonToken::ArrayStart(_)) {
+            end.checked_sub(1).ok_or(JsonDecodeError::InvalidState)?
+        } else {
+            0
+        };
+        let nested = self.depth > 0;
+        match &token {
             JsonToken::ObjectStart(_) | JsonToken::ArrayStart(_) => self.depth += 1,
             JsonToken::ObjectEnd | JsonToken::ArrayEnd => {
                 self.depth = self
@@ -31,6 +56,7 @@ impl ParseState {
             }
             _ => {}
         }
+        self.capture.push(token, start..end, nested, input, offset);
         Ok(self.depth == 0)
     }
 
@@ -38,19 +64,52 @@ impl ParseState {
         self.bytes.extend_from_slice(bytes);
     }
 
-    pub(super) fn deserialize<T: serde::de::DeserializeOwned>(
-        &mut self,
-        bytes: &[u8],
-    ) -> Result<T, JsonDecodeError> {
-        let value = if self.bytes.is_empty() {
-            serde_json::from_slice(bytes)
-        } else {
-            self.buffer(bytes);
-            serde_json::from_slice(&self.bytes)
-        }
-        .map_err(JsonDecodeError::Deserialize)?;
+    /// Discards a capture that ended without a value.
+    pub(super) fn discard(&mut self) {
         self.bytes.clear();
+        self.capture.clear();
+        self.depth = 0;
         self.active = false;
-        Ok(value)
+    }
+
+    pub(super) fn reset(&mut self) {
+        self.bytes.clear();
+        self.capture.clear();
+    }
+
+    pub(super) fn complete_capture(&mut self, bytes: &[u8]) {
+        if !self.bytes.is_empty() {
+            self.buffer(bytes);
+        }
+        self.active = false;
+    }
+
+    pub(super) fn deserialize<'de, T: serde::Deserialize<'de>>(
+        &'de self,
+        bytes: &'de [u8],
+        inner: &mut super::decoder::JsonParser,
+    ) -> Result<T, JsonDecodeError> {
+        let source = if self.bytes.is_empty() {
+            bytes
+        } else {
+            &self.bytes
+        };
+        let source = std::str::from_utf8(source).map_err(|_| JsonDecodeError::InvalidToken)?;
+        self.capture
+            .deserialize(source, inner)
+            .map_err(JsonDecodeError::Deserialize)
+    }
+
+    pub(super) fn captured_bytes(&self) -> usize {
+        self.bytes.len()
+    }
+
+    pub(super) fn source<'a>(&'a self, input: &'a [u8]) -> Result<&'a str, JsonDecodeError> {
+        let bytes = if self.bytes.is_empty() {
+            input
+        } else {
+            &self.bytes
+        };
+        std::str::from_utf8(bytes).map_err(|_| JsonDecodeError::InvalidState)
     }
 }

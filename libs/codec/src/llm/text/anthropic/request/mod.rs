@@ -1,5 +1,8 @@
-pub mod component;
+mod component;
 pub mod decoder;
 pub mod encoder;
 
-pub use encoder::{AnthropicRequestEncoder, AnthropicRequestEncoderConfiguration};
+pub use decoder::AnthropicRequestDecoder;
+pub use encoder::{
+    AnthropicRequestEncoder, AnthropicRequestEncoderConfiguration, RequestEncodeError,
+};

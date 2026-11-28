@@ -1,18 +1,35 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ToolDefinition {
+pub struct ToolDefinition<S = String> {
     pub kind: ToolType,
-    pub function: FunctionDefinition,
+    pub function: FunctionDefinition<S>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FunctionDefinition {
-    pub name: String,
-    pub description: Option<String>,
-    pub parameters: Option<String>,
+pub struct FunctionDefinition<S = String> {
+    pub name: S,
+    pub description: Option<S>,
+    pub parameters: Option<crate::json::JsonView<S>>,
     pub strict: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ToolType {
     Function,
+}
+
+impl<S> ToolDefinition<S> {
+    pub fn map_text<T>(self, mut convert: impl FnMut(S) -> T) -> ToolDefinition<T> {
+        let function = self.function;
+        ToolDefinition {
+            kind: self.kind,
+            function: FunctionDefinition {
+                name: convert(function.name),
+                description: function.description.map(&mut convert),
+                parameters: function
+                    .parameters
+                    .map(|value| value.map_text(&mut convert)),
+                strict: function.strict,
+            },
+        }
+    }
 }
